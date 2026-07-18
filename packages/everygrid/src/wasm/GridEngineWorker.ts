@@ -182,15 +182,14 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   processGridQueue(id);
 };
 
-function handleMessage(event: MessageEvent<WorkerRequest>) {
-  const req = event.data;
-  const { id, seq, cmd } = req;
+// Runs one command and returns its result (or throws). Kept separate from handleMessage so a
+// thrown error propagates to that function's catch rather than being "thrown and caught locally".
+function executeCommand(req: WorkerRequest): unknown {
+  const { id, cmd } = req;
+  // WASM is guaranteed ready by processGridQueue's ensureWasmOnce() — no await here.
+  let result: unknown;
 
-  try {
-    // WASM is guaranteed ready by processGridQueue's ensureWasmOnce() — no await here.
-    let result: unknown;
-
-    switch (cmd) {
+  switch (cmd) {
       case 'init': {
         // Always create a fresh engine — free any stale one from a previous session
         const stale = engines.get(id);
@@ -311,6 +310,13 @@ function handleMessage(event: MessageEvent<WorkerRequest>) {
         throw new Error(`Unknown command: ${(req as WorkerRequest).cmd}`);
     }
 
+  return result;
+}
+
+function handleMessage(event: MessageEvent<WorkerRequest>) {
+  const { id, seq } = event.data;
+  try {
+    const result = executeCommand(event.data);
     const resp: WorkerResponse = { id, seq, ok: true, result };
     self.postMessage(resp);
   } catch (err) {

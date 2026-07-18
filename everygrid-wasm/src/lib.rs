@@ -132,6 +132,56 @@ impl FieldVal {
         }
     }
 
+    /// Numeric view of a cell for comparison filters. Numbers pass through; numeric strings
+    /// (e.g. a salary stored as "550000") are parsed; everything else is not comparable.
+    fn as_f64(&self) -> Option<f64> {
+        match self {
+            FieldVal::Num(n) => Some(*n),
+            FieldVal::Str(s) => s.trim().parse::<f64>().ok(),
+            _ => None,
+        }
+    }
+
+    /// Lowercased string view for equality / ordered (e.g. date) comparisons against a text
+    /// operand. Only string cells qualify — dates are stored as ISO strings, which compare
+    /// correctly lexicographically.
+    fn as_cmp_string(&self) -> Option<String> {
+        match self {
+            FieldVal::Str(s) => Some(s.to_lowercase()),
+            _ => None,
+        }
+    }
+
+    /// Evaluate a comparison against this cell. Scalars compare directly; a nested object/array
+    /// (Json) matches if ANY leaf value satisfies the comparison (so `role(=frontend)` hits a
+    /// nested `subRole: "Frontend"`). NOTE: nested cells are re-parsed per row here.
+    fn cmp_matches(&self, op: CmpOp, val: &CmpVal) -> bool {
+        match self {
+            FieldVal::Json(t) => serde_json::from_str::<Value>(t)
+                .ok()
+                .is_some_and(|v| json_leaf_cmp(&v, op, val)),
+            _ => match val {
+                CmpVal::Num(n) => {
+                    if let Some(x) = self.as_f64() {
+                        // Numeric field (incl. numeric strings) vs numeric operand → numeric.
+                        x.partial_cmp(n).is_some_and(|o| op.test_ord(o))
+                    } else {
+                        // Non-numeric string vs a numeric operand only means anything for a date
+                        // field (year search, e.g. `joined(>2024)`). Plain text never matches a
+                        // numeric compare.
+                        self.as_cmp_string()
+                            .is_some_and(|fs| is_date_like(&fs) && range_cmp(&fs, &num_to_str(*n), op))
+                    }
+                }
+                // A date-like operand only compares meaningfully against a date-like field.
+                CmpVal::Str(s) if is_date_like(s) => self
+                    .as_cmp_string()
+                    .is_some_and(|fs| is_date_like(&fs) && date_cmp(&fs, s, op)),
+                CmpVal::Str(s) => self.as_cmp_string().is_some_and(|fs| text_cmp(&fs, s, op)),
+            },
+        }
+    }
+
     fn cmp_key(&self) -> (u8, f64, &str) {
         match self {
             FieldVal::Num(n) => (0, *n, ""),
@@ -402,11 +452,235 @@ impl Interner {
 }
 
 // ---------------------------------------------------------------------------
-// FilterExpr — supports AND ('&&'), OR ('||'), and plain text
+// FilterExpr — global text search plus per-column groups, combined with '&&'/'||'.
+//   - bare term        → substring match across all columns (case-insensitive)
+//   - `col(subexpr)`   → subexpr applied to one column only (single level, no nesting)
+// A column subexpr (ColExpr) supports substring terms and numeric comparisons
+// (`<40`, `>=30`, or value-first `30<=`), also combined with '&&'/'||'.
 // ---------------------------------------------------------------------------
+
+/// Split `input` on `sep`, but only at parenthesis depth 0, so '&&'/'||' inside a `col(...)`
+/// group are not treated as top-level separators. `sep`, '(' and ')' are all ASCII, so byte
+/// scanning never lands mid-UTF-8-char.
+fn split_top_level(input: &str, sep: &str) -> Vec<String> {
+    let bytes = input.as_bytes();
+    let sep_bytes = sep.as_bytes();
+    let mut parts = Vec::new();
+    let mut depth: i32 = 0;
+    let mut start = 0usize;
+    let mut i = 0usize;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'(' => { depth += 1; i += 1; }
+            b')' => { if depth > 0 { depth -= 1; } i += 1; }
+            _ if depth == 0 && bytes[i..].starts_with(sep_bytes) => {
+                parts.push(input[start..i].to_string());
+                i += sep_bytes.len();
+                start = i;
+            }
+            _ => i += 1,
+        }
+    }
+    parts.push(input[start..].to_string());
+    parts
+}
+
+#[derive(Clone, Copy)]
+enum CmpOp {
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    Eq,
+}
+
+impl CmpOp {
+    fn test_ord(self, ord: std::cmp::Ordering) -> bool {
+        use std::cmp::Ordering::{Equal, Greater, Less};
+        match self {
+            CmpOp::Lt => ord == Less,
+            CmpOp::Le => ord != Greater,
+            CmpOp::Gt => ord == Greater,
+            CmpOp::Ge => ord != Less,
+            CmpOp::Eq => ord == Equal,
+        }
+    }
+}
+
+/// A comparison operand: a number (numeric compare) or a lowercased string (dates/text compare).
+#[derive(Clone)]
+enum CmpVal {
+    Num(f64),
+    Str(String),
+}
+
+/// Format a numeric operand as its plain string (integers without a decimal point).
+fn num_to_str(n: f64) -> String {
+    if n.fract() == 0.0 && n.abs() < 1e15 {
+        format!("{}", n as i64)
+    } else {
+        format!("{}", n)
+    }
+}
+
+/// Exact/ordered comparison for plain text operands: `=` is exact, the rest are lexicographic.
+fn text_cmp(field: &str, operand: &str, op: CmpOp) -> bool {
+    match op {
+        CmpOp::Eq => field == operand,
+        _ => op.test_ord(field.cmp(operand)),
+    }
+}
+
+/// Prefix-range comparison: the operand is a prefix defining a period `[operand, operand+ε)`
+/// (e.g. `2024` = the whole year, `2026-01-05` = that whole day). `=` matches the period;
+/// `>`/`<=` are relative to its END, `>=`/`<` to its START. This makes `>2026-01-05` exclude
+/// Jan 5 while `>=2026-01-05` includes it.
+fn range_cmp(field: &str, operand: &str, op: CmpOp) -> bool {
+    match op {
+        CmpOp::Eq => field.starts_with(operand),
+        CmpOp::Ge => field >= operand,
+        CmpOp::Lt => field < operand,
+        CmpOp::Le => field < operand || field.starts_with(operand),
+        CmpOp::Gt => field > operand && !field.starts_with(operand),
+    }
+}
+
+/// True if the operand looks like a date/datetime (`YYYY-...`), so it should use prefix-range
+/// comparison with separator normalization rather than plain text comparison.
+fn is_date_like(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.len() >= 5
+        && b[0].is_ascii_digit()
+        && b[1].is_ascii_digit()
+        && b[2].is_ascii_digit()
+        && b[3].is_ascii_digit()
+        && b[4] == b'-'
+}
+
+/// Normalize the date/time separator so `T` and a space are interchangeable. Inputs are already
+/// lowercased, and the only `t` in an ISO datetime is that separator.
+fn norm_sep(s: &str) -> String {
+    if s.contains('t') { s.replace('t', " ") } else { s.to_string() }
+}
+
+/// Date comparison: normalize `T`/space separators, then apply prefix-range semantics.
+fn date_cmp(field: &str, operand: &str, op: CmpOp) -> bool {
+    range_cmp(&norm_sep(field), &norm_sep(operand), op)
+}
+
+/// True if any leaf value inside a nested JSON value satisfies the comparison.
+fn json_leaf_cmp(v: &Value, op: CmpOp, val: &CmpVal) -> bool {
+    match v {
+        Value::Array(a) => a.iter().any(|x| json_leaf_cmp(x, op, val)),
+        Value::Object(m) => m.values().any(|x| json_leaf_cmp(x, op, val)),
+        Value::Number(n) => matches!(val, CmpVal::Num(t)
+            if n.as_f64().is_some_and(|x| x.partial_cmp(t).is_some_and(|o| op.test_ord(o)))),
+        Value::String(s) => {
+            let leaf = s.to_lowercase();
+            match val {
+                // A numeric/date operand matches a string leaf only when that leaf is itself a
+                // date (year search inside a nested object); never a plain text leaf.
+                CmpVal::Str(t) if is_date_like(t) => is_date_like(&leaf) && date_cmp(&leaf, t, op),
+                CmpVal::Str(t) => text_cmp(&leaf, t, op),
+                CmpVal::Num(n) => is_date_like(&leaf) && range_cmp(&leaf, &num_to_str(*n), op),
+            }
+        }
+        Value::Bool(b) => matches!(val, CmpVal::Str(t) if text_cmp(&b.to_string(), t, op)),
+        _ => false,
+    }
+}
+
+#[derive(Clone)]
+enum ColExpr {
+    Empty,
+    Contains(String),
+    Cmp(CmpOp, CmpVal),
+    And(Box<ColExpr>, Box<ColExpr>),
+    Or(Box<ColExpr>, Box<ColExpr>),
+}
+
+impl ColExpr {
+    fn parse(input: &str) -> Self {
+        let mut exprs: Vec<ColExpr> = split_top_level(input, "||")
+            .iter()
+            .map(|p| Self::parse_and(p))
+            .collect();
+        while exprs.len() > 1 && exprs.last().is_some_and(|e| e.is_empty()) {
+            exprs.pop();
+        }
+        exprs
+            .into_iter()
+            .reduce(|a, b| ColExpr::Or(Box::new(a), Box::new(b)))
+            .unwrap_or(ColExpr::Empty)
+    }
+
+    fn parse_and(input: &str) -> Self {
+        let mut exprs: Vec<ColExpr> = split_top_level(input, "&&")
+            .iter()
+            .map(|p| Self::parse_leaf(p))
+            .collect();
+        while exprs.len() > 1 && exprs.last().is_some_and(|e| e.is_empty()) {
+            exprs.pop();
+        }
+        exprs
+            .into_iter()
+            .reduce(|a, b| ColExpr::And(Box::new(a), Box::new(b)))
+            .unwrap_or(ColExpr::Empty)
+    }
+
+    /// Operand → number if it parses as one (numeric compare), else a lowercased string
+    /// (for dates like `2024-01-01` and text equality).
+    fn operand(s: &str) -> CmpVal {
+        let s = s.trim();
+        match s.parse::<f64>() {
+            Ok(n) => CmpVal::Num(n),
+            Err(_) => CmpVal::Str(s.to_lowercase()),
+        }
+    }
+
+    fn parse_leaf(tok: &str) -> Self {
+        let t = tok.trim();
+        if t.is_empty() {
+            return ColExpr::Empty;
+        }
+        // Operator-first: `<40` = "col < 40", `=qa` = "col == qa". Check multi-char ops first.
+        for (op, cmp) in [("<=", CmpOp::Le), (">=", CmpOp::Ge), ("==", CmpOp::Eq), ("<", CmpOp::Lt), (">", CmpOp::Gt), ("=", CmpOp::Eq)] {
+            if let Some(rest) = t.strip_prefix(op) {
+                if !rest.trim().is_empty() {
+                    return ColExpr::Cmp(cmp, Self::operand(rest));
+                }
+            }
+        }
+        // Value-first: `30<=` = "30 <= col" → col >= 30 (operator reversed). `=` is symmetric.
+        for (op, cmp) in [("<=", CmpOp::Ge), (">=", CmpOp::Le), ("==", CmpOp::Eq), ("<", CmpOp::Gt), (">", CmpOp::Lt), ("=", CmpOp::Eq)] {
+            if let Some(pre) = t.strip_suffix(op) {
+                if !pre.trim().is_empty() {
+                    return ColExpr::Cmp(cmp, Self::operand(pre));
+                }
+            }
+        }
+        ColExpr::Contains(t.to_lowercase())
+    }
+
+    fn is_empty(&self) -> bool {
+        matches!(self, ColExpr::Empty)
+    }
+
+    fn matches(&self, v: &FieldVal) -> bool {
+        match self {
+            ColExpr::Empty => true,
+            ColExpr::Contains(s) => v.contains_term(s),
+            ColExpr::Cmp(op, val) => v.cmp_matches(*op, val),
+            ColExpr::And(a, b) => a.matches(v) && b.matches(v),
+            ColExpr::Or(a, b) => a.matches(v) || b.matches(v),
+        }
+    }
+}
+
 #[derive(Clone)]
 enum FilterExpr {
     Term(String),
+    Col(String, Box<ColExpr>),
     And(Box<FilterExpr>, Box<FilterExpr>),
     Or(Box<FilterExpr>, Box<FilterExpr>),
 }
@@ -428,11 +702,10 @@ impl FilterExpr {
     }
 
     fn parse_or(input: &str) -> Self {
-        let parts: Vec<&str> = input.split("||").map(|p| p.trim()).collect();
-        if parts.is_empty() {
-            return FilterExpr::Term(String::new());
-        }
-        let mut exprs: Vec<FilterExpr> = parts.into_iter().map(Self::parse_and).collect();
+        let mut exprs: Vec<FilterExpr> = split_top_level(input, "||")
+            .iter()
+            .map(|p| Self::parse_and(p))
+            .collect();
         while exprs.len() > 1 && exprs.last().is_some_and(|e| e.is_empty()) {
             exprs.pop();
         }
@@ -443,13 +716,9 @@ impl FilterExpr {
     }
 
     fn parse_and(input: &str) -> Self {
-        let parts: Vec<&str> = input.split("&&").map(|p| p.trim()).collect();
-        if parts.is_empty() {
-            return FilterExpr::Term(String::new());
-        }
-        let mut exprs: Vec<FilterExpr> = parts
-            .into_iter()
-            .map(|p| FilterExpr::Term(p.to_lowercase()))
+        let mut exprs: Vec<FilterExpr> = split_top_level(input, "&&")
+            .iter()
+            .map(|p| Self::parse_token(p))
             .collect();
         while exprs.len() > 1 && exprs.last().is_some_and(|e| e.is_empty()) {
             exprs.pop();
@@ -460,9 +729,28 @@ impl FilterExpr {
             .unwrap_or_else(|| FilterExpr::Term(String::new()))
     }
 
+    fn parse_token(tok: &str) -> Self {
+        let t = tok.trim();
+        if t.is_empty() {
+            return FilterExpr::Term(String::new());
+        }
+        // `column(...)` — scope the inner expression to a single column.
+        if t.ends_with(')') {
+            if let Some(open) = t.find('(') {
+                if open > 0 {
+                    let col = t[..open].trim().to_string();
+                    let inner = &t[open + 1..t.len() - 1];
+                    return FilterExpr::Col(col, Box::new(ColExpr::parse(inner)));
+                }
+            }
+        }
+        FilterExpr::Term(t.to_lowercase())
+    }
+
     fn is_empty(&self) -> bool {
         match self {
             FilterExpr::Term(t) => t.is_empty(),
+            FilterExpr::Col(_, e) => e.is_empty(),
             FilterExpr::And(a, b) => a.is_empty() || b.is_empty(),
             FilterExpr::Or(a, b) => a.is_empty() || b.is_empty(),
         }
@@ -470,13 +758,11 @@ impl FilterExpr {
 
     fn matches(&self, row: &RowData) -> bool {
         match self {
-            FilterExpr::Term(t) => {
-                if t.is_empty() {
-                    true
-                } else {
-                    row.contains_term(t)
-                }
-            }
+            FilterExpr::Term(t) => t.is_empty() || row.contains_term(t),
+            FilterExpr::Col(col, e) => match row.get(col) {
+                Some(v) => e.matches(v),
+                None => false,
+            },
             FilterExpr::And(a, b) => a.matches(row) && b.matches(row),
             FilterExpr::Or(a, b) => a.matches(row) || b.matches(row),
         }

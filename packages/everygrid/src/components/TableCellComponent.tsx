@@ -250,7 +250,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1 overflow-hidden">
           <button
-            className={`everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300${filterText && objectContainsFilter(obj, filterText) ? ' everygrid-highlight-btn' : ''}`}
+            className={`everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300${filterText && objectContainsFilter(obj, filterText, col.field) ? ' everygrid-highlight-btn' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               grid.showPopup?.(obj, item);
@@ -278,7 +278,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       } else if (isXmlString(value)) {
         return (
           <div className="flex items-center justify-between gap-2">
-            <span className="truncate opacity-80" title={value}>{highlightText(value, filterText)}</span>
+            <span className="truncate opacity-80" title={value}>{highlightText(value, filterText, col.field)}</span>
           </div>
         );
       }
@@ -305,7 +305,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
           className="everygrid-link"
           onClick={(e) => e.stopPropagation()}
         >
-          {highlightText(text, filterText)}
+          {highlightText(text, filterText, col.field)}
         </a>
       );
     };
@@ -325,7 +325,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
             onClick={(e) => { e.stopPropagation(); grid.showTextPopup?.(displayValue, item); }}
             title={displayValue}
           >
-            {highlightText(prefix, filterText)}
+            {highlightText(prefix, filterText, col.field)}
           </button>
         </div>
       );
@@ -334,7 +334,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       <div
         className={`flex gap-2 ${alignRight ? 'justify-end' : isCenter ? 'justify-center' : 'text-left'}`}>
         <span className="truncate">
-          {isLinkActive && typeof value === 'string' && value.trim() !== '' ? renderLink(displayValue) : highlightText(displayValue, filterText)}
+          {isLinkActive && typeof value === 'string' && value.trim() !== '' ? renderLink(displayValue) : highlightText(displayValue, filterText, col.field)}
         </span>
       </div>
     );

@@ -1283,7 +1283,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.activePopupRowKey = rowData ? JSON.stringify(rowData) : null;
     this.activePopup = (
       <PopupComponent onClose={() => this.closePopup()} title={I18n.t('popup.detailTitle')}>
-        <pre className="m-0 p-4 text-sm whitespace-pre-wrap break-words text-slate-700">{text}</pre>
+        <pre className="m-0 p-4 text-sm whitespace-pre-wrap wrap-break-word text-slate-700">{text}</pre>
       </PopupComponent>
     );
     const {targets} = this.options;

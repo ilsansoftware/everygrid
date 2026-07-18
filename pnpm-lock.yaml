@@ -48,8 +48,8 @@ importers:
   demo/portal:
     dependencies:
       '@everygrid/grid':
-        specifier: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-68531d380321.tgz
-        version: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-68531d380321.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-255fe9f48302.tgz
+        version: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-255fe9f48302.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: ^19.2.5
         version: 19.2.7
@@ -330,8 +330,8 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-68531d380321.tgz':
-    resolution: {integrity: sha512-0dq1xtUadh7nvwyz9vi84OppkWGon1zsqvNw/vlt5A06R99VZfiRFj6eBZD8vSAHNunq83xQgjaRufzoN3uY8Q==, tarball: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-68531d380321.tgz}
+  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-255fe9f48302.tgz':
+    resolution: {integrity: sha512-Xv3ppcWjVKQXYALjSq8yvjGVXaJRdikxSSCflcT1cGsvuxqoko2FsCRsh9pfdHVOugXRFiZhTr3GY6kR5Cq5yw==, tarball: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-255fe9f48302.tgz}
     version: 0.1.1
     peerDependencies:
       react: '>=18'
@@ -2661,7 +2661,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-68531d380321.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.1.1-255fe9f48302.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)

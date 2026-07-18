@@ -185,7 +185,7 @@ export const GridToolbarComponent = ({
   const filterInput = statusText ? (
     <ProgressBadge text={statusText} />
   ) : (wasmReady && onFilter) ? (
-    <div className="relative flex items-center">
+    <div className="relative flex items-center flex-1 min-w-0 max-w-96">
       <input
         type="text"
         value={inputValue}
@@ -193,7 +193,7 @@ export const GridToolbarComponent = ({
         onKeyDown={handleFilterKeyDown}
         placeholder={I18n.t('toolbar.filterPlaceholder')}
         disabled={isExporting}
-        className="pl-7 pr-2 py-1.5 text-xs border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:border-indigo-400 w-44 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="pl-7 pr-2 py-1.5 text-xs border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:border-indigo-400 w-full disabled:opacity-50 disabled:cursor-not-allowed"
       />
       <svg className="absolute left-2 text-slate-400 pointer-events-none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
