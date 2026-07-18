@@ -1,0 +1,18 @@
+{
+  "targets": [
+    {
+      "id": "test-grid2",
+      "links": [
+        "email"
+      ]
+    }
+  ],
+  "pagination": [
+    {
+      "id": "test-grid2",
+      "pageSize": 10,
+      "active": true,
+      "position": "all"
+    }
+  ]
+}

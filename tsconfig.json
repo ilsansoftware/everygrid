@@ -1,0 +1,7 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/everygrid/tsconfig.json"},
+    { "path": "./demo/tsconfig.json" }
+  ]
+}

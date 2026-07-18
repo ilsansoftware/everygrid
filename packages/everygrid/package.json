@@ -1,0 +1,67 @@
+{
+  "name": "@everygrid/grid",
+  "version": "0.1.1",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.standalone.js",
+  "module": "./dist/index.standalone.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/everygrid.standalone.js",
+      "require": "./dist/everygrid.standalone.js",
+      "default": "./dist/everygrid.standalone.js"
+    },
+    "./core": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./css": "./dist/Everygrid.css",
+    "./standalone": "./dist/everygrid.standalone.js"
+  },
+  "unpkg": "./dist/everygrid.standalone.js",
+  "jsdelivr": "./dist/everygrid.standalone.js",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "build:standalone": "BUILD_FORMAT=standalone vite build",
+    "dev": "vite build --watch",
+    "dev:vanilla": "BUILD_FORMAT=standalone vite build --watch"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
+    "@tailwindcss/vite": "^4.3.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^4.3.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.10",
+    "vite-plugin-dts": "^4.5.4",
+    "vite-plugin-node-polyfills": "^0.27.0",
+    "vite-plugin-wasm": "^3.6.0"
+  },
+  "dependencies": {
+    "buffer": "^6.0.3",
+    "everygrid-wasm": "link:../../everygrid-wasm/pkg",
+    "fflate": "^0.8.3",
+    "rollup": "^4.62.2",
+    "vite": "^8.0.10",
+    "vite-plugin-dts": "^4.5.4",
+    "vite-plugin-node-polyfills": "^0.27.0",
+    "vite-plugin-wasm": "^3.6.0",
+    "xlsx-js-style": "^1.2.0"
+  }
+}

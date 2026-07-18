@@ -1,0 +1,348 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f1f5f9;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+header {
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  height: 70px;
+  flex-shrink: 0;
+  background: #1a1b2e;
+  border-bottom: 1px solid #2a2b3d;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+header h1 {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin-right: 16px; /* spacing between title and nav */
+}
+
+/* Capsule-shaped background wrapping the nav buttons */
+nav {
+  display: flex;
+  background: #2a2b3d;
+  padding: 4px;
+  border-radius: 8px;
+  margin-left: 7px; /* spacing between title and nav */
+}
+
+/* Minimal icon-only button centered */
+nav button {
+  height: 32px;
+  border: none;
+  padding: 6px 8px;
+  margin: 0 2px; /* spacing between buttons */
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Inactive state: subtle grayscale and reduced opacity */
+nav button img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  opacity: 0.5;
+  filter: grayscale(100%);
+  transition: all 0.2s;
+}
+
+nav button:hover img {
+  opacity: 0.8;
+  filter: grayscale(0%);
+}
+
+/* Active state: elevated white block effect */
+nav button.active {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+nav button.active img {
+  opacity: 1;
+  filter: grayscale(0%);
+}
+
+/* Panel that hosts the active demo: the React demo renders inline, while the
+   vanilla / jquery demos are embedded as full-size iframes. */
+.demo-panel {
+  flex: 1;
+  overflow: auto;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.demo-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Shared container used by the vanilla / jquery demos */
+.demo-panel .container {
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+.demo-panel .container > main {
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 2rem 0;
+  background: #fff;
+}
+
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.locale-btn-group {
+  display: flex;
+  background: #2a2b3d;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.locale-btn {
+  width: 36px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.45;
+}
+
+.locale-btn:hover {
+  opacity: 0.8;
+}
+
+.locale-btn.active {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  opacity: 1;
+}
+
+/* Show Code button in header */
+.show-code-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 6px 14px;
+  background: #24253a;
+  color: #94a3b8;
+  border: 1px solid #2a2b3d;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.show-code-btn:hover {
+  background: #2a2b3d;
+  color: #e2e8f0;
+  border-color: #3a3b5a;
+}
+
+.show-code-btn svg {
+  flex-shrink: 0;
+}
+
+/* Full-screen code modal */
+.code-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.code-modal-overlay.open {
+  display: flex;
+}
+
+.code-modal {
+  background: #1a1b2e;
+  border: 1px solid #2a2b3d;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 900px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+}
+
+.code-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #24253a;
+  border-bottom: 1px solid #2a2b3d;
+  flex-shrink: 0;
+}
+
+.code-modal-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-modal-lang {
+  font-size: 0.7rem;
+  color: #475569;
+  background: #1a1b2e;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.code-modal-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  font-size: 1.1rem;
+}
+
+.code-modal-close:hover {
+  background: #2a2b3d;
+  color: #e2e8f0;
+}
+
+.code-modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.code-modal-body pre {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+}
+
+.code-modal-body code {
+  font-family: inherit;
+}
+
+@media (max-width: 640px) {
+  .code-modal-overlay {
+    padding: 0;
+  }
+
+  .code-modal {
+    border-radius: 0;
+    height: 100dvh;
+    max-width: 100%;
+  }
+
+  .code-modal-body pre {
+    font-size: 0.68rem;
+  }
+
+  .code-modal-close {
+    width: 44px;
+    height: 44px;
+    font-size: 1.4rem;
+    background: #2a2b3d;
+    color: #e2e8f0;
+  }
+}
+
+/* Mobile: compact header */
+@media (max-width: 640px) {
+  header {
+    padding: 0 8px;
+    height: 52px;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  header h1 {
+    display: none;
+  }
+
+  nav {
+    margin-left: 0;
+    padding: 3px;
+  }
+
+  nav button {
+    height: 28px;
+    padding: 6px 8px;
+  }
+
+  .header-right {
+    margin-left: auto;
+    gap: 6px;
+  }
+
+  .locale-btn {
+    width: 28px;
+    height: 26px;
+    font-size: 1rem;
+  }
+
+  .show-code-btn {
+    height: 32px;
+    padding: 4px 10px;
+  }
+}

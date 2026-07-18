@@ -1,0 +1,269 @@
+import React from 'react';
+import {getSummaryLabel, isTooComplex, isXmlString} from '../core/utils';
+import {highlightText} from '../core/highlightUtils';
+
+interface NestedTableProps {
+  data: unknown;
+  depth?: number;
+  onShowPopup?: () => void;
+  filterText?: string;
+}
+
+const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onShowPopup, filterText = ''}) => {
+  if (depth > 0 && onShowPopup && isTooComplex(data)) {
+    const label = getSummaryLabel(data);
+
+    return (
+      <button
+        className="everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300"
+        onClick={(e) => {
+          e.stopPropagation();
+          onShowPopup();
+        }}
+      >
+        {label}
+      </button>
+    );
+  }
+
+  if (depth > 2 && onShowPopup) {
+    return <button className="everygrid-popup-btn" onClick={onShowPopup}>View Details</button>;
+  }
+
+  if (Array.isArray(data)) {
+    // Check if it's an array of objects with identical single key
+    const isArrayOfSameSingleKeyObjects = data.length > 1 && data.every(item =>
+      typeof item === 'object' && item !== null && Object.keys(item).length === 1
+    );
+
+    if (isArrayOfSameSingleKeyObjects) {
+      const firstKey = Object.keys(data[0] as object)[0];
+      const isAllSameKey = data.every(item => Object.keys(item as object)[0] === firstKey);
+
+      if (isAllSameKey) {
+        return (
+          <table className="everygrid-nested-table">
+            <thead>
+            <tr>
+              <th>{highlightText(firstKey, filterText)}</th>
+            </tr>
+            </thead>
+            <tbody>
+            {data.map((item, rowIndex) => {
+              const row = item as Record<string, unknown>;
+              const cellVal = row[firstKey];
+              return (
+                <tr key={rowIndex}>
+                  <td>
+                    {typeof cellVal === 'object' && cellVal !== null ? (
+                      <NestedTableComponent data={cellVal} depth={depth + 1} filterText={filterText}/>
+                    ) : (
+                      isXmlString(cellVal) ? (
+                        <span className="opacity-80"
+                              title={String(cellVal)}>{highlightText(String(cellVal), filterText)}</span>
+                      ) : (
+                        highlightText(String(cellVal ?? ''), filterText)
+                      )
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            </tbody>
+          </table>
+        );
+      }
+    }
+
+    if (data.length > 0 && data.every(item => Array.isArray(item))) {
+      // Array of arrays
+      return (
+        <table className="everygrid-nested-table">
+          <tbody>
+          {data.map((rowItems, rowIndex) => (
+            <tr key={rowIndex}>
+              {(rowItems as unknown[]).map((val, colIndex) => (
+                <td key={colIndex}>
+                  {typeof val === 'object' && val !== null ? (
+                    <NestedTableComponent data={val} depth={depth + 1} filterText={filterText}/>
+                  ) : (
+                    isXmlString(val) ? (
+                      <span className="opacity-80" title={String(val)}>{highlightText(String(val), filterText)}</span>
+                    ) : (
+                      highlightText(String(val ?? ''), filterText)
+                    )
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Check if array is mixed (contains both primitives/arrays and plain objects)
+    const hasPrimitive = data.some(item => typeof item !== 'object' || item === null);
+    const hasPlainObject = data.some(item => typeof item === 'object' && item !== null && !Array.isArray(item));
+    const hasNestedArray = data.some(item => Array.isArray(item));
+    const isMixed = (hasPrimitive || hasNestedArray) && hasPlainObject || (hasPrimitive && hasNestedArray);
+
+    if (isMixed) {
+      // Render each item separated by a divider line
+      return (
+        <table className="everygrid-nested-table w-full">
+          <tbody>
+          {data.map((item, i) => (
+            <tr key={i}>
+              <td className="p-0">
+                {typeof item === 'object' && item !== null ? (
+                  <NestedTableComponent data={item} depth={depth + 1} onShowPopup={onShowPopup} filterText={filterText}/>
+                ) : (
+                  <span>{highlightText(String(item ?? ''), filterText)}</span>
+                )}
+              </td>
+            </tr>
+          ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Array of objects
+    const allKeys = new Set<string>();
+    data.forEach(item => {
+      if (typeof item === 'object' && item !== null) {
+        Object.keys(item).forEach(key => allKeys.add(key));
+      }
+    });
+    const keys = Array.from(allKeys);
+
+    if (keys.length === 0) {
+      return (
+        <div className="whitespace-pre-wrap">
+          {data.map((item, i) => (
+            <div key={i}>{highlightText(String(item ?? ''), filterText)}</div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <table className="everygrid-nested-table">
+        {keys.length > 0 && (
+          <thead>
+          <tr>
+            {keys.map(key => (
+              <th key={key}>{highlightText(key, filterText)}</th>
+            ))}
+          </tr>
+          </thead>
+        )}
+        <tbody>
+        {data.map((item, rowIndex) => (
+          <tr key={rowIndex}>
+            {typeof item === 'object' && item !== null ? (
+              keys.map(key => {
+                const row = item as Record<string, unknown>;
+                const cellVal = row[key];
+                return (
+                  <td key={key}>
+                    {cellVal !== undefined ? (
+                      typeof cellVal === 'object' && cellVal !== null ? (
+                        <NestedTableComponent data={cellVal} depth={depth + 1} filterText={filterText}/>
+                      ) : (
+                        isXmlString(cellVal) ? (
+                          <span className="opacity-80"
+                                title={String(cellVal)}>{highlightText(String(cellVal), filterText)}</span>
+                        ) : (
+                          highlightText(String(cellVal ?? ''), filterText)
+                        )
+                      )
+                    ) : null}
+                  </td>
+                );
+              })
+            ) : (
+              <td colSpan={keys.length || 1}>
+                {highlightText(String(item ?? ''), filterText)}
+              </td>
+            )}
+          </tr>
+        ))}
+        </tbody>
+      </table>
+    );
+  } else if (typeof data === 'object' && data !== null) {
+    // Single object
+    const entries = Object.entries(data);
+    const isAllArrays = entries.every(([_, value]) => Array.isArray(value));
+
+    if (isAllArrays && entries.length > 0) {
+      // If all values are arrays, treat keys as columns
+      const columnKeys = entries.map(([key]) => key);
+      const maxRows = Math.max(...entries.map(([_, value]) => (value as unknown[]).length));
+      const rows = Array.from({length: maxRows});
+
+      return (
+        <table className="everygrid-nested-table">
+          <thead>
+          <tr>
+            {columnKeys.map(key => <th key={key}>{highlightText(key, filterText)}</th>)}
+          </tr>
+          </thead>
+          <tbody>
+          {rows.map((_, rowIndex) => (
+            <tr key={rowIndex}>
+              {columnKeys.map(key => {
+                const cellData = (data as Record<string, unknown[]>)[key][rowIndex];
+                return (
+                  <td key={key}>
+                    {cellData !== undefined ? (
+                      typeof cellData === 'object' && cellData !== null ? (
+                        <NestedTableComponent data={cellData} depth={depth + 1} filterText={filterText}/>
+                      ) : (
+                        isXmlString(cellData) ? (
+                          <span className="opacity-80" title={String(cellData)}>{highlightText(String(cellData), filterText)}</span>
+                        ) : (
+                          highlightText(String(cellData ?? ''), filterText)
+                        )
+                      )
+                    ) : null}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    return (
+      <table className="everygrid-nested-table">
+        <tbody>
+        {Object.entries(data).map(([key, value]) => (
+          <tr key={key}>
+            <th>{highlightText(key, filterText)}</th>
+            <td>
+              {typeof value === 'object' && value !== null ? (
+                <NestedTableComponent data={value} depth={depth + 1} filterText={filterText}/>
+              ) : (
+                isXmlString(value) ? (
+                  <span className="opacity-80" title={String(value)}>{highlightText(String(value), filterText)}</span>
+                ) : (
+                  highlightText(String(value ?? ''), filterText)
+                )
+              )}
+            </td>
+          </tr>
+        ))}
+        </tbody>
+      </table>
+    );
+  }
+
+  return <span>{highlightText(String(data ?? ''), filterText)}</span>;
+};
+
+export {NestedTableComponent};

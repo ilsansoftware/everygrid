@@ -1,0 +1,42 @@
+{
+  "name": "everygrid-monorepo",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "demo/portal"
+  ],
+  "scripts": {
+    "deploy": "pnpm run build && bash scripts/deploy.sh",
+    "build:wasm": "cd everygrid-wasm && wasm-pack build --target web --quiet",
+    "build:everygrid": "pnpm --filter ./packages/everygrid build",
+    "build:standalone": "pnpm --filter ./packages/everygrid build:standalone",
+    "build:demo": "pnpm --filter @everygrid/demo --dir demo/portal run build",
+    "build": "pnpm build:wasm && pnpm build:everygrid && pnpm run build:standalone",
+    "demo:lib": "pnpm --filter ./packages/everygrid dev:vanilla",
+    "demo:portal": "pnpm --filter @everygrid/demo --dir demo/portal run dev --open",
+    "demo": "pnpm build:standalone && concurrently -k -n lib,portal -c blue,green \"pnpm demo:lib\" \"pnpm demo:portal\"",
+    "version:patch": "node scripts/version.js patch",
+    "version:minor": "node scripts/version.js minor",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.2",
+    "@vitest/ui": "^4.1.9",
+    "concurrently": "^10.0.3",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "jsdom": "^29.1.1",
+    "typescript-eslint": "^8.62.0",
+    "vite": "^8.1.3",
+    "vitest": "^4.1.9"
+  }
+}

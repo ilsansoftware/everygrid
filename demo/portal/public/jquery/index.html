@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" type="image/x-icon" href="./favicon.ico"/>
+  <link rel="stylesheet" href="./index.css"/>
+  <title>Everygrid Explorer — jQuery Demo</title>
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <!-- everygrid — usage in a plain HTML page with a single <script> tag (no bundler).
+       The src is substituted by vite.config.ts: the workspace build when served
+       locally, the deployed CDN standalone when built. -->
+  <script src="%EVERYGRID_STANDALONE%"></script>
+</head>
+<body>
+
+<div class="container">
+  <main>
+    <div id="demo-grid"></div>
+    <div id="demo-grid1"></div>
+    <div id="demo-grid2"></div>
+    <div id="demo-grid3"></div>
+  </main>
+</div>
+
+<script>
+  (function ($, EG) {
+    // Listen for locale change from portal
+    window.addEventListener('message', function (e) {
+      if (e.data && e.data.type === 'setLocale') {
+        EG.I18n.setLocale(e.data.locale);
+        EG.refreshAll();
+      }
+    });
+
+    // Fetch data, optionally filtered by userId
+    function getData() {
+      return fetch('./data.json').then(function (r) {
+        return r.json();
+      });
+    }
+
+    function getData2() {
+      return fetch('./data2.json')
+        .then(res => res.json());
+    }
+
+    // Initialize grids — reads /everygrid.config.json automatically
+    EG.autoInit(
+      {
+        'demo-grid': () => getData()
+          .then(rows => rows),
+        'demo-grid1': () => getData()
+          .then(function (rows) {
+            return rows.filter(function (row) {
+              return row.id === 1;
+            });
+          }),
+        'demo-grid2': () => getData()
+          .then(function (rows) {
+            return rows.filter(function (row) {
+              return row.id === 2;
+            });
+          }),
+        'demo-grid3': () => getData2()
+          .then(json => json.results),
+      },
+      './everygrid.config.json'
+    ).then(() => {
+      // Notify portal that this demo is ready to receive locale
+      window.parent.postMessage({type: 'ready'}, '*');
+    });
+  }(window.jQuery, window.Everygrid));
+</script>
+</body>
+</html>

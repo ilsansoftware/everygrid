@@ -1,0 +1,210 @@
+import React from 'react';
+
+export interface GridTargetConfig {
+  id: string;
+  title?: string;
+  data?: Record<string, unknown>[];
+  links?: string[];
+}
+
+export interface GridColumn {
+  headerName: string;
+  field: string;
+  type?: string;
+  width?: number;
+  options?: string[];
+  mapping?: string;
+}
+
+export interface EditableColConfig {
+  id: string;
+  cols: string[];
+}
+
+export interface GridColorConfig {
+  id: string;
+  font?: {
+    header?: string;
+    body?: string;
+  };
+  bg?: {
+    header?: string;
+    body?: string;
+  };
+}
+
+export interface ServerFetchParams {
+  page: number;       // 0-based
+  pageSize: number;
+  sortField?: string;
+  sortAsc?: boolean;
+  filterText?: string;
+}
+
+export interface ServerFetchResult<T = Record<string, unknown>> {
+  data: T[];
+  total: number;      // total row count (for pagination)
+}
+
+export interface GridPaginationConfig {
+  id: string;
+  pageSize?: number;
+  active?: boolean;
+  position?: 'top' | 'bottom' | 'all';
+  serverSide?: boolean;
+}
+
+export interface GridRowCheckboxConfig {
+  id: string;
+  active: boolean;
+}
+
+export interface GridCheckboxConfig {
+  id: string;
+  mapping: string;
+  active?: boolean;
+}
+
+export interface GridLinkConfig {
+  id: string;
+  cols: string[];
+}
+
+export interface IEverygrid<T extends Record<string, unknown>> {
+  options: GridOptions<T>;
+  pinnedColumns: Set<string>;
+  activeEditFields: Map<string, Set<string>>;
+  sortConfig: Map<string, { field: string; direction: 'asc' | 'desc' | null }>;
+  hiddenFieldsMap: Map<string, Set<string>>;
+  exportState: Map<string, {done: number; total: number}>;
+  commaSeparatedFields: Set<string>;
+  linkFields: Set<string>;
+  isExcelViewMode: boolean;
+  activePopup: React.ReactNode | null;
+  activePopupRow: unknown | null;
+  activePopupRowKey: string | null;
+  wasmReady: boolean;
+  filterText: string;
+  checkedValues: Map<string, Set<unknown>>;
+  _streamRows: Map<string, Record<string, unknown>[]>;
+  _streamTotal: Map<string, number>;
+  _processing: Map<string, boolean>;
+  _wasmRawTotal: Map<string, number>;
+  _wasmPageCache: Map<string, { rows: unknown[]; total: number }>;
+  _dataSource: Map<string, string | (() => Promise<Record<string, unknown>[]>)>;
+  _reloading: Map<string, boolean>;
+  reloadData(containerId: string): Promise<void>;
+  _indexingAllRows: Map<string, Record<string, unknown>[]>;
+  _indexingStage: Map<string, 'indexing' | 'ready'>;
+  _indexingProgress: Map<string, number>;
+  _wasStreaming: Set<string>;
+
+  getSelectedRows(containerId: string): Set<T>;
+
+  setSelectedRows(containerId: string, rows: Set<T>): void;
+
+  renderGrid(container: HTMLElement, _updatePinned?: boolean): void;
+
+
+  resetCell(item: T, field: string, container: HTMLElement): void;
+
+  syncRowHeights(container: HTMLElement): void;
+
+  showPopup?(data: unknown, rowData?: unknown): void;
+
+  showTextPopup?(text: string, rowData?: unknown): void;
+
+  showEditPopup(rowData: Record<string, unknown>, field: string, data: unknown): void;
+
+  updateData(rowData: Record<string, unknown>, field: string, value: unknown): void;
+
+  updateColumnWidth(containerId: string, field: string, width: number): void;
+
+  getCurrentWidths(containerId: string): Map<string, number>;
+
+  isCellModified(rowData: T, field: string): boolean;
+
+  isColumnNumeric(field: string): boolean;
+
+  isColumnDate(field: string): boolean;
+
+  isColumnObject(field: string): boolean;
+
+  getDisplayItems(containerId: string, items: T[]): T[];
+
+  getColumns(containerId: string, items: T[]): GridColumn[];
+
+  getDataFields(containerId: string): string[];
+
+  exportExcel(containerId: string): Promise<void>;
+
+  getEditableFields(containerId: string): string[];
+
+  getPagination(containerId: string): GridPaginationConfig | undefined;
+
+  toggleExcelViewMode(container: HTMLElement): void;
+
+  resetColumnWidths(container: HTMLElement): void;
+
+  showColumnSelector(allFields: string[], container: HTMLElement): void;
+
+  showHiddenColumnSelector(container: HTMLElement): void;
+
+  checkHasChanges(): boolean;
+
+  reset(container: HTMLElement): void;
+
+  resetSort(container: HTMLElement): void;
+
+  setFilter(text: string, container?: HTMLElement): void;
+
+  applyWasmState(containerId: string): void;
+
+  applyWasmFilter(containerId: string): Promise<void>;
+
+  invalidateSortCache(containerId?: string): void;
+
+  fetchServerPage(containerId: string): Promise<void>;
+
+  currentPage: Map<string, number>;
+
+  getCurrentPage(containerId: string): number;
+
+  getTotalPages(containerId: string): number;
+
+  getFilteredTotal(containerId: string): number;
+
+  setCurrentPage(containerId: string, page: number, container: HTMLElement): void;
+
+  getGridTitle(containerId: string): string | undefined;
+
+  subscribe(callback: () => void): () => void;
+
+  notify(): void;
+
+  destroy(): void;
+}
+
+export interface GridOptions<T = Record<string, unknown>> {
+  targets: (string | GridTargetConfig)[];
+  data?: T[];
+  dataUrl?: string;
+  columns?: GridColumn[];
+  editableCols?: EditableColConfig[];
+  rowCheckbox?: GridRowCheckboxConfig[];
+  colors?: GridColorConfig[];
+  links?: GridLinkConfig[];
+  checkbox?: GridCheckboxConfig[];
+  pagination?: GridPaginationConfig | GridPaginationConfig[];
+  serverFetcher?: (params: ServerFetchParams) => Promise<ServerFetchResult>;
+  /**
+   * `cache` mode for the fetch that loads a target's data from a URL.
+   * Defaults to 'no-store' (always hit the network). Set to 'default' to let the browser
+   * cache the response — worth it for large datasets that rarely change, since a reload
+   * then costs a revalidation instead of a full re-download.
+   */
+  dataCache?: RequestCache;
+  onDataChange?: (data: Record<string, unknown>[], originalData: Record<string, unknown>[]) => void;
+  onSelectionChange?: (selectedData: Record<string, unknown>[]) => void;
+  onCellClick?: (rowData: Record<string, unknown>, field: string) => void;
+}

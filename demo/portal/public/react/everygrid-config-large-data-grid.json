@@ -1,0 +1,17 @@
+{
+  "targets": [
+    {
+      "id": "large-data-grid",
+      "title": "Large Data Grid"
+    }
+  ],
+  "dataCache": "no-cache",
+  "pagination": [
+    {
+      "id": "large-data-grid",
+      "pageSize": 30,
+      "active": true,
+      "position": "all"
+    }
+  ]
+}

@@ -1,0 +1,249 @@
+[
+  {
+    "id": 1,
+    "name": "Junie",
+    "age": 25,
+    "joinedDate": "2024-01-01",
+    "role": {
+      "Engineering": [
+        {
+          "subRole": "Frontend",
+          "years": 2
+        },
+        {
+          "subRole": "Backend",
+          "years": 3
+        }
+      ],
+      "HR": [
+        {
+          "subRole": "Recruiter",
+          "years": 1
+        },
+        "Public Relations"
+      ]
+    },
+    "examResults": {
+      "passed": [
+        "Math",
+        "History",
+        "Science"
+      ],
+      "failed": [
+        "English"
+      ]
+    },
+    "active": true,
+    "category": "Tech",
+    "tags": [
+      "React",
+      "TypeScript",
+      "Node.js"
+    ],
+    "phoneNumber": "010-1234-5678",
+    "email": "junie@example.com",
+    "department": "R&D",
+    "salary": 5000,
+    "location": "Seoul",
+    "experience": "Junior",
+    "bio": "Passionate developer",
+    "github": "github.com/junie",
+    "blog": "blog.com/junie",
+    "hobby": "Coding",
+    "nationality": "Korea",
+    "language": "Korean"
+  },
+  {
+    "id": 2,
+    "name": "Lee",
+    "age": 30,
+    "joinedDate": "2023-05-15",
+    "role": "Developer",
+    "active": false,
+    "category": "Tech",
+    "address": "Seoul, South Korea",
+    "phoneNumber": "010-9876-5432",
+    "email": "lee@example.com",
+    "department": "Quality Assurance",
+    "salary": 6000,
+    "location": "Busan",
+    "experience": "Senior",
+    "bio": "QA Expert",
+    "github": "github.com/lee",
+    "blog": "blog.com/lee",
+    "hobby": "Gaming",
+    "nationality": "Korea",
+    "language": "English",
+    "examResults": {
+      "system_id": "SYS-CLUSTER-99X",
+      "total_payloads_processed": 3,
+      "fetched_at": "2026-06-07T23:20:00Z",
+      "multi_format_payloads": [
+        {
+          "format_type": "escaped_json_string",
+          "description": "JSON 내부에 문자열로 압축해 밀어넣은 또 다른 구조화 데이터",
+          "raw_data": "{\"user\":{\"id\":\"usr_882\",\"profile\":{\"name\":\"Kim\",\"settings\":\"{\\\"theme\\\":\\\"dark\\\",\\\"notif\\\":true}\"}},\"status\":\"active\"}"
+        },
+        {
+          "format_type": "csv_string",
+          "description": "쉼표와 줄바꿈(\\n)으로 구분된 테이블형 데이터 문자열",
+          "raw_data": "id,product_name,qty,price,discontinued\n101,Gaming Mouse,2,45.00,false\n102,Mechanical Keyboard,1,120.50,false\n103,USB-C Hub,null,15.00,true"
+        },
+        {
+          "format_type": "xml_string",
+          "description": "과거 레거시 시스템에서 받아온 XML 데이터 문자열",
+          "raw_data": "<response><status>SUCCESS</status><transaction><id>TX_9901</id><amount currency=\"KRW\">55000</amount></transaction></response>"
+        },
+        {
+          "format_type": "base64_encoded",
+          "description": "바이너리나 텍스트를 디코딩해야 볼 수 있도록 암호화/인코딩된 데이터",
+          "raw_data": "eyJhZ2VudCI6ICJNYWNCb29rIFBybyIsICJpY19udW1iZXIiOiA0ODkyMTMwLCAidGFnccontextIjogWyJhcHBsZSIsICJtMyJdfQ=="
+        }
+      ],
+      "malformed_and_edge_cases": {
+        "empty_structures": [
+          {},
+          [],
+          ""
+        ],
+        "unusual_numbers": [
+          1.7976931348623157e+308,
+          "-Infinity",
+          "NaN",
+          0.0000000000000001
+        ],
+        "boolean_variants_as_strings": [
+          "TRUE",
+          "false",
+          "1",
+          "0",
+          "yes",
+          "no"
+        ],
+        "corrupted_timestamps": [
+          "2026/06/07 23:20:00",
+          "Sunday, 07-Jun-26 23:20:00 KST",
+          1780864800,
+          "/Date(1780864800000)/"
+        ]
+      }
+    }
+  },
+  {
+    "id": 3,
+    "name": "Kim",
+    "age": 28,
+    "joinedDate": "2024-02-10",
+    "role": {
+      "Design": [
+        {
+          "subRole": "UI",
+          "details": {
+            "tools": [
+              "Figma",
+              "Sketch"
+            ],
+            "projects": [
+              "Web",
+              "Mobile"
+            ]
+          }
+        }
+      ]
+    },
+    "active": true,
+    "examResults": {
+      "status_code": 200,
+      "response_metadata": {
+        "requestId": "req-9a8b7c6d-5e4f-3a2b",
+        "timestamp": 1780860500,
+        "pagination": {
+          "total_records": 1425,
+          "page_size": 1,
+          "has_more": true,
+          "links": [
+            {
+              "rel": "self",
+              "href": "https://example.com"
+            },
+            {
+              "rel": "next",
+              "href": "https://example.com"
+            }
+          ]
+        }
+      },
+      "data_list": [
+        {
+          "item_id": "PROD_99823",
+          "is_available": false,
+          "legacy_tags": [
+            "sale",
+            null,
+            "electronics",
+            "2026_premium",
+            ""
+          ],
+          "pricing_matrix": {
+            "currencies": {
+              "USD": {
+                "base": 129.99,
+                "discounted": 119.49
+              },
+              "KRW": {
+                "base": 170000,
+                "discounted": null
+              }
+            },
+            "tax_exempt_countries": [
+              "US-CA",
+              "KR",
+              "JP"
+            ]
+          },
+          "system_logs": [
+            {
+              "log_id": "log_001",
+              "severity": "WARNING",
+              "message": "Connection timeout structural error. Retry code: \"E_TIMEOUT_504\".",
+              "metadata": {
+                "raw_payload_escaped": "{\"user_agent\":\"Mozilla/5.0\",\"ip\":\"192.168.1.1\",\"session_cookie\":\"_sid_abc123\\\\xyz\"}"
+              }
+            }
+          ],
+          "additional_info": null,
+          "mixed_array": [
+            42,
+            "text_value",
+            true,
+            {
+              "nested_key": "nested_val"
+            },
+            [
+              1,
+              2,
+              3
+            ]
+          ]
+        }
+      ],
+      "errors_warnings": []
+    },
+    "category": "Design",
+    "phoneNumber": "010-5555-4444",
+    "email": "kim@example.com",
+    "department": "Creative",
+    "salary": 5500,
+    "location": "Incheon",
+    "experience": "Mid-level",
+    "bio": "UI/UX Specialist",
+    "github": "github.com/kim",
+    "blog": "blog.com/kim",
+    "hobby": "Painting",
+    "nationality": "Korea",
+    "language": [
+      "Korean",
+      "Japanese"
+    ]
+  }
+]

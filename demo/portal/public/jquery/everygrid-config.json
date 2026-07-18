@@ -1,0 +1,136 @@
+{
+  "targets": [
+    {
+      "id": "demo-grid"
+    },
+    {
+      "id": "demo-grid1"
+    },
+    {
+      "id": "demo-grid2"
+    },
+    {
+      "id": "demo-grid3"
+    }
+  ],
+  "rowCheckbox": [
+    {
+      "id": "demo-grid",
+      "active": true
+    },
+    {
+      "id": "demo-grid1",
+      "active": true
+    },
+    {
+      "id": "demo-grid2",
+      "active": true
+    },
+    {
+      "id": "demo-grid3",
+      "active": true
+    }
+  ],
+  "checkbox": [
+    {
+      "id": "demo-grid",
+      "mapping": "id"
+    },
+    {
+      "id": "demo-grid1",
+      "mapping": "id"
+    },
+    {
+      "id": "demo-grid2",
+      "mapping": "id"
+    },
+    {
+      "id": "demo-grid3",
+      "mapping": "id"
+    }
+  ],
+  "pagination": [
+    {
+      "id": "demo-grid",
+      "pageSize": 2,
+      "active": true,
+      "position": "bottom"
+    },
+    {
+      "id": "demo-grid1",
+      "pageSize": 3,
+      "active": true,
+      "position": "bottom"
+    },
+    {
+      "id": "demo-grid2",
+      "pageSize": 3,
+      "active": true,
+      "position": "bottom"
+    },
+    {
+      "id": "demo-grid3",
+      "pageSize": 10,
+      "active": true,
+      "position": "bottom"
+    }
+  ],
+  "editableCols": [
+    {
+      "id": "demo-grid",
+      "cols": [
+        "name",
+        "age",
+        "email",
+        "active",
+        "category",
+        "role",
+        "examResults",
+        "tags",
+        "bio"
+      ]
+    },
+    {
+      "id": "demo-grid1",
+      "cols": [
+        "name",
+        "age",
+        "email",
+        "active",
+        "category",
+        "role",
+        "examResults",
+        "tags",
+        "bio"
+      ]
+    },
+    {
+      "id": "demo-grid2",
+      "cols": [
+        "name",
+        "age",
+        "email",
+        "active",
+        "category",
+        "role",
+        "examResults",
+        "tags",
+        "bio"
+      ]
+    },
+    {
+      "id": "demo-grid3",
+      "cols": [
+        "name",
+        "age",
+        "email",
+        "active",
+        "category",
+        "role",
+        "examResults",
+        "tags",
+        "bio"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "targets": [
+    {
+      "id": "api-grid",
+      "title": "Remote API Grid"
+    }
+  ],
+  "pagination": [
+    {
+      "id": "api-grid",
+      "pageSize": 5,
+      "active": true,
+      "position": "bottom"
+    }
+  ]
+}

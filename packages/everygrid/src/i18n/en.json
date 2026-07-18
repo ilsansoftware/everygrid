@@ -1,0 +1,71 @@
+{
+  "app": {
+    "title": "Everygrid Explorer",
+    "copyright": "Everygrid. All rights reserved."
+  },
+  "toolbar": {
+    "showExcelPreview": "Show Excel Preview",
+    "showGrid": "Show Grid",
+    "downloadExcel": "Download Excel",
+    "reloadData": "Reload Data",
+    "reloadingData": "Reloading...",
+    "resetWidths": "Reset Column Widths",
+    "selectColumns": "Select Columns",
+    "resetAll": "Reset All Changes",
+    "resetSort": "Reset Sort",
+    "filterPlaceholder": "Search...",
+    "moreActions": "More",
+    "indexingPercent": "Indexing... {percent}%",
+    "indexingRows": "Indexing... {count} rows"
+  },
+  "grid": {
+    "index": "Index",
+    "column": "Column",
+    "resetCell": "Reset to original value",
+    "reset": "Reset",
+    "noData": "No data or configuration found.",
+    "checkConfig": "Please check your configuration and set up the grid.",
+    "targetId": "Target ID",
+    "dataPath": "Data Path",
+    "notSpecified": "Not specified",
+    "limitInfo": "Only the top {limit} items are displayed. Please download to view all {total} items.",
+    "hideColumnBtn": "Hide column",
+    "hiddenColumns": "Hidden Columns ({count})",
+    "showAllColumns": "Show All Columns",
+    "unhide": "Unhide",
+    "exporting": "Exporting… {done}/{total}",
+    "processing": "Processing…",
+    "sortAsc": "Sort Ascending",
+    "sortDesc": "Sort Descending",
+    "resetSort": "Reset Sort",
+    "startEdit": "Start editing this column",
+    "finishEdit": "Finish editing this column",
+    "pinColumn": "Pin Column",
+    "edit": "Edit"
+  },
+  "pagination": {
+    "showing": "Showing {start}-{end} of {total}",
+    "showingFiltered": "Showing {start}-{end} of {filtered} (filtered from {total})",
+    "first": "First Page",
+    "prev": "Previous 10 Pages",
+    "next": "Next 10 Pages",
+    "last": "Last Page"
+  },
+  "popup": {
+    "detailTitle": "Detail View",
+    "editTitle": "Edit Data",
+    "textEditorTitle": "Text Editor: {field}",
+    "invalidJson": "Invalid JSON format",
+    "format": "Format",
+    "apply": "Apply",
+    "close": "Close",
+    "save": "Save",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "pinConfirmMessage": "This column has modified data. Pinning it will reset all modifications. Are you sure?",
+    "tableView": "Table View",
+    "jsonView": "JSON View",
+    "fieldsCount": "{count} Fields",
+    "itemsCount": "{count} Items"
+  }
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "id": 4,
+    "name": "Kim",
+    "age": 28,
+    "salary": "550000",
+    "joinedDate": "2026-01-01",
+    "role": "Designer",
+    "active": true,
+    "category": "Design",
+    "phoneNumber": "",
+    "email": "",
+    "department": "Creative"
+  },
+  {
+    "id": 5,
+    "name": "Lee",
+    "age": 30,
+    "salary": "700000",
+    "joinedDate": "",
+    "role": "Developer",
+    "active": false,
+    "category": "Tech"
+  },
+  {
+    "id": 6,
+    "name": "Junie",
+    "age": 25,
+    "salary": "36000",
+    "joinedDate": "",
+    "role": "Engineer",
+    "active": true
+  }
+]

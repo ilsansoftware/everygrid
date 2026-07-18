@@ -1,0 +1,390 @@
+@import "tailwindcss";
+@source "../**/*.{ts,tsx}";
+
+/* 
+ * RULE: All styles in this file must be defined using Tailwind CSS utility classes 
+ * or the @apply directive. Do not use raw CSS properties. 
+ */
+
+
+:root {
+  --everygrid-header-color: #475569;
+  --everygrid-header-bg: #f8fafc;
+  --everygrid-body-color: #475569;
+  --everygrid-body-bg: #ffffff;
+}
+
+/* Base Grid Styles */
+.everygrid-wrapper {
+  @apply w-full;
+}
+
+.everygrid-table {
+  @apply w-auto min-w-full text-left text-sm bg-white border border-slate-200 border-collapse;
+}
+
+.everygrid-table.is-resizing {
+  @apply min-w-0;
+}
+
+.everygrid-table thead th {
+  @apply px-1 py-1 font-semibold whitespace-nowrap sticky top-0
+  text-left z-80 overflow-hidden border-l border-b border-slate-200;
+  color: var(--everygrid-header-color, inherit) !important;
+  background-color: var(--everygrid-header-bg, #f8fafc) !important;
+  box-sizing: border-box;
+  background-clip: padding-box;
+  border-top: 1px solid #e2e8f0;
+  min-width: 50px;
+}
+
+.everygrid-table tbody tr.is-popup-active td {
+  @apply bg-blue-100/80! border-blue-200!;
+  border-bottom-width: 1px;
+  border-left-width: 1px;
+}
+
+.everygrid-table tbody tr.is-popup-active td .everygrid-popup-btn {
+  @apply bg-blue-200 border-blue-400 hover:bg-blue-300! text-blue-900;
+}
+
+.everygrid-table tbody td {
+  @apply px-1 py-1 relative align-middle bg-white border-l border-b border-slate-200
+  transition-all;
+  color: var(--everygrid-body-color, #475569) !important;
+  min-height: 41px;
+  box-sizing: border-box;
+  border-top: 0;
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
+}
+
+/* Form Elements */
+.everygrid-input {
+  @apply w-full h-full border-b border-slate-200 px-4 py-2 text-sm outline-none bg-transparent text-slate-600 min-w-max;
+  @apply hover:border-slate-300 focus:border-b-slate-700 focus:bg-slate-50/50 transition-all;
+}
+
+.everygrid-input-container {
+  @apply relative w-full h-full;
+}
+
+.everygrid-select {
+  @apply w-full h-full border-b border-slate-200 px-4 py-2 text-sm outline-none cursor-pointer appearance-none bg-transparent text-slate-600 min-w-max;
+  @apply hover:border-slate-300 focus:border-b-slate-700 focus:bg-slate-50/50 transition-all;
+}
+
+.everygrid-select-container {
+  @apply relative w-full h-full;
+}
+
+.everygrid-select-container::after {
+  @apply content-['▾'] absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs;
+}
+
+/* Toolbar */
+.everygrid-toolbar {
+  @apply flex items-center gap-2 bg-white py-1;
+}
+
+.everygrid-toolbar-container {
+  @apply shrink-0;
+}
+
+.everygrid-mobile-menu {
+  @apply absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-[200] min-w-[180px] py-1 flex flex-col;
+}
+
+.everygrid-link {
+  @apply text-blue-600 hover:text-blue-800 underline transition-colors cursor-pointer;
+}
+
+.everygrid-highlight {
+  @apply bg-yellow-200 text-yellow-900 rounded-sm px-0;
+  font-style: inherit;
+}
+
+.everygrid-highlight-btn {
+  @apply bg-yellow-200! border-yellow-400! text-yellow-900!;
+}
+
+/* Modification Indicators */
+.modified-marker {
+  @apply absolute! top-0! right-0! w-3! h-3! bg-orange-500! z-100! block! [clip-path:polygon(100%_0,0_0,100%_100%)]! cursor-pointer;
+}
+
+.everygrid-cell-reset-btn {
+  @apply absolute top-1 right-3 bg-white border border-orange-200 px-1.5 py-0.5 shadow-sm text-orange-600 hover:text-orange-800 cursor-pointer text-[10px] font-bold transition-colors duration-150 z-30 leading-none;
+}
+
+.everygrid-cell-edit-btn {
+  @apply flex items-center justify-center p-1 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer;
+}
+
+.everygrid-cell-edit-btn svg {
+  @apply w-full h-full;
+}
+
+.everygrid-cell-edit-btn svg path {
+  @apply fill-current;
+}
+
+.everygrid-pinned-table-container .everygrid-table tbody td {
+  @apply overflow-visible! relative!;
+}
+
+.everygrid-nested-container {
+  @apply w-full border-slate-200 p-2 bg-slate-50 overflow-x-auto overscroll-x-none text-center;
+}
+
+.everygrid-nested-table {
+  @apply min-w-full w-auto border border-slate-200 text-[11px] border-collapse;
+  --everygrid-header-color: #475569;
+  --everygrid-header-bg: #f8fafc;
+  --everygrid-body-color: #475569;
+  --everygrid-body-bg: #ffffff;
+  color: var(--everygrid-body-color);
+  background-color: var(--everygrid-body-bg);
+}
+
+.everygrid-nested-table th {
+  @apply p-2 border border-slate-200 text-slate-500! bg-[#f8fafc]! whitespace-nowrap font-semibold text-xs text-left;
+}
+
+.everygrid-nested-table td {
+  @apply p-2 border border-slate-200 bg-white! font-normal text-slate-600! text-xs;
+}
+
+
+/* Modals */
+.everygrid-popup-overlay {
+  @apply fixed inset-0 bg-slate-900/30 flex items-center justify-center z-100 p-4;
+}
+
+.everygrid-popup-content {
+  @apply w-fit min-w-[400px] max-w-[95vw] overflow-hidden flex flex-col max-h-[90vh] bg-white rounded-lg shadow-xl;
+}
+
+.everygrid-popup-content .everygrid-wrapper {
+  @apply w-full h-full min-w-full;
+}
+
+.everygrid-popup-content .everygrid-table,
+.everygrid-popup-content .everygrid-nested-table {
+  @apply min-w-full;
+}
+
+.everygrid-popup-content pre:not(.whitespace-pre-wrap) {
+  @apply min-w-max bg-slate-50 border-slate-200;
+}
+
+.everygrid-popup-header {
+  @apply flex items-center justify-between p-4 border-b border-slate-200 bg-white rounded-t-lg;
+}
+
+.everygrid-popup-header h3 {
+  @apply text-lg font-bold text-slate-800;
+}
+
+.everygrid-popup-close {
+  @apply text-slate-400 text-2xl leading-none cursor-pointer hover:text-slate-600 transition-colors px-1;
+}
+
+.everygrid-popup-btn {
+  @apply px-2 py-1 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-50 transition-colors whitespace-nowrap inline-flex items-center justify-center;
+  min-height: 24px;
+}
+
+.everygrid-popup-body {
+  @apply p-4 overflow-auto overscroll-x-contain bg-slate-50/30;
+}
+
+/* Excel View Mode Styles */
+.excel-format-table {
+  @apply border-separate border-spacing-0 border-t border-l border-slate-200 w-full;
+}
+
+.excel-format-table thead th {
+  @apply border-b border-r border-slate-200;
+}
+
+.excel-format-table tbody td {
+  @apply border-b border-r border-slate-200;
+}
+
+.everygrid-text-editor {
+  @apply border border-slate-200 p-4 text-xs outline-none w-full min-w-[600px] h-[300px] font-mono;
+}
+
+.everygrid-popup-footer {
+  @apply mt-0 p-4 border-t border-slate-200 bg-slate-50/50 flex justify-end gap-2;
+}
+
+/* Base elements */
+button {
+  @apply cursor-pointer;
+}
+
+/* Resizer and Header Controls */
+.everygrid-header-content {
+  @apply flex items-center justify-between gap-1 w-full h-full;
+}
+
+.everygrid-header-content span {
+  @apply truncate;
+}
+
+.everygrid-icon-btn {
+  @apply w-3 h-3 items-center justify-center rounded-sm text-current transition-colors cursor-pointer ml-1 leading-none;
+}
+
+/* Pagination */
+.everygrid-pagination {
+  @apply flex flex-wrap items-center justify-between p-3 bg-white text-xs text-slate-500;
+}
+
+/* Bottom pagination sits at the grid's edge — drop its bottom padding (the wrapper handles spacing). */
+.everygrid-pagination-bottom .everygrid-pagination {
+  @apply pb-0;
+}
+
+.everygrid-pagination-controls {
+  @apply flex items-center gap-1;
+}
+
+.everygrid-pagination-btn {
+  @apply px-2 py-1 border border-slate-200 bg-white text-slate-600 rounded hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[32px] flex items-center justify-center;
+}
+
+.everygrid-pagination-btn.active {
+  @apply bg-indigo-600 text-white border-indigo-600 font-bold;
+}
+
+.everygrid-pagination-info {
+  @apply font-medium;
+}
+
+.everygrid-pagination-controls-mobile {
+  @apply flex-1 justify-center;
+}
+
+.everygrid-pagination-mobile-info {
+  @apply px-3 py-1 text-xs font-semibold text-slate-600;
+}
+
+.everygrid-pagination-info-mobile {
+  @apply w-full text-center pt-1 pb-0;
+}
+
+.everygrid-resizer {
+  @apply absolute top-0 right-0 w-1.5 h-full cursor-col-resize select-none z-20 hover:bg-slate-300/50 hover:w-1.5 transition-all duration-150;
+  touch-action: none;
+}
+
+.everygrid-resizer::after {
+  @apply content-[''] absolute top-0 right-[-3px] w-2 h-full cursor-col-resize;
+}
+
+.everygrid-resizer.is-resizing {
+  @apply bg-slate-400/50 w-1.5;
+}
+
+/* Resize Guide Line */
+.everygrid-resize-guide {
+  @apply absolute top-0 w-px bg-slate-400/50 z-50 pointer-events-none hidden;
+}
+
+.everygrid-resize-guide.active {
+  @apply block;
+}
+
+.everygrid-table-container {
+  @apply w-full overflow-auto bg-white min-h-[100px];
+}
+
+.everygrid-table thead tr {
+  height: 41px;
+}
+
+.everygrid-pinned-table-container {
+  @apply w-auto! min-w-auto! flex-none! max-w-[50%] sticky left-0 z-100 bg-white;
+  /* When pinned columns are wider than the cap, scroll them here instead of spilling over
+     (and covering) the main grid, which would otherwise make the right columns unreachable.
+     overscroll-x-none stops a hard horizontal swipe here from triggering browser back/forward. */
+  @apply overflow-x-auto overscroll-x-none;
+}
+
+.everygrid-pinned-table-container thead th {
+  @apply sticky top-0 z-110 border-t border-l border-b border-slate-200;
+  background-color: var(--everygrid-header-bg, #f8fafc) !important;
+  box-sizing: border-box;
+  min-width: 50px;
+  transform: none !important;
+  @apply h-[41px];
+}
+
+.everygrid-pinned-table-container thead th:last-child {
+  @apply border-r;
+}
+
+.everygrid-pinned-table-container td:last-child {
+  @apply border-r border-slate-200;
+}
+
+/* JSON Pretty Print */
+.everygrid-popup-body {
+  @apply p-6 overflow-auto overscroll-x-none bg-slate-50 font-mono text-sm leading-relaxed;
+}
+
+.json-object {
+  @apply inline-flex flex-wrap gap-x-4 gap-y-1 my-0 py-0;
+}
+
+.json-array {
+  @apply inline-flex flex-wrap gap-x-2 list-none p-0 m-0 my-0 py-0;
+}
+
+.json-array li {
+  @apply relative py-0;
+}
+
+.json-array li::after {
+  @apply content-[','] text-slate-300 ml-0.5;
+}
+
+.json-array li:last-child::after {
+  @apply content-[''];
+}
+
+.json-array li::before {
+  @apply hidden;
+}
+
+.json-item {
+  @apply py-0 flex flex-wrap gap-x-2;
+}
+
+.json-key {
+  @apply font-bold text-slate-700 select-none;
+}
+
+.json-value {
+  @apply text-slate-600 break-all;
+}
+
+.json-null {
+  @apply text-slate-400 italic;
+}
+
+
+/* Indeterminate indexing bar — used when the payload size is unknown (e.g. a compressed
+   response), so no honest percentage exists to render. */
+.everygrid-indeterminate {
+  animation: everygrid-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes everygrid-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}

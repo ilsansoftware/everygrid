@@ -1,0 +1,7 @@
+@import "tailwindcss";
+/* Load portal chrome styles into the base layer so Tailwind's utilities layer
+   (mx-auto, py-8, gap-8, …) wins over portal.css's global reset. Without
+   layer(base) the unlayered `* { margin:0 }` reset defeats every margin/padding
+   utility, breaking the React demo layout and grid toolbar spacing. */
+@import "./portal.css" layer(base);
+@source "../../../packages/everygrid/src";

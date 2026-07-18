@@ -1,0 +1,52 @@
+{
+  "targets": [
+    {
+      "id": "demo-grid"
+    },
+    {
+      "id": "users"
+    }
+  ],
+  "rowCheckbox": [
+    {
+      "id": "demo-grid",
+      "active": true
+    }
+  ],
+  "checkbox": [
+    {
+      "id": "demo-grid",
+      "mapping": "id"
+    }
+  ],
+  "pagination": [
+    {
+      "id": "demo-grid",
+      "pageSize": 2,
+      "active": true,
+      "position": "bottom"
+    },
+    {
+      "id": "users",
+      "pageSize": 5,
+      "active": true,
+      "position": "all"
+    }
+  ],
+  "editableCols": [
+    {
+      "id": "demo-grid",
+      "cols": [
+        "name",
+        "age",
+        "email",
+        "active",
+        "category",
+        "role",
+        "examResults",
+        "tags",
+        "bio"
+      ]
+    }
+  ]
+}

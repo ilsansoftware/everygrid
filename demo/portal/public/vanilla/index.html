@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" type="image/x-icon" href="favicon.ico"/>
+  <link rel="stylesheet" href="./index.css"/>
+  <title>Everygrid Explorer — Vanilla JS Demo</title>
+  <!-- everygrid — usage in a plain HTML page with a single <script> tag (no bundler).
+       The src is substituted by vite.config.ts: the workspace build when served
+       locally, the deployed CDN standalone when built. -->
+  <script src="%EVERYGRID_STANDALONE%"></script>
+</head>
+<body>
+<div class="container">
+  <main>
+    <div id="demo-grid"></div>
+    <div id="users"></div>
+  </main>
+</div>
+<script>
+  const Everygrid = window.Everygrid;
+  window.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'setLocale') {
+      const applyLocale = () => {
+        Everygrid.I18n.setLocale(e.data.locale);
+        Everygrid.refreshAll();
+      };
+      applyLocale();
+    }
+  });
+  // Initialize grids — reads /everygrid.config.json automatically
+  Everygrid.autoInit(
+    {
+      'demo-grid': function () {
+        return fetch('./data.json').then(function (r) {
+          return r.json();
+        })
+      },
+      'users': function () {
+        return fetch('https://jsonplaceholder.typicode.com/users').then(function (r) {
+          return r.json();
+        })
+      },
+    },
+    './everygrid.config.json'
+  ).then(() => {
+    // Notify portal that this demo is ready to receive locale
+    window.parent.postMessage({type: 'ready'}, '*');
+  });
+</script>
+</body>
+</html>
