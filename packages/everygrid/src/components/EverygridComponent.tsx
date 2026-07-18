@@ -93,15 +93,13 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
       <div className="everygrid-toolbar-container px-2 shrink-0">
         <GridToolbarComponent
           isExcelViewMode={grid.isExcelViewMode}
+          isExporting={isExporting}
+          statusText={statusText}
           onToggleExcelView={() => grid.toggleExcelViewMode(container)}
           onResetWidths={() => grid.resetColumnWidths(container)}
           onShowColumnSelector={() => grid.showColumnSelector(dataFields, container)}
           onShowHiddenColumnSelector={() => grid.showHiddenColumnSelector(container)}
-          onDownloadExcel={() => {
-            // Leave Excel preview so the export progress overlay (rendered in the grid view) is visible.
-            if (grid.isExcelViewMode) grid.toggleExcelViewMode(container);
-            void grid.exportExcel(containerId);
-          }}
+          onDownloadExcel={() => { void grid.exportExcel(containerId); }}
           // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
           onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
           isReloading={grid._reloading?.get(containerId) ?? false}
@@ -145,11 +143,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
               onResetWidths={() => grid.resetColumnWidths(container)}
               onShowColumnSelector={() => grid.showColumnSelector(dataFields, container)}
               onShowHiddenColumnSelector={() => grid.showHiddenColumnSelector(container)}
-              onDownloadExcel={() => {
-            // Leave Excel preview so the export progress overlay (rendered in the grid view) is visible.
-            if (grid.isExcelViewMode) grid.toggleExcelViewMode(container);
-            void grid.exportExcel(containerId);
-          }}
+              onDownloadExcel={() => { void grid.exportExcel(containerId); }}
               // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
               onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
               isReloading={grid._reloading?.get(containerId) ?? false}

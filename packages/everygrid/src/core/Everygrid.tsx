@@ -167,13 +167,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     });
   }
 
-  /**
-   * Loads global config and automatically initializes grids.
-   * Reads config file paths from /everygrid.config.json (static entry file at project root).
-   * Supports multiple config files via the "configs" array in everygrid.config.json.
-   * @param apiFetchers Map of data fetch functions or absolute URL strings keyed by target id
-   * @param entryConfigUrl Path to the static entry config file (default: /everygrid.config.json)
-   */
   public static resetAutoInit(): void {
     // Destroy all existing instances before clearing to free WASM engines and React roots
     Everygrid.instances.forEach(instance => {
@@ -183,6 +176,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     Everygrid.instances.clear();
   }
 
+  /**
+   * Loads global config and automatically initializes grids.
+   * Reads config file paths from /everygrid.config.json (static entry file at project root).
+   * Supports multiple config files via the "configs" array in everygrid.config.json.
+   * @param apiFetchers Map of data fetch functions or absolute URL strings keyed by target id
+   * @param entryConfigUrl Path to the static entry config file (default: /everygrid.config.json)
+   */
   public static async autoInit(
     apiFetchers: Record<string, string | (() => Promise<Record<string, unknown>[]>)> = {},
     entryConfigUrl: string = '/everygrid.config.json',

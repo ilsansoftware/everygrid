@@ -15,7 +15,6 @@ BUCKET="everygrid-823624329122-ap-northeast-2-an"
 DIST_ID="E3PAL1L8WK3ZZ7"
 CDN_BASE="https://d3886c7yrxubj8.cloudfront.net"
 
-PACKAGE_NAME="@everygrid/grid"
 GRID_DIR="packages/everygrid"
 WASM_DIR="everygrid-wasm/pkg"
 

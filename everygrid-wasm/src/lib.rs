@@ -308,28 +308,8 @@ impl<'de, 'a> Visitor<'de> for RowSink<'a> {
         f.write_str("a JSON array of row objects, or a single row object")
     }
 
-    fn visit_seq<A: SeqAccess<'de>>(mut self, mut seq: A) -> Result<Self::Value, A::Error> {
-        // Each element is dropped before the next is parsed, so the tree never outgrows one row.
-        while let Some(value) = seq.next_element::<Value>()? {
-            self.push(&value);
-        }
-        Ok(())
-    }
-
-    fn visit_map<A: MapAccess<'de>>(mut self, map: A) -> Result<Self::Value, A::Error> {
-        let value = Value::deserialize(serde::de::value::MapAccessDeserializer::new(map))?;
-        self.push(&value);
-        Ok(())
-    }
-
     // Scalars at the top level carry no rows; ignore them rather than fail, matching the
-    // previous `Ok(_) => {}` arm.
-    fn visit_unit<E>(self) -> Result<Self::Value, E> {
-        Ok(())
-    }
-    fn visit_none<E>(self) -> Result<Self::Value, E> {
-        Ok(())
-    }
+    // previous `Ok(_) => {}` arm. (Ordered to match the Visitor trait's member order.)
     fn visit_bool<E>(self, _v: bool) -> Result<Self::Value, E> {
         Ok(())
     }
@@ -343,6 +323,26 @@ impl<'de, 'a> Visitor<'de> for RowSink<'a> {
         Ok(())
     }
     fn visit_str<E>(self, _v: &str) -> Result<Self::Value, E> {
+        Ok(())
+    }
+    fn visit_none<E>(self) -> Result<Self::Value, E> {
+        Ok(())
+    }
+    fn visit_unit<E>(self) -> Result<Self::Value, E> {
+        Ok(())
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(mut self, mut seq: A) -> Result<Self::Value, A::Error> {
+        // Each element is dropped before the next is parsed, so the tree never outgrows one row.
+        while let Some(value) = seq.next_element::<Value>()? {
+            self.push(&value);
+        }
+        Ok(())
+    }
+
+    fn visit_map<A: MapAccess<'de>>(mut self, map: A) -> Result<Self::Value, A::Error> {
+        let value = Value::deserialize(serde::de::value::MapAccessDeserializer::new(map))?;
+        self.push(&value);
         Ok(())
     }
 }

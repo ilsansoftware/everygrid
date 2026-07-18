@@ -30,7 +30,7 @@ export default binary.buffer;
     if (id.includes('everygrid_wasm.js')) {
       // Remove import.meta.url usage to avoid UMD build warnings
       return code.replace(
-        /if \(module_or_path === undefined\) \{[\s\S]*?module_or_path = new URL\('everygrid_wasm_bg\.wasm', import\.meta\.url\);[\s\S]*?\}/,
+        /if \(module_or_path === undefined\) \{[\s\S]*?module_or_path = new URL\('everygrid_wasm_bg\.wasm', import\.meta\.url\);[\s\S]*?}/,
         'if (module_or_path === undefined) { /* WASM binary provided via load() hook */ }'
       );
     }
@@ -74,7 +74,7 @@ const inlineCssPlugin = {
       }
     }
     if (cssContent) {
-      const normalizedCss = cssContent.replace(/@layer\s+properties\s*\{([\s\S]*?)\}\s*}/g, '$1}');
+      const normalizedCss = cssContent.replace(/@layer\s+properties\s*\{([\s\S]*?)}\s*}/g, '$1}');
       const cssInject = `;(function(){var s=document.createElement('style');s.textContent=${JSON.stringify(normalizedCss)};document.head.appendChild(s);})();`;
       const chromePolyfill = ';(function(){if(typeof process==="undefined"){window.process={env:{},versions:{},emit:function(){}}}})();';
       for (const chunk of Object.values(bundle)) {

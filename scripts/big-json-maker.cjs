@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 1GB 목표 바이트 크기 (1024 * 1024 * 1024)
-const TARGET_SIZE_BYTES = 1 * 1024 * 1024 * 1024;
+const TARGET_SIZE_BYTES = 1024 * 1024 * 1024;
 const FILE_PATH = path.join(__dirname, 'large_table_data.json');
 
 const writeStream = fs.createWriteStream(FILE_PATH, { encoding: 'utf8' });
@@ -60,8 +60,6 @@ function writeRow() {
     let rowStr = JSON.stringify(row);
     if (currentSizeBytes > 2) {
       rowStr = ',\n' + rowStr;
-    } else {
-      rowStr = rowStr;
     }
 
     const buffer = Buffer.from(rowStr, 'utf8');

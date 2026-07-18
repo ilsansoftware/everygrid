@@ -254,9 +254,7 @@ function handleMessage(event: MessageEvent<WorkerRequest>) {
 
       case 'filterSortAndGetPage': {
         const raw = getEngine(id).filter_sort_and_get_page(req.text, req.col, req.asc, req.page, req.pageSize);
-        const parsed: { rows: unknown[]; filtered: number; raw: number } =
-          typeof raw === 'string' ? JSON.parse(raw) : (raw as { rows: unknown[]; filtered: number; raw: number });
-        result = parsed;
+        result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { rows: unknown[]; filtered: number; raw: number });
         break;
       }
 
