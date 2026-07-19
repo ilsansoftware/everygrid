@@ -32,8 +32,10 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   const streamTotal = grid.getFilteredTotal(containerId);
   // streamTotalRaw: unfiltered total for toolbar/pagination visibility.
   // Priority: JS stream rows > streaming count > WASM raw total > items length
+  // A live stream count of 0 falls through rather than winning: during a reload it would report
+  // an empty grid over rows that are still on screen, hiding the pagination and the row count.
   const streamTotalRaw = grid._streamRows.get(containerId)?.length
-    ?? grid._streamTotal.get(containerId)
+    ?? (grid._streamTotal.get(containerId) || undefined)
     ?? grid._wasmRawTotal?.get(containerId)
     ?? items.length;
   // Only show processing overlay during filter/sort (not during initial streaming load)
@@ -54,6 +56,10 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   // AND a ready page makes the hidden→visible transition atomic and consistent.
   const isIndexing = isStreamingGrid && (indexingStage === 'indexing' || !hasReadyPage);
   const indexingProgress = grid._indexingProgress?.get(containerId) ?? 0;
+  // isLoading covers every load path — streaming, buffered fetch, fetcher function — so the body
+  // below can decide skeleton vs content by one rule instead of per-path flags. Without it a
+  // grid whose payload came back small flashed the "no data" placeholder mid-load.
+  const isLoading = isIndexing || (grid._loading?.has(containerId) ?? false);
 
   // Progress-pill text shown in the toolbar's search slot (undefined = show the search box).
   const statusText = (isExporting && exportState)
@@ -82,6 +88,14 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
         : -1;
 
   const displayItems = grid.getDisplayItems(containerId, items);
+  // Three states, one source of truth, so every part of the grid agrees:
+  //  - showSkeleton: nothing to show yet. The only case the body is replaced.
+  //  - isBusy: something is in flight (load OR filter/sort). Everything visible stays put and
+  //    goes inert together — overlay, toolbar icons, sort icons, pagination.
+  //  - showEmpty: settled with no data at all. No toolbar either; there is nothing to act on.
+  const showSkeleton = isLoading && displayItems.length === 0;
+  const isBusy = isLoading || isProcessing;
+  const showEmpty = !isLoading && items.length === 0 && streamTotalRaw === 0;
   const searchKeys = grid.getSearchKeys(containerId, displayItems);
   const columns = grid.getColumns(containerId, items);
   const dataFields = grid.getDataFields(containerId);
@@ -151,9 +165,10 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   return (
     <div className="everygrid-wrapper relative bg-white overflow-hidden flex flex-col border-b border-slate-200 pb-2">
       <div className="flex-1 flex flex-col min-h-0 pt-0">
-        {/* The toolbar is always up (even for an empty/skeleton grid) — it hosts the search box,
-            title and the loading progress; the empty state lives in the body below. */}
-        <div className="everygrid-toolbar-container px-2 shrink-0">
+        {/* The toolbar stays up while loading — it hosts the search box, title and the progress
+            pill. A settled empty grid gets none of it: search, sort reset, column selection and
+            export all act on rows that don't exist. */}
+        {!showEmpty && <div className="everygrid-toolbar-container px-2 shrink-0">
           <GridToolbarComponent
             gridTitle={gridTitle}
             isExporting={isExporting}
@@ -181,11 +196,11 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             onFilter={(text) => grid.setFilter(text, container)}
             searchKeys={searchKeys}
             wasmReady={grid.wasmReady}
-            isIndexing={isIndexing}
+            isIndexing={isBusy}
           />
-        </div>
+        </div>}
 
-        {!isIndexing && pagination && pagination.active !== false && (pagination.position === 'top' || pagination.position === 'all') && (
+        {!showSkeleton && pagination && pagination.active !== false && (pagination.position === 'top' || pagination.position === 'all') && (
           <div className="everygrid-pagination-top shrink-0">
             <PaginationComponent
               grid={grid}
@@ -195,17 +210,20 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
               totalItems={grid.getFilteredTotal(containerId)}
               totalCount={streamTotalRaw || items.length}
               pageSize={pagination.pageSize || 10}
+              disabled={isBusy}
             />
           </div>
         )}
 
-        {/* While indexing, fill the body with a skeleton placeholder (real rows aren't ready yet).
-            The toolbar keeps the progress pill; this area holds the layout space. */}
-        {isIndexing ? (
+        {/* One rule for every grid, whatever load path it took: while a load is in flight, show
+            the skeleton only if there is nothing to show yet. Rows already on screen (a reload,
+            or a second load) stay up and the progress lives in the toolbar pill — the body never
+            collapses out from under data that is still valid. */}
+        {showSkeleton ? (
           <div className="relative w-full flex-1 min-h-0 overflow-hidden">
             <EmptyGridPlaceholder targetId={containerId} indexing/>
           </div>
-        ) : (items.length === 0 && streamTotalRaw === 0) ? (
+        ) : showEmpty ? (
           <div className="relative w-full flex-1 min-h-0 overflow-hidden">
             <EmptyGridPlaceholder targetId={containerId}/>
           </div>
@@ -213,8 +231,13 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           <div
             className={`relative w-full flex-1 min-h-0 flex flex-col overflow-hidden ${grid.pinnedColumns.size > 0 ? 'has-pinned' : ''}`}
           >
+            {/* inert takes the whole table out of the tab order and kills its events, so cell
+                inputs, links and edit buttons go dead with the rest instead of staying reachable
+                by keyboard underneath the overlay. Header controls also carry `disabled` for the
+                greyed-out look — inert alone changes nothing visually. */}
             <div
               className="flex w-full h-full"
+              inert={isBusy}
             >
               {grid.pinnedColumns.size > 0 && (
                 <PinnedTableComponent
@@ -225,7 +248,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
                   containerId={containerId}
                   editableFields={editableFields}
                   filterText={grid.filterText}
-                  isIndexing={isIndexing}
+                  isIndexing={isBusy}
                   isExporting={isExporting}
                 />
               )}
@@ -238,10 +261,17 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
                 editableFields={editableFields}
                 currentWidths={currentWidths}
                 filterText={grid.filterText}
-                isIndexing={isIndexing}
+                isIndexing={isBusy}
                 isExporting={isExporting}
               />
             </div>
+            {/* Rows on screen are stale until the operation lands, so the body goes inert as a
+                whole rather than leaving the user to discover which controls still respond.
+                z-120 clears the sticky header (z-80) and the pinned column header (z-110) — the
+                overlay has to cover them, or sort/resize/pin stay live over frozen data. */}
+            {isBusy && (
+              <div className="absolute inset-0 z-120 bg-white/60 cursor-progress" aria-hidden="true"/>
+            )}
             {/* Columns exist but no rows to show — an empty result (filtered out) or an empty
                 dataset. Overlaid on the body so the header stays visible. */}
             {displayItems.length === 0 && !isProcessing && (
@@ -254,7 +284,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           </div>
         )}
 
-        {!isIndexing && pagination && pagination.active !== false && (pagination.position === 'bottom' || pagination.position === 'all' || (!pagination.position && (streamTotal > 0 || streamTotalRaw > 0))) && (
+        {!showSkeleton && pagination && pagination.active !== false && (pagination.position === 'bottom' || pagination.position === 'all' || (!pagination.position && (streamTotal > 0 || streamTotalRaw > 0))) && (
           <div className="everygrid-pagination-bottom shrink-0">
             <PaginationComponent
               grid={grid}
@@ -264,6 +294,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
               totalItems={grid.getFilteredTotal(containerId)}
               totalCount={streamTotalRaw || items.length}
               pageSize={pagination?.pageSize || items.length}
+              disabled={isBusy}
             />
           </div>
         )}

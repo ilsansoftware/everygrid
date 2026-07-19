@@ -102,6 +102,8 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   _indexingStage: Map<string, 'indexing' | 'ready'>;
   _indexingProgress: Map<string, number>;
   _wasStreaming: Set<string>;
+  /** Targets with a data load in flight, on any load path. */
+  _loading: Set<string>;
 
   getSelectedRows(containerId: string): Set<T>;
 

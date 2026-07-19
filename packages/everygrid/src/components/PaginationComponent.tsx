@@ -10,6 +10,8 @@ export interface PaginationProps<T extends Record<string, unknown>> {
   totalItems: number;
   totalCount: number;
   pageSize: number;
+  /** Greys the controls out without removing them — used while a reload is in flight. */
+  disabled?: boolean;
 }
 
 export const PaginationComponent = <T extends Record<string, unknown>>({
@@ -20,6 +22,7 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
                                                                          totalItems,
                                                                          totalCount,
                                                                          pageSize,
+                                                                         disabled = false,
                                                                        }: PaginationProps<T>) => {
   const containerId = container.id;
   const [isMobile, setIsMobile] = useState(false);
@@ -59,11 +62,11 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
     pages.push(i);
   }
 
-  const renderBtn = (text: string, title: string, page: number, disabled: boolean, active: boolean = false) => (
+  const renderBtn = (text: string, title: string, page: number, atEdge: boolean, active: boolean = false) => (
     <button
-      className={`everygrid-pagination-btn ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`}
+      className={`everygrid-pagination-btn ${atEdge || disabled ? 'disabled' : ''} ${active ? 'active' : ''}`}
       title={title}
-      disabled={disabled}
+      disabled={atEdge || disabled}
       onClick={() => handlePageChange(page)}
       dangerouslySetInnerHTML={{__html: text}}
     />
@@ -101,7 +104,8 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
           {!isMobile && pages.map((i) => (
             <button
               key={i}
-              className={`everygrid-pagination-btn ${i === currentPage ? 'active' : ''}`}
+              className={`everygrid-pagination-btn ${i === currentPage ? 'active' : ''} ${disabled ? 'disabled' : ''}`}
+              disabled={disabled}
               onClick={() => handlePageChange(i)}
             >
               {i}

@@ -167,11 +167,13 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                 {col.type === 'row_checkbox' ? (
                   <div className="flex justify-center w-full">
                     <input type="checkbox" className="cursor-pointer" checked={isAllSelected}
+                           disabled={isIndexing || isExporting}
                            onChange={(e) => handleSelectAll(e.target.checked)}/>
                   </div>
                 ) : col.type === 'data_checkbox' ? (
                   <div className="flex justify-center w-full">
                     <input type="checkbox" className="cursor-pointer" checked={isAllChecked}
+                           disabled={isIndexing || isExporting}
                            onChange={(e) => handleCheckAll(e.target.checked)}/>
                   </div>
                 ) : (
@@ -180,7 +182,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         className={`everygrid-icon-btn ${grid.pinnedColumns.has(col.field) ? 'is-active' : ''}`}
-                        disabled={isExporting}
+                        disabled={isIndexing || isExporting}
                         onClick={(e) => {
                           e.stopPropagation();
                           handlePin(col.field);
@@ -190,7 +192,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                       {(col.field !== I18n.t('grid.index') && grid.isColumnNumeric(col.field)) && (
                         <button
                           className={`everygrid-icon-btn ${grid.commaSeparatedFields.has(col.field) ? 'is-active' : ''}`}
-                          disabled={isExporting}
+                          disabled={isIndexing || isExporting}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleToggleColumn(col.field);
@@ -199,7 +201,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                       {editableFields.includes(col.field) && (
                         <button
                           className={`everygrid-icon-btn ${grid.activeEditFields.get(containerId)?.has(col.field) ? 'is-active' : ''}`}
-                          disabled={isExporting}
+                          disabled={isIndexing || isExporting}
                           onClick={(e) => {
                             e.stopPropagation();
                             const activeEdits = grid.activeEditFields.get(containerId) || new Set();
@@ -217,7 +219,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                       )}
                       <button
                         className="everygrid-icon-btn"
-                        disabled={isExporting}
+                        disabled={isIndexing || isExporting}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleHide(col.field);
@@ -235,7 +237,9 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                         }
                         return (
                           <button
-                            className={`everygrid-icon-btn ${grid.sortConfig.get(containerId)?.field === col.field ? 'is-active' : ''} ${isIndexing ? 'hidden' : ''}`}
+                            // Disabled, not hidden: headers keep their shape while the grid is
+                            // busy instead of the icons popping in and out.
+                            className={`everygrid-icon-btn ${grid.sortConfig.get(containerId)?.field === col.field ? 'is-active' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (isExporting) return;
@@ -250,7 +254,11 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                         );
                       })()}
                     </div>
-                    <div className="everygrid-resizer" onMouseDown={(e) => handleResizeStart(e, col.field)} onTouchStart={(e) => handleResizeStart(e, col.field)}/>
+                    {/* Resizing while the data underneath is being replaced would measure the
+                        old columns, so it goes inert with everything else. */}
+                    {!(isIndexing || isExporting) && (
+                      <div className="everygrid-resizer" onMouseDown={(e) => handleResizeStart(e, col.field)} onTouchStart={(e) => handleResizeStart(e, col.field)}/>
+                    )}
                   </>
                 )}
               </div>

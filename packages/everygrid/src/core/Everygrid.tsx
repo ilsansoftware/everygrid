@@ -28,6 +28,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public static readonly POPUP_CLOSE_HTML = '&times;';
   private static instances: Map<string, unknown> = new Map();
   private static _initializedTargets: Set<string> = new Set();
+  // Config URL → in-flight/resolved load. Caching the promise (not the result) also dedupes
+  // concurrent loadConfig calls, so N screens asking at once still make one network request.
+  private static _configCache: Map<string, Promise<string[]>> = new Map();
+  // Target id → the config it came from. Populated by loadConfig, consumed by mount.
+  private static _targetRegistry: Map<string, {config: Record<string, unknown>; target: GridTargetConfig}> = new Map();
   public static I18n = I18n;
   public static options: GridOptions = { targets: [] };
   readonly options: GridOptions<T>;
@@ -63,6 +68,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private roots: Map<HTMLElement, Root> = new Map();
   private subscribers: Set<() => void> = new Set();
   private domObserver: MutationObserver | null = null;
+  // Set by destroy(). Pending polls check it so an unmounted grid stops working immediately
+  // instead of spinning out its timeout.
+  private _destroyed = false;
   public filterText: string = '';
   private _wasmEngines: Map<string, GridEngineWasm> = new Map();
   private _wasmEngineReady: Map<string, boolean> = new Map();
@@ -91,6 +99,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public _indexingProgress: Map<string, number> = new Map();
   // Tracks which grids are streaming grids (only these show indexing UI)
   public _wasStreaming: Set<string> = new Set();
+  // Targets with a data load in flight, whatever path it takes (stream, buffered fetch, fetcher
+  // function). The indexing flags only cover the streaming path and only once the engine is up,
+  // so this is what makes "is this grid still loading?" answerable the same way for every grid.
+  public _loading: Set<string> = new Set();
   /** Headers an origin may use to advertise the decoded size of a compressed body. */
   private static readonly UNCOMPRESSED_LENGTH_HEADERS = ['X-Uncompressed-Length', 'x-amz-meta-uncompressed-length'];
   // Where each target's data came from, kept so the toolbar can re-load it on demand.
@@ -172,6 +184,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     });
   }
 
+  /** Unmounts every grid and forgets all loaded config — the next loadConfig re-fetches. */
   public static resetAutoInit(): void {
     // Destroy all existing instances before clearing to free WASM engines and React roots
     Everygrid.instances.forEach(instance => {
@@ -179,12 +192,189 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     });
     Everygrid._initializedTargets.clear();
     Everygrid.instances.clear();
+    Everygrid._targetRegistry.clear();
+    Everygrid._configCache.clear();
   }
 
   /**
-   * Loads global config and automatically initializes grids.
-   * Reads config file paths from /everygrid.config.json (static entry file at project root).
-   * Supports multiple config files via the "configs" array in everygrid.config.json.
+   * Resolves a config/data URL against the browser's base URI.
+   * Absolute paths ('/…') get the base path prefix, so the library works under a sub-path deploy.
+   */
+  private static _resolveUrl(url: string): string {
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/')) {
+      const base = new URL(document.baseURI);
+      const prefix = base.pathname.endsWith('/') ? base.pathname.slice(0, -1) : base.pathname;
+      return base.origin + prefix + url;
+    }
+    return new URL(url, document.baseURI).href;
+  }
+
+  /**
+   * Loads config files and registers their targets — no DOM work, no engines, no data fetching.
+   * Mount the ones this screen actually shows with `mount()`.
+   *
+   * Cached per entry URL, so calling it from every screen costs one network round trip for the
+   * lifetime of the page. Config edits are picked up on reload, or explicitly via
+   * `invalidateConfig()` / `{reload: true}`.
+   *
+   * @param entryConfigUrl Path to the static entry config file (default: /everygrid.config.json)
+   * @param opts.reload Bypass the cache and re-fetch
+   * @returns The target ids that are now registered (across every config file listed)
+   */
+  public static loadConfig(
+    entryConfigUrl: string = '/everygrid.config.json',
+    opts: {reload?: boolean} = {},
+  ): Promise<string[]> {
+    if (opts.reload) Everygrid._configCache.delete(entryConfigUrl);
+    const cached = Everygrid._configCache.get(entryConfigUrl);
+    if (cached) return cached;
+
+    const load = Everygrid._fetchConfig(entryConfigUrl).catch(error => {
+      // Don't cache a failure — the next call should be able to retry.
+      Everygrid._configCache.delete(entryConfigUrl);
+      console.error('Everygrid.loadConfig error:', error);
+      return [] as string[];
+    });
+    Everygrid._configCache.set(entryConfigUrl, load);
+    return load;
+  }
+
+  /** Drops cached config so the next loadConfig re-fetches. Already-mounted grids keep their config. */
+  public static invalidateConfig(entryConfigUrl?: string): void {
+    if (entryConfigUrl) Everygrid._configCache.delete(entryConfigUrl);
+    else Everygrid._configCache.clear();
+  }
+
+  private static async _fetchConfig(entryConfigUrl: string): Promise<string[]> {
+    const resolvedEntry = Everygrid._resolveUrl(entryConfigUrl);
+    const entryResponse = await fetch(resolvedEntry);
+    if (!entryResponse.ok) {
+      console.warn('Everygrid.loadConfig: entry config not found at', entryConfigUrl);
+      return [];
+    }
+
+    const entryConfig = await entryResponse.json();
+    if (!Array.isArray(entryConfig.configs) || entryConfig.configs.length === 0) {
+      console.warn('Everygrid.loadConfig: "configs" array not found or empty in', entryConfigUrl);
+      return [];
+    }
+
+    const configBase = resolvedEntry.substring(0, resolvedEntry.lastIndexOf('/') + 1);
+    const configUrls: string[] = entryConfig.configs.map((u: string) => {
+      if (u.startsWith('http://') || u.startsWith('https://')) return u;
+      if (u.startsWith('/')) return Everygrid._resolveUrl(u);
+      return configBase + u.replace(/^\.\//, '');
+    });
+
+    // Fetch all config files in parallel, keep each config separate
+    const configs = await Promise.all(
+      configUrls.map(async (url) => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) {
+            console.warn('Everygrid.loadConfig: failed to load config at', url);
+            return null;
+          }
+          return await res.json() as Record<string, unknown>;
+        } catch {
+          console.warn('Everygrid.loadConfig: error loading config at', url);
+          return null;
+        }
+      })
+    );
+
+    const ids: string[] = [];
+    for (const config of configs) {
+      if (!config || !Array.isArray(config.targets)) continue;
+      for (const target of config.targets as GridTargetConfig[]) {
+        Everygrid._targetRegistry.set(target.id, {config, target});
+        ids.push(target.id);
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * Mounts one registered target into the element with the same id. Requires `loadConfig()` first
+   * and requires the element to already be in the DOM — nothing is allocated for a target this
+   * screen doesn't show, so cost scales with grids rendered, not with configs that exist.
+   *
+   * Idempotent: mounting an already-mounted target returns the live instance.
+   *
+   * @param targetId Element id, matching a target id from the loaded config
+   * @param opts.fetcher Data source for this target — a URL (streamed) or an async function
+   */
+  public static async mount<D extends Record<string, unknown> = Record<string, unknown>>(
+    targetId: string,
+    opts: {fetcher?: string | (() => Promise<Record<string, unknown>[]>)} = {},
+  ): Promise<Everygrid<D> | null> {
+    const existing = Everygrid.instances.get(targetId);
+    if (existing) return existing as Everygrid<D>;
+
+    if (!document.getElementById(targetId)) {
+      console.warn(`Everygrid.mount: no element with id "${targetId}" — render it before mounting.`);
+      return null;
+    }
+
+    const entry = Everygrid._targetRegistry.get(targetId);
+    if (!entry) {
+      console.warn(`Everygrid.mount: target "${targetId}" is not registered — call loadConfig() first.`);
+      return null;
+    }
+
+    const {config, target} = entry;
+    Everygrid._initializedTargets.add(targetId);
+
+    const fetcherOrUrl = opts.fetcher;
+    if (typeof fetcherOrUrl === 'string') {
+      const url = Everygrid._resolveUrl(fetcherOrUrl);
+      // Mount with empty data so the skeleton paints now, then stream in the background.
+      const instance = new Everygrid({...config, targets: [target], data: []});
+      instance._streamUrl.set(targetId, url);
+      instance._dataSource.set(targetId, url);
+      instance._loadFromUrl(targetId, url);
+      return instance as unknown as Everygrid<D>;
+    }
+    if (fetcherOrUrl) {
+      // Same shape as the URL path: paint the skeleton first, fill it in when the rows arrive.
+      // Awaiting the fetcher before constructing left the container blank for the whole fetch.
+      const instance = new Everygrid({...config, targets: [target], data: []});
+      instance._dataSource.set(targetId, fetcherOrUrl);
+      instance._loading.add(targetId);
+      void fetcherOrUrl()
+        .then(rows => instance._setRows(targetId, rows))
+        .catch(err => console.warn('Everygrid: fetcher failed for', targetId, err))
+        .finally(() => {
+          instance._loading.delete(targetId);
+          const el = document.getElementById(targetId);
+          if (el) instance.renderGrid(el);
+        });
+      return instance as unknown as Everygrid<D>;
+    }
+    const instance = new Everygrid({...config, targets: [target], data: target.data});
+    return instance as unknown as Everygrid<D>;
+  }
+
+  /**
+   * Tears a mounted grid down completely — React root, WASM engine, worker thread, timers — and
+   * makes the target mountable again. Call this when the screen owning the grid goes away.
+   *
+   * @returns true if a grid was mounted and is now gone
+   */
+  public static unmount(targetId: string): boolean {
+    const instance = Everygrid.instances.get(targetId) as Everygrid | undefined;
+    if (!instance) return false;
+    instance.destroy();
+    return true;
+  }
+
+  /**
+   * Loads config and mounts every target already present in the DOM.
+   *
+   * @deprecated Prefer `loadConfig()` + `mount()`. Targets whose element doesn't exist yet are
+   * skipped rather than waited for, so a screen that renders its container later must mount it
+   * itself.
    * @param apiFetchers Map of data fetch functions or absolute URL strings keyed by target id
    * @param entryConfigUrl Path to the static entry config file (default: /everygrid.config.json)
    */
@@ -192,105 +382,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     apiFetchers: Record<string, string | (() => Promise<Record<string, unknown>[]>)> = {},
     entryConfigUrl: string = '/everygrid.config.json',
   ): Promise<void> {
-    try {
-      // Resolve URLs at runtime using the browser's base URI
-      // For absolute paths (starting with '/'), prepend the base path prefix from document.baseURI
-      const resolveUrl = (url: string): string => {
-        if (url.startsWith('http://') || url.startsWith('https://')) return url;
-        if (url.startsWith('/')) {
-          const base = new URL(document.baseURI);
-          const prefix = base.pathname.endsWith('/') ? base.pathname.slice(0, -1) : base.pathname;
-          return base.origin + prefix + url;
-        }
-        return new URL(url, document.baseURI).href;
-      };
-
-      // Load entry config file that lists all config file paths
-      const entryResponse = await fetch(resolveUrl(entryConfigUrl));
-      let configUrls: string[];
-
-      if (entryResponse.ok) {
-        const entryConfig = await entryResponse.json();
-        if (Array.isArray(entryConfig.configs) && entryConfig.configs.length > 0) {
-          const resolvedEntry = resolveUrl(entryConfigUrl);
-          const configBase = resolvedEntry.substring(0, resolvedEntry.lastIndexOf('/') + 1);
-          configUrls = entryConfig.configs.map((u: string) => {
-            if (u.startsWith('http://') || u.startsWith('https://')) return u;
-            if (u.startsWith('/')) return resolveUrl(u);
-            return configBase + u.replace(/^\.\//, '');
-          });
-        } else {
-          console.warn('Everygrid.autoInit: "configs" array not found or empty in', entryConfigUrl);
-          return;
-        }
-      } else {
-        console.warn('Everygrid.autoInit: entry config not found at', entryConfigUrl);
-        return;
-      }
-
-      // Fetch all config files in parallel, keep each config separate
-      const configResponses = await Promise.all(
-        configUrls.map(async (url) => {
-          try {
-            const res = await fetch(url);
-            if (!res.ok) {
-              console.warn('Everygrid.autoInit: failed to load config at', url);
-              return null;
-            }
-            return await res.json() as Record<string, unknown>;
-          } catch {
-            console.warn('Everygrid.autoInit: error loading config at', url);
-            return null;
-          }
-        })
-      );
-
-      // Create independent Everygrid instance per config file (per target).
-      // Phase 1: create all instances immediately (with empty data for streaming grids)
-      //          and collect deferred streaming tasks.
-      // Phase 2: start streaming fetches after all instances are created so the UI
-      //          renders the skeleton of every grid before any heavy data loading begins.
-      const streamingTasks: Array<() => void> = [];
-
-      for (const config of configResponses) {
-        if (!config) continue;
-        if (!config.targets || !Array.isArray(config.targets)) continue;
-
-        const targets: GridTargetConfig[] = config.targets as GridTargetConfig[];
-        for (const target of targets) {
-          if (Everygrid._initializedTargets.has(target.id)) continue;
-          Everygrid._initializedTargets.add(target.id);
-          let data: Record<string, unknown>[] | undefined = target.data;
-          const fetcherOrUrl = apiFetchers[target.id];
-          if (fetcherOrUrl) {
-            try {
-              if (typeof fetcherOrUrl === 'string') {
-                const url = resolveUrl(fetcherOrUrl);
-                // Create instance immediately with empty data so the grid skeleton renders now
-                const instance = new Everygrid({...config, targets: [target], data: []});
-                // Defer the actual fetch until Phase 2
-                instance._streamUrl.set(target.id, url);
-                instance._dataSource.set(target.id, url);
-                streamingTasks.push(() => {
-                  instance._loadFromUrl(target.id, url);
-                });
-                continue;
-              } else {
-                data = await fetcherOrUrl();
-              }
-            } catch {
-              data = [];
-            }
-          }
-          const instance = new Everygrid({...config, targets: [target], data});
-          if (fetcherOrUrl) instance._dataSource.set(target.id, fetcherOrUrl);
-        }
-      }
-
-      // Phase 2: kick off all streaming fetches now that every grid skeleton is rendered
-      for (const task of streamingTasks) task();
-    } catch (error) {
-      console.error('Everygrid.autoInit error:', error);
+    const ids = await Everygrid.loadConfig(entryConfigUrl);
+    // Mount sequentially: function-fetchers are awaited, and grids should appear in config order.
+    for (const id of ids) {
+      if (!document.getElementById(id)) continue;
+      await Everygrid.mount(id, {fetcher: apiFetchers[id]});
     }
   }
 
@@ -301,6 +397,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * Shared by autoInit's first load and by reloadData(), so both take the identical path.
    */
   private _loadFromUrl(targetId: string, url: string): Promise<void> {
+    this._loading.add(targetId);
     return fetch(url, { cache: this.options.dataCache ?? 'no-store' })
       .then(async res => {
         if (!res.ok || !res.body) return;
@@ -334,6 +431,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       })
       .catch(err => {
         console.warn('Everygrid: fetch failed for', targetId, err);
+      })
+      .finally(() => {
+        this._loading.delete(targetId);
+        const el = document.getElementById(targetId);
+        if (el) this.renderGrid(el);
       });
   }
 
@@ -383,6 +485,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         if (engine) {
           clearInterval(poll);
           resolve(engine);
+        } else if (this._destroyed) {
+          clearInterval(poll);
+          resolve(null);
         } else if (Date.now() - startTime > timeoutMs) {
           clearInterval(poll);
           resolve(null);
@@ -406,8 +511,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // its data is replaced. Clearing it stranded the streaming path, whose loader never sets
     // it back (only _setRows does), so applyWasmFilter bailed out at the end of the load and
     // the grid rendered nothing at all. _wasmDataLoaded already marks the data as stale.
-    this._wasmPageCache.delete(containerId);
-    this._wasmRawTotal.delete(containerId);
+    // NOT _wasmPageCache / _wasmRawTotal: those hold the rows currently on screen, and a reload
+    // has something to show the whole time. Dropping them collapsed the grid into a skeleton and
+    // back, which read as "the data vanished". Nothing partial leaks in — the streaming path only
+    // publishes rows at the end (via applyWasmFilter), so the swap is atomic either way.
     this._streamRows.delete(containerId);
     this._streamTotal.delete(containerId);
     this._indexingAllRows.delete(containerId);
@@ -502,7 +609,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const poll = setInterval(() => {
         const eng = instance._wasmEngines.get(targetId);
         if (eng) { clearInterval(poll); resolve(eng); }
-        else if (Date.now() - start > 10000) { clearInterval(poll); resolve(undefined); }
+        else if (instance._destroyed || Date.now() - start > 10000) { clearInterval(poll); resolve(undefined); }
       }, 50);
     });
     if (!engine) {
@@ -962,9 +1069,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const filtered = this._applyStreamFilter(containerId, streamRows);
       return filtered.length;
     }
-    // Streaming count-only phase (before any rows parsed)
-    if (this._streamTotal.has(containerId)) {
-      return this._streamTotal.get(containerId)!;
+    // Streaming count-only phase (before any rows parsed). Skipped when the live count is still
+    // 0 but a page cache survives: that's a reload streaming in over rows already on screen, and
+    // reporting 0 would collapse the pagination we're deliberately keeping up (just disabled).
+    const streamTotal = this._streamTotal.get(containerId);
+    if (streamTotal !== undefined && (streamTotal > 0 || !this._wasmPageCache.has(containerId))) {
+      return streamTotal;
     }
     const engine = this._wasmEngines.get(containerId);
     if (!engine || !this._wasmEngineReady.get(containerId)) {
@@ -1736,6 +1846,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
     // Fetch data from dataUrl if provided
     if (dataUrl && !this.options.data) {
+      // Mark every target as loading so this path shows the same skeleton as the others.
+      const ids = targets.map(t => typeof t === 'string' ? t : t.id);
+      ids.forEach(id => this._loading.add(id));
       try {
         const response = await fetch(dataUrl);
         const fetchedData = await response.json();
@@ -1744,6 +1857,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         this.initOriginalDataMap();
       } catch (error) {
         console.error('Everygrid: Error fetching data:', error);
+      } finally {
+        ids.forEach(id => this._loading.delete(id));
       }
     }
 
@@ -1779,6 +1894,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   public destroy() {
+    // Flag first: pending polls bail out instead of running to their timeout.
+    this._destroyed = true;
+
     // Disconnect MutationObserver
     this.domObserver?.disconnect();
     this.domObserver = null;
@@ -1796,10 +1914,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Clear subscribers
     this.subscribers.clear();
 
-    // Remove from static instances map
+    // Remove from the static instances map, and release the target so it can be mounted again —
+    // destroy() has to be the exact inverse of construction for client-owned lifecycles to work.
     this.options.targets?.forEach(idConfig => {
       const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
       Everygrid.instances.delete(id);
+      Everygrid._initializedTargets.delete(id);
     });
 
     // Abort any in-flight Excel exports (terminates their worker) and drop progress state.
