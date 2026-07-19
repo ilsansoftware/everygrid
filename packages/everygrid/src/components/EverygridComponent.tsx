@@ -55,7 +55,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   // Progress-pill text shown in the toolbar's search slot (undefined = show the search box).
   const statusText = (isExporting && exportState)
     ? (exportState.total > 0
-        ? I18n.t('grid.exporting', {done: exportState.done, total: exportState.total})
+        ? I18n.t('grid.exportingPercent', {percent: Math.min(100, Math.round((exportState.done / exportState.total) * 100))})
         : I18n.t('grid.exportPreparing'))
     : isProcessing
       ? I18n.t('grid.processing')

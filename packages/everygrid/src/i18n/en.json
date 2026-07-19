@@ -36,6 +36,7 @@
     "showAllColumns": "Show All Columns",
     "unhide": "Unhide",
     "exporting": "Exporting… {done}/{total}",
+    "exportingPercent": "Exporting… {percent}%",
     "exportPreparing": "Exporting…",
     "processing": "Processing…",
     "sortAsc": "Sort Ascending",

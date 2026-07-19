@@ -97,7 +97,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
               <div className="everygrid-header-content px-2 py-2">
                 <span className="truncate">{col.headerName || col.field}</span>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button className="everygrid-icon-btn is-active" onClick={(e) => {
+                  <button className="everygrid-icon-btn is-active" disabled={isExporting} onClick={(e) => {
                     e.stopPropagation();
                     handlePin(col);
                   }}><PinFilledIcon/></button>
@@ -105,6 +105,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
                     {editableFields.includes(col.field) && (
                       <button
                         className={`everygrid-icon-btn ${instance.activeEditFields.get(containerId)?.has(col.field) ? 'is-active' : ''}`}
+                        disabled={isExporting}
                         onClick={(e) => {
                           e.stopPropagation();
                           const activeEdits = instance.activeEditFields.get(containerId) || new Set();

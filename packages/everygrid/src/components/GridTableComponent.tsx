@@ -180,6 +180,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         className={`everygrid-icon-btn ${grid.pinnedColumns.has(col.field) ? 'is-active' : ''}`}
+                        disabled={isExporting}
                         onClick={(e) => {
                           e.stopPropagation();
                           handlePin(col.field);
@@ -189,6 +190,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                       {(col.field !== I18n.t('grid.index') && grid.isColumnNumeric(col.field)) && (
                         <button
                           className={`everygrid-icon-btn ${grid.commaSeparatedFields.has(col.field) ? 'is-active' : ''}`}
+                          disabled={isExporting}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleToggleColumn(col.field);
@@ -197,6 +199,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                       {editableFields.includes(col.field) && (
                         <button
                           className={`everygrid-icon-btn ${grid.activeEditFields.get(containerId)?.has(col.field) ? 'is-active' : ''}`}
+                          disabled={isExporting}
                           onClick={(e) => {
                             e.stopPropagation();
                             const activeEdits = grid.activeEditFields.get(containerId) || new Set();
@@ -214,6 +217,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                       )}
                       <button
                         className="everygrid-icon-btn"
+                        disabled={isExporting}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleHide(col.field);

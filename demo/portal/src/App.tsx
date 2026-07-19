@@ -102,6 +102,21 @@ export default function App() {
     return () => window.removeEventListener('message', onMsg);
   }, []);
 
+  // Dev hot-swap for the html demos: when the library's --watch build rewrites the standalone,
+  // the vite plugin (see vite.config.ts) fires this event and we reload the affected iframes —
+  // the closest thing to the React demo's HMR for the vanilla / jquery tabs.
+  useEffect(() => {
+    if (!import.meta.hot) return;
+    const reload = () => {
+      for (const id of ['vanilla', 'jquery'] as const) {
+        const el = frameRefs.current[id];
+        if (el) el.src = el.src;
+      }
+    };
+    import.meta.hot.on('everygrid:standalone-updated', reload);
+    return () => import.meta.hot?.off('everygrid:standalone-updated', reload);
+  }, []);
+
   const changeLocale = useCallback((next: Locale) => {
     setLocale(next);
     localStorage.setItem('eg-portal-locale', next);

@@ -254,7 +254,7 @@ export const GridToolbarComponent = ({
         {segmentButton(SortResetIcon, 'reset', I18n.t('toolbar.resetSort'), () => {
           if (sortInfo?.direction) onResetSort();
         }, {active: !!(sortInfo && sortInfo.direction), disabled: gridActionsDisabled || isExporting})}
-        {segmentButton(ColumnsIcon, 'columns', selectColsBtnText, onShowColumnSelector, {disabled: gridActionsDisabled})}
+        {segmentButton(ColumnsIcon, 'columns', selectColsBtnText, onShowColumnSelector, {disabled: gridActionsDisabled || isExporting})}
         {segmentButton(ExcelIcon, 'preview', excelBtnText, onToggleExcelView, {
           active: isExcelViewMode,
         })}

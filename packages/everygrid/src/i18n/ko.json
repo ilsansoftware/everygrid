@@ -36,6 +36,7 @@
     "showAllColumns": "모든 열 보이기",
     "unhide": "보이기",
     "exporting": "내보내는 중… {done}/{total}",
+    "exportingPercent": "내보내는 중… {percent}%",
     "exportPreparing": "내보내는 중…",
     "processing": "처리 중…",
     "sortAsc": "오름차순 정렬",

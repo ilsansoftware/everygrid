@@ -1077,6 +1077,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const controller = new AbortController();
     this._exportControllers.set(containerId, controller);
 
+    // Parent key for relational child sheets: the configured checkbox mapping, else an id-like
+    // field auto-detected from the data (resolved with a sample row at each use site below).
+    const configKey = (Array.isArray(this.options.checkbox) ? this.options.checkbox : [])
+      .find(c => c.id === containerId)?.mapping;
+
     try {
       let total: number;
       let fetchChunk: (page: number, size: number) => Promise<unknown[]>;
@@ -1090,7 +1095,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           render();
           await new Promise(requestAnimationFrame);
           await new Promise(requestAnimationFrame);
-          ExcelView.downloadTableAsExcel(ExcelView.createExcelTable(inMemory, undefined, true), gridId);
+          // Relational export: top-level object arrays go to normalized child sheets (single sheet
+          // when there are none). The on-screen preview is unaffected.
+          const keyField = configKey ?? ExcelView.detectKeyField(inMemory[0]);
+          ExcelView.downloadRelationalExcel(inMemory, gridId, keyField);
           return;
         }
         total = inMemory.length;
@@ -1101,7 +1109,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           ExcelView.downloadExcel([], gridId);
           return;
         }
-        const EXPORT_MAX = 2000000; // memory-safety ceiling for a browser-side export
+        // High ceiling: the worker streams + zip-splits so memory stays bounded regardless of size.
+        const EXPORT_MAX = 20000000;
         if (scope === 'all') {
           // getRawPage ignores the active filter/sort — the complete dataset.
           total = Math.min(await engine.getRawCount(), EXPORT_MAX);
@@ -1111,10 +1120,18 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           total = Math.min(await engine.getTotalCount(), EXPORT_MAX);
           fetchChunk = async (page, size) => (await engine.getPage(page, size)).rows;
         }
+
       }
 
-      onProgress(0, Math.max(1, Math.ceil(total / 200000)));
-      const {bytes, isZip} = await runExcelExport({baseName, total, chunkSize: CHUNK, fetchChunk, onProgress, signal: controller.signal});
+      // Large path (in-memory > SMALL_MAX, or engine/stream). Sample the first page: object arrays
+      // → a relational workbook (parent + one child sheet per array); otherwise a single flat sheet.
+      // Both stream chunk-by-chunk and zip-split in the worker, so memory stays bounded (~one part
+      // file per sheet at a time) even for very large inputs.
+      const firstPage = total > 0 ? await fetchChunk(0, CHUNK) : [];
+      const relational = ExcelView.arrayPaths(firstPage as Record<string, unknown>[]).length > 0;
+      const keyField = configKey ?? ExcelView.detectKeyField(firstPage[0]);
+      onProgress(0, relational ? Math.max(1, Math.ceil(total / CHUNK)) : Math.max(1, Math.ceil(total / 200000)));
+      const {bytes, isZip} = await runExcelExport({baseName, total, chunkSize: CHUNK, fetchChunk, onProgress, signal: controller.signal, relational, keyField});
       ExcelView.triggerDownload(
         bytes,
         isZip ? `${baseName}.zip` : `${baseName}.xlsx`,

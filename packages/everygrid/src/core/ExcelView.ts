@@ -252,6 +252,20 @@ export const ExcelView = {
     return new Uint8Array(out as ArrayBuffer);
   },
 
+  // Build one compressed multi-sheet .xlsx (bytes) from several named row sets — used by the
+  // worker's windowed relational export (a parent slice + its child sheets, per output file).
+  buildMultiSheetXlsx: (sheets: {name: string; rows: Record<string, unknown>[]; front?: string[]}[]): Uint8Array => {
+    const wb = XLSX.utils.book_new();
+    const used = new Set<string>();
+    for (const s of sheets) {
+      const ws = ExcelView.sheetFromRows(s.rows, true, s.front || []);
+      if (ws) XLSX.utils.book_append_sheet(wb, ws, ExcelView.sanitizeSheetName(s.name, used));
+    }
+    if (wb.SheetNames.length === 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[]]), 'Sheet1');
+    const out = XLSX.write(wb, {type: 'array', bookType: 'xlsx', compression: true} as XLSX.WritingOptions);
+    return new Uint8Array(out as ArrayBuffer);
+  },
+
   // Trigger a browser download of raw bytes (main thread only).
   triggerDownload: (bytes: Uint8Array, fileName: string, mime: string) => {
     const blob = new Blob([bytes as unknown as BlobPart], {type: mime});
@@ -268,24 +282,207 @@ export const ExcelView = {
   downloadTableAsExcel: (table: HTMLTableElement, gridId?: string) => {
     const fileName = `everygrid_${gridId || 'export'}_${new Date().getTime()}.xlsx`;
     const wb = XLSX.utils.table_to_book(table);
-
-    // Apply Excel styles (top alignment, word wrap)
-    const sheetName = wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
-
-    for (const key in ws) {
-      if (key.startsWith('!')) {
-        continue;
-      }
-      if (!ws[key].s) ws[key].s = {};
-
-      ws[key].s.alignment = {vertical: 'top', wrapText: true};
-    }
-
+    ExcelView.trimSheet(wb.Sheets[wb.SheetNames[0]]);
+    ExcelView.styleSheet(wb.Sheets[wb.SheetNames[0]]);
     XLSX.writeFile(wb, fileName);
   },
 
-  flattenObjectForExcel: (obj: unknown, prefix = ''): Record<string, unknown> => {
+  // Tighten a sheet's used range (!ref) to the cells that actually hold a value, dropping trailing
+  // empty rows/columns some builders (e.g. table_to_book) leave behind — so viewers don't show a
+  // large empty region hanging off the table. Interior blank cells (ragged data) are kept.
+  trimSheet: (ws: XLSX.WorkSheet | undefined) => {
+    if (!ws || !ws['!ref']) return;
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    let minR = Infinity, minC = Infinity, maxR = -1, maxC = -1;
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const cell = ws[XLSX.utils.encode_cell({r: R, c: C})] as {v?: unknown} | undefined;
+        const v = cell?.v;
+        if (v === undefined || v === null || v === '') continue;
+        if (R < minR) minR = R;
+        if (R > maxR) maxR = R;
+        if (C < minC) minC = C;
+        if (C > maxC) maxC = C;
+      }
+    }
+    if (maxR < 0) return; // no data at all
+    // Drop cell entries outside the tight box.
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        if (R >= minR && R <= maxR && C >= minC && C <= maxC) continue;
+        delete ws[XLSX.utils.encode_cell({r: R, c: C})];
+      }
+    }
+    ws['!ref'] = XLSX.utils.encode_range({s: {r: minR, c: minC}, e: {r: maxR, c: maxC}});
+  },
+
+  // Apply the standard cell style (top-aligned, word-wrapped) to every cell of a sheet.
+  styleSheet: (ws: XLSX.WorkSheet | undefined) => {
+    if (!ws) return;
+    for (const key in ws) {
+      if (key.startsWith('!')) continue;
+      const cell = ws[key] as { s?: { alignment?: unknown } };
+      if (!cell.s) cell.s = {};
+      cell.s.alignment = {vertical: 'top', wrapText: true};
+    }
+  },
+
+  // Excel sheet-name rules: <=31 chars, none of \ / ? * [ ] :, unique within a book.
+  sanitizeSheetName: (name: string, used: Set<string>): string => {
+    const base = (name.replace(/[\\/?*[\]:]/g, '_').slice(0, 31)) || 'Sheet';
+    let candidate = base;
+    let n = 1;
+    while (used.has(candidate.toLowerCase())) {
+      const suffix = `_${n++}`;
+      candidate = base.slice(0, 31 - suffix.length) + suffix;
+    }
+    used.add(candidate.toLowerCase());
+    return candidate;
+  },
+
+  // Paths (as key arrays) to every non-empty array in the record tree, at ANY object depth — the
+  // one-to-many relations that become normalized child sheets (object AND scalar arrays; scalar
+  // elements land in a `_value` column). Walks through plain objects but does NOT descend into an
+  // array's elements (single-level normalization). Key arrays (not '_'-joined strings) so keys
+  // containing '_' stay unambiguous. Union across rows, first-appearance order.
+  arrayPaths: (rows: Record<string, unknown>[]): string[][] => {
+    const paths: string[][] = [];
+    const seen = new Set<string>();
+    const walk = (obj: unknown, prefix: string[]) => {
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+      for (const [key, v] of Object.entries(obj as Record<string, unknown>)) {
+        const path = [...prefix, key];
+        if (Array.isArray(v)) {
+          if (v.length > 0) {
+            const id = JSON.stringify(path);
+            if (!seen.has(id)) { seen.add(id); paths.push(path); }
+          }
+        } else if (v && typeof v === 'object') {
+          walk(v, path);
+        }
+      }
+    };
+    for (const row of rows) walk(row, []);
+    return paths;
+  },
+
+  getAtPath: (obj: unknown, path: string[]): unknown =>
+    path.reduce((o, k) => (o && typeof o === 'object') ? (o as Record<string, unknown>)[k] : undefined, obj),
+
+  // Decompose a structured field value into child-sheet rows (EAV-style): EVERY sub-key becomes a
+  // row keyed by `_key` (its sub-path), scalars go to `_value`, object elements are flattened into
+  // columns, and array position is `_idx`. So {a:'Korean', b:'English', c:['Korean','Japanese']}
+  // yields rows for a, b AND each element of c — not just the array — so the whole column is usable.
+  // `scalarAsKey`: when the field value is itself a bare scalar, put it in `_key` (the field is
+  // "keyed" — it appears as a keyed object elsewhere, e.g. role) instead of `_value` (a plain
+  // value list, e.g. language). Only affects the top-level scalar case.
+  decomposeToRows: (value: unknown, keyPrefix: string, out: Record<string, unknown>[], scalarAsKey = false) => {
+    if (Array.isArray(value)) {
+      value.forEach((el, idx) => {
+        const base: Record<string, unknown> = keyPrefix ? {_key: keyPrefix, _idx: idx} : {_idx: idx};
+        if (el && typeof el === 'object' && !Array.isArray(el)) {
+          out.push({...base, ...ExcelView.flattenObjectForExcel(el, '', true)});
+        } else {
+          out.push({...base, _value: Array.isArray(el) ? JSON.stringify(el) : el});
+        }
+      });
+    } else if (value && typeof value === 'object') {
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        const key = keyPrefix ? `${keyPrefix}_${k}` : k;
+        if (v && typeof v === 'object') {
+          ExcelView.decomposeToRows(v, key, out);
+        } else {
+          out.push({_key: key, _value: v});
+        }
+      }
+    } else if (value !== undefined && value !== null) {
+      // The field value is itself a scalar (a column that is an object/array in some rows but a
+      // plain value in others) — still emit one row so every record is represented. Route it to
+      // `_key` or `_value` per scalarAsKey (see above).
+      out.push(scalarAsKey ? {_key: value} : {_value: value});
+    }
+  },
+
+  // Best-effort parent key when no checkbox mapping is configured: an id-like top-level field.
+  detectKeyField: (record: unknown): string | undefined => {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) return undefined;
+    const keys = Object.keys(record as Record<string, unknown>);
+    return keys.find(k => /^(id|_id|uuid|guid|key|code|no)$/i.test(k)) ?? keys.find(k => /id$/i.test(k));
+  },
+
+  // Reorder a header so `front` columns (that exist) lead, in the given order; the rest keep theirs.
+  orderHeader: (header: string[], front: string[]): string[] => {
+    const set = new Set(front);
+    return [...front.filter(f => header.includes(f)), ...header.filter(h => !set.has(h))];
+  },
+
+  // Build a worksheet from row objects (DOM-free): union header (with `front` columns pulled to the
+  // left) + (optionally dense) aoa, trimmed and styled. Returns null for an empty row set.
+  sheetFromRows: (rows: Record<string, unknown>[], dense = false, front: string[] = []): XLSX.WorkSheet | null => {
+    if (rows.length === 0) return null;
+    const header = ExcelView.orderHeader(ExcelView.unionHeader(rows), front);
+    const aoa = rows.map(row => header.map(k => { const v = row[k]; return v === undefined ? '' : v; }));
+    const ws = XLSX.utils.aoa_to_sheet([header, ...aoa], dense ? DENSE : undefined);
+    ExcelView.trimSheet(ws);
+    ExcelView.styleSheet(ws);
+    return ws;
+  },
+
+  // Append one child sheet per depth-1 field that contains structured (array/object) data. Each
+  // parent record's whole field value is decomposed (see decomposeToRows) — every sub-key becomes a
+  // row (scalars in _value, object elements flattened, array position in _idx), keyed by _key —
+  // linked back by _mainSheetRowNum with the parent key filled down.
+  appendChildSheets: (
+    wb: XLSX.WorkBook, records: Record<string, unknown>[], paths: string[][],
+    keyField: string | undefined, used: Set<string>, dense = false,
+  ) => {
+    const fields = new Set(paths.map(p => p[0]));
+    for (const field of fields) {
+      // "Keyed" field: appears as a plain (keyed) object in some record → a bare scalar value of
+      // this field is a key (e.g. role: "Developer"), not a plain value (e.g. language: "Korean").
+      const keyed = records.some(r => {
+        const v = r[field];
+        return !!v && typeof v === 'object' && !Array.isArray(v);
+      });
+      const childRows: Record<string, unknown>[] = [];
+      records.forEach((r, i) => {
+        const val = r[field];
+        if (val === undefined || val === null) return;
+        // Fill-down the parent key so each child row shows which parent it belongs to.
+        const keyCol = (keyField && r[keyField] !== undefined) ? {[keyField]: r[keyField]} : {};
+        const rows: Record<string, unknown>[] = [];
+        ExcelView.decomposeToRows(val, '', rows, keyed);
+        for (const row of rows) childRows.push({_mainSheetRowNum: i + 1, ...keyCol, ...row});
+      });
+      const ws = ExcelView.sheetFromRows(childRows, dense, ['_mainSheetRowNum', '_idx']);
+      if (ws) XLSX.utils.book_append_sheet(wb, ws, ExcelView.sanitizeSheetName(field, used));
+    }
+  },
+
+  // Relational export with a RICH main sheet (the DOM table: merged headers, inline arrays). Best
+  // for small/medium in-memory grids. Main sheet + one child sheet per structured field; child rows
+  // link back via _mainSheetRowNum. No structured fields → an ordinary single-sheet export.
+  downloadRelationalExcel: (rows: unknown[], gridId?: string, keyField?: string) => {
+    const records = rows as Record<string, unknown>[];
+    const paths = ExcelView.arrayPaths(records);
+    if (paths.length === 0) {
+      ExcelView.downloadExcel(rows, gridId);
+      return;
+    }
+    // Parent: the ORIGINAL records kept intact (object arrays inline). No synthetic row-number
+    // column — children reference the parent by its own key / sheet row position.
+    const wb = XLSX.utils.table_to_book(ExcelView.createExcelTable(records, undefined, true));
+    ExcelView.trimSheet(wb.Sheets[wb.SheetNames[0]]);
+    ExcelView.styleSheet(wb.Sheets[wb.SheetNames[0]]);
+    ExcelView.appendChildSheets(wb, records, paths, keyField, new Set(wb.SheetNames.map(n => n.toLowerCase())));
+    XLSX.writeFile(wb, `everygrid_${gridId || 'export'}_${new Date().getTime()}.xlsx`);
+  },
+
+
+  // `deep`: when true, nested objects are flattened into `parent_child` columns to ANY depth
+  // (used by child sheets, the analysis surface) instead of collapsing a complex object into one
+  // formatObject cell. Object arrays are still one cell either way (single-level normalization).
+  flattenObjectForExcel: (obj: unknown, prefix = '', deep = false): Record<string, unknown> => {
     const flattened: Record<string, unknown> = {};
     if (obj === null || obj === undefined) {
       return flattened;
@@ -307,18 +504,9 @@ export const ExcelView = {
             if (isSimpleArray) {
               flattened[propName] = value.map(item => item === '' ? '""' : String(item)).join(', ');
             } else {
-              flattened[propName] = value.map(item => {
-                if (typeof item === 'object' && item !== null) {
-                  const flat = ExcelView.flattenObjectForExcel(item);
-                  if (Object.keys(flat).length === 0) {
-                    return '{}';
-                  }
-                  return Object.entries(flat).map(([k, v]) => {
-                    return `${k}: ${v === '' ? '""' : String(v)}`;
-                  }).join('\n');
-                }
-                return item === '' ? '""' : item;
-              }).join('\n');
+              // Array of objects → the shared YAML-list renderer, so it looks identical whether the
+              // array sits at the top level (here) or nested under a complex object (via formatObject).
+              flattened[propName] = ExcelView.formatObject(value);
             }
           }
         } else if (typeof value === 'object' && value !== null) {
@@ -327,10 +515,10 @@ export const ExcelView = {
           } else {
             const typedValue = value as Record<string, unknown>;
             const isComplex = Object.values(typedValue).some(v => typeof v === 'object' && v !== null);
-            if (isComplex) {
+            if (isComplex && !deep) {
               flattened[propName] = ExcelView.formatObject(value);
             } else {
-              const nested = ExcelView.flattenObjectForExcel(value, propName);
+              const nested = ExcelView.flattenObjectForExcel(value, propName, deep);
               Object.assign(flattened, nested);
             }
           }
@@ -366,17 +554,22 @@ export const ExcelView = {
         }).join(', ')}`;
       }
       return obj.map(item => {
+        // YAML list style: each element starts with a "- " bullet so element boundaries are clear.
+        const dash = `${MARKER.repeat(indent)}- `;
         if (typeof item !== 'object' || item === null) {
           const val = String(item);
-          return `${MARKER.repeat(indent)}${item === '' ? '""' : val}`;
+          return `${dash}${item === '' ? '""' : val}`;
         }
         if (Array.isArray(item) && item.length === 0) {
-          return `${MARKER.repeat(indent)}[]`;
+          return `${dash}[]`;
         }
         if (typeof item === 'object' && Object.keys(item).length === 0) {
-          return `${MARKER.repeat(indent)}{}`;
+          return `${dash}{}`;
         }
-        return ExcelView.formatObject(item, indent);
+        // Render the element one level deeper, then swap its first line's indent for the bullet so
+        // its fields line up under the dash.
+        const rendered = ExcelView.formatObject(item, indent + 1);
+        return dash + rendered.slice(MARKER.repeat(indent + 1).length);
       }).join('\n');
     }
 
@@ -385,37 +578,30 @@ export const ExcelView = {
       return `${MARKER.repeat(indent)}{}`;
     }
 
-    const isComplex = entries.some(([, v]) => typeof v === 'object' && v !== null && (Array.isArray(v) ? v.length > 0 : Object.keys(v).length > 0));
-
-    if (isComplex) {
-      const lines: string[] = [];
-      for (const [key, value] of entries) {
-        if (typeof value === 'object' && value !== null) {
-          if (Array.isArray(value)) {
-            if (value.length === 0) {
-              lines.push(`${MARKER.repeat(indent)}${key}: []`);
-            } else if (value.every(v => typeof v !== 'object' || v === null)) {
-              lines.push(`${MARKER.repeat(indent)}${key}: ${value.map(v => v === '' ? '""' : String(v)).join(', ')}`);
-            } else {
-              lines.push(`${MARKER.repeat(indent)}${key}\n${ExcelView.formatObject(value, indent + 1)}`);
-            }
-          } else if (Object.keys(value).length === 0) {
-            lines.push(`${MARKER.repeat(indent)}${key}: {}`);
+    // One "key: value" per line at every depth — flat objects included — so a nested object never
+    // collapses onto a single comma-joined line (which was hard to read for multi-field records).
+    const lines: string[] = [];
+    for (const [key, value] of entries) {
+      if (typeof value === 'object' && value !== null) {
+        if (Array.isArray(value)) {
+          if (value.length === 0) {
+            lines.push(`${MARKER.repeat(indent)}${key}: []`);
+          } else if (value.every(v => typeof v !== 'object' || v === null)) {
+            lines.push(`${MARKER.repeat(indent)}${key}: ${value.map(v => v === '' ? '""' : String(v)).join(', ')}`);
           } else {
             lines.push(`${MARKER.repeat(indent)}${key}\n${ExcelView.formatObject(value, indent + 1)}`);
           }
+        } else if (Object.keys(value).length === 0) {
+          lines.push(`${MARKER.repeat(indent)}${key}: {}`);
         } else {
-          const val = String(value);
-          lines.push(`${MARKER.repeat(indent)}${key}: ${value === '' ? '""' : val}`);
+          lines.push(`${MARKER.repeat(indent)}${key}\n${ExcelView.formatObject(value, indent + 1)}`);
         }
+      } else {
+        const val = String(value);
+        lines.push(`${MARKER.repeat(indent)}${key}: ${value === '' ? '""' : val}`);
       }
-      return lines.join('\n');
-    } else {
-      return `${MARKER.repeat(indent)}` + entries.map(([k, v]) => {
-        const val = String(v);
-        return `${k}: ${v === '' ? '""' : val}`;
-      }).join(', ');
     }
+    return lines.join('\n');
   },
 
   getExcelRows: (data: unknown[]): Record<string, unknown>[] => {

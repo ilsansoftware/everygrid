@@ -60,6 +60,17 @@ function everygridStandaloneSrc() {
         res.setHeader('Content-Type', 'text/html');
         res.end(readFileSync(file, 'utf-8').replaceAll(SRC_PLACEHOLDER, DEV_STANDALONE_URL));
       });
+
+      // The html demos load the standalone via a plain <script> in an iframe — outside vite's
+      // module graph, so HMR can't touch them. Watch the file the library's --watch build rewrites
+      // and push a custom event; App reloads the affected iframes (see App.tsx). React-demo-like
+      // hot-swap for the vanilla / jquery tabs.
+      server.watcher.add(LOCAL_STANDALONE);
+      server.watcher.on('change', (file) => {
+        if (path.resolve(file) === LOCAL_STANDALONE) {
+          server.ws.send({ type: 'custom', event: 'everygrid:standalone-updated' });
+        }
+      });
     },
     closeBundle() {
       const cdn = process.env.EVERYGRID_CDN ?? CDN_STANDALONE;

@@ -21,8 +21,11 @@ export function runExcelExport(opts: {
   fetchChunk: (page: number, size: number) => Promise<unknown[]>;
   onProgress?: (done: number, total: number) => void;
   signal?: AbortSignal;
+  // Relational: parent sheet + a child sheet per object array, streamed and zipped in the worker.
+  relational?: boolean;
+  keyField?: string;
 }): Promise<ExportResult> {
-  const {baseName, total, chunkSize, fetchChunk, onProgress, signal} = opts;
+  const {baseName, total, chunkSize, fetchChunk, onProgress, signal, relational, keyField} = opts;
   const expectedFiles = Math.max(1, Math.ceil(total / ROWS_PER_FILE));
 
   return new Promise<ExportResult>((resolve, reject) => {
@@ -62,7 +65,7 @@ export function runExcelExport(opts: {
     worker.onerror = (err) => finish(() => reject(err instanceof ErrorEvent ? err.error : err));
 
     (async () => {
-      worker.postMessage({type: 'init', baseName, expectedFiles});
+      worker.postMessage({type: 'init', baseName, expectedFiles, relational, keyField});
       const totalPages = Math.max(1, Math.ceil(total / chunkSize));
       for (let page = 0; page < totalPages; page++) {
         if (settled) return;
@@ -72,6 +75,9 @@ export function runExcelExport(opts: {
         const acked = new Promise<void>((res, rej) => { ackResolve = res; ackReject = rej; });
         worker.postMessage({type: 'chunk', rows});
         await acked;
+        // Relational builds no part files until the end, so drive progress by chunks consumed
+        // (single-sheet mode reports its own file-based progress from the worker instead).
+        if (relational) onProgress?.(page + 1, totalPages);
       }
       if (!settled) worker.postMessage({type: 'end'});
     })().catch(err => finish(() => reject(err)));
