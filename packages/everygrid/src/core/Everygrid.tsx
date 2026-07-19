@@ -307,7 +307,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         //    which an encoded Content-Length is not — see _decodedLength.
         const contentLength = Everygrid._decodedLength(res);
         const declaredLength = contentLength || Number(res.headers.get('Content-Length') ?? NaN);
-        const isLarge = !isNaN(declaredLength) && declaredLength >= 50 * 1024 * 1024;
+        // Stream when known-large OR when size is unknown (no comparable length header): a
+        // buffered res.json() on an unmeasured-but-large payload spikes memory (whole parse +
+        // deep-copy for originalData + setData clone) and freezes the tab. Streaming is safe
+        // for small payloads too — it just shows the indexing UI briefly. contentLength===0
+        // makes _streamJsonToWasm fall back to a "rows ingested" count instead of a fake %.
+        const isLarge = isNaN(declaredLength) || declaredLength >= 50 * 1024 * 1024;
         if (isLarge) {
           await Everygrid._streamJsonToWasm(this, targetId, res.body, contentLength).catch(err => {
             console.warn('Everygrid: streaming load failed for', targetId, err);
@@ -1034,7 +1039,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // the WASM engine, so we pull it in chunks and stream it into the workbook — the full dataset is
   // never materialised in memory at once. Reflects the current filter/sort (the engine already
   // holds that state from the last render).
-  public async exportExcel(containerId: string): Promise<void> {
+  /** Aborts an in-flight worker export for this grid; the export's finally clears state + re-renders. */
+  public cancelExport(containerId: string): void {
+    this._exportControllers.get(containerId)?.abort();
+  }
+
+  public async exportExcel(containerId: string, scope: 'filtered' | 'all' = 'filtered'): Promise<void> {
     const gridId = containerId;
     const SMALL_MAX = 50000;
     const CHUNK = 50000;
@@ -1047,12 +1057,16 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       render();
     };
 
+    // JS-resident rows (normal grids / JS stream rows), if any. For scope 'filtered' the
+    // current filter+sort is applied here; 'all' takes the raw set. Large WASM-only grids
+    // have no JS copy — they fall to the engine branch below.
     const inMemory = ((): unknown[] | null => {
-      const data = this.options.data as unknown[] | undefined;
-      if (data && data.length > 0) return data;
-      const streamRows = this._streamRows.get(containerId);
-      if (streamRows && streamRows.length > 0) return streamRows;
-      return null;
+      const data = this.options.data as Record<string, unknown>[] | undefined;
+      const rawData = (data && data.length > 0)
+        ? data
+        : (this._streamRows.get(containerId) ?? null);
+      if (!rawData || rawData.length === 0) return null;
+      return scope === 'filtered' ? this._applyStreamFilter(containerId, rawData) : rawData;
     })();
 
     const baseName = `everygrid_${gridId}_${new Date().getTime()}`;
@@ -1068,8 +1082,14 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       let fetchChunk: (page: number, size: number) => Promise<unknown[]>;
 
       if (inMemory) {
-        // Small enough: the rich DOM path (array expansion / merged cells), no worker/overlay.
+        // Small enough: the rich DOM path (array expansion / merged cells). The build runs
+        // synchronously on the main thread, so — like the worker path — show the loading pill
+        // (total:0 = indeterminate) and yield two frames so React can paint it before the freeze.
         if (inMemory.length <= SMALL_MAX) {
+          this.exportState.set(containerId, {done: 0, total: 0});
+          render();
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
           ExcelView.downloadTableAsExcel(ExcelView.createExcelTable(inMemory, undefined, true), gridId);
           return;
         }
@@ -1082,9 +1102,15 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           return;
         }
         const EXPORT_MAX = 2000000; // memory-safety ceiling for a browser-side export
-        total = Math.min(await engine.getTotalCount(), EXPORT_MAX);
-        // getPage reads the engine's current (already filtered/sorted) result, page by page.
-        fetchChunk = async (page, size) => (await engine.getPage(page, size)).rows;
+        if (scope === 'all') {
+          // getRawPage ignores the active filter/sort — the complete dataset.
+          total = Math.min(await engine.getRawCount(), EXPORT_MAX);
+          fetchChunk = async (page, size) => (await engine.getRawPage(page, size)).rows;
+        } else {
+          // getPage reads the engine's current (already filtered/sorted) result, page by page.
+          total = Math.min(await engine.getTotalCount(), EXPORT_MAX);
+          fetchChunk = async (page, size) => (await engine.getPage(page, size)).rows;
+        }
       }
 
       onProgress(0, Math.max(1, Math.ceil(total / 200000)));
@@ -1734,4 +1760,3 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this._wasmDataLoaded.clear();
   }
 }
-

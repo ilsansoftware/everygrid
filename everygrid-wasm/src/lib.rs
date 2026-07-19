@@ -1100,6 +1100,24 @@ impl GridEngine {
         Ok(JsValue::from_str(&json_str))
     }
 
+    /// A page of the raw (unfiltered, unsorted) dataset, ignoring any active filter/sort.
+    /// Used by "export all" so a filtered view can still download the complete data.
+    /// Serialized as a JSON array string, same shape as get_page.
+    pub fn get_raw_page(&self, page: usize, page_size: usize) -> Result<JsValue, JsError> {
+        if page_size == 0 {
+            return Ok(JsValue::from_str("[]"));
+        }
+        let start = page * page_size;
+        let total = self.raw_data.len();
+        if start >= total {
+            return Ok(JsValue::from_str("[]"));
+        }
+        let end = (start + page_size).min(total);
+        let rows: Vec<&RowData> = self.raw_data[start..end].iter().collect();
+        let json_str = serde_json::to_string(&rows).map_err(|e| JsError::new(&e.to_string()))?;
+        Ok(JsValue::from_str(&json_str))
+    }
+
     pub fn get_page_indices(&self, page: usize, page_size: usize) -> Vec<usize> {
         if page_size == 0 {
             return Vec::new();

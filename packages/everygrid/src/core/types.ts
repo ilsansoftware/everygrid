@@ -136,7 +136,8 @@ export interface IEverygrid<T extends Record<string, unknown>> {
 
   getDataFields(containerId: string): string[];
 
-  exportExcel(containerId: string): Promise<void>;
+  exportExcel(containerId: string, scope?: 'filtered' | 'all'): Promise<void>;
+  cancelExport(containerId: string): void;
 
   getEditableFields(containerId: string): string[];
 

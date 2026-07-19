@@ -54,7 +54,9 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
 
   // Progress-pill text shown in the toolbar's search slot (undefined = show the search box).
   const statusText = (isExporting && exportState)
-    ? I18n.t('grid.exporting', {done: exportState.done, total: exportState.total})
+    ? (exportState.total > 0
+        ? I18n.t('grid.exporting', {done: exportState.done, total: exportState.total})
+        : I18n.t('grid.exportPreparing'))
     : isProcessing
       ? I18n.t('grid.processing')
       : isIndexing
@@ -62,6 +64,12 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             ? I18n.t('toolbar.indexingRows', {count: (grid._streamTotal?.get(containerId) ?? 0).toLocaleString()})
             : I18n.t('toolbar.indexingPercent', {percent: indexingProgress}))
         : undefined;
+
+  // Cancel is only meaningful for the abortable worker export (total > 0); the small
+  // synchronous DOM path (total === 0) blocks the main thread and can't be aborted.
+  const onCancelExport = (isExporting && exportState && exportState.total > 0)
+    ? () => grid.cancelExport(containerId)
+    : undefined;
 
   const displayItems = grid.getDisplayItems(containerId, items);
   const columns = grid.getColumns(containerId, items);
@@ -95,11 +103,14 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           isExcelViewMode={grid.isExcelViewMode}
           isExporting={isExporting}
           statusText={statusText}
+          onCancelExport={onCancelExport}
           onToggleExcelView={() => grid.toggleExcelViewMode(container)}
           onResetWidths={() => grid.resetColumnWidths(container)}
           onShowColumnSelector={() => grid.showColumnSelector(dataFields, container)}
           onShowHiddenColumnSelector={() => grid.showHiddenColumnSelector(container)}
-          onDownloadExcel={() => { void grid.exportExcel(containerId); }}
+          onDownloadExcel={(scope) => { void grid.exportExcel(containerId, scope); }}
+          filteredCount={streamTotal}
+          allCount={streamTotalRaw}
           // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
           onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
           isReloading={grid._reloading?.get(containerId) ?? false}
@@ -137,13 +148,16 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
               gridTitle={gridTitle}
               isExporting={isExporting}
               statusText={statusText}
+              onCancelExport={onCancelExport}
               hasCustomWidths={currentWidths.size > 0}
               isExcelViewMode={grid.isExcelViewMode}
               onToggleExcelView={() => grid.toggleExcelViewMode(container)}
               onResetWidths={() => grid.resetColumnWidths(container)}
               onShowColumnSelector={() => grid.showColumnSelector(dataFields, container)}
               onShowHiddenColumnSelector={() => grid.showHiddenColumnSelector(container)}
-              onDownloadExcel={() => { void grid.exportExcel(containerId); }}
+              onDownloadExcel={(scope) => { void grid.exportExcel(containerId, scope); }}
+              filteredCount={streamTotal}
+              allCount={streamTotalRaw}
               // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
               onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
               isReloading={grid._reloading?.get(containerId) ?? false}

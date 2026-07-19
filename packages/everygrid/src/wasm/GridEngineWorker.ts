@@ -22,6 +22,7 @@ export type WorkerRequest =
   | { id: string; seq: number; cmd: 'filterAndSort'; text: string; col: string; asc: boolean }
   | { id: string; seq: number; cmd: 'filterSortAndGetPage'; text: string; col: string; asc: boolean; page: number; pageSize: number }
   | { id: string; seq: number; cmd: 'getPage'; page: number; pageSize: number }
+  | { id: string; seq: number; cmd: 'getRawPage'; page: number; pageSize: number }
   | { id: string; seq: number; cmd: 'getTotalCount' }
   | { id: string; seq: number; cmd: 'getRawCount' }
   | { id: string; seq: number; cmd: 'buildIndex' }
@@ -262,6 +263,15 @@ function executeCommand(req: WorkerRequest): unknown {
         const raw = engine.get_page(req.page, req.pageSize);
         const rows: unknown[] = typeof raw === 'string' ? JSON.parse(raw) : (raw as unknown[]);
         const total = engine.get_total_count();
+        result = { rows, total };
+        break;
+      }
+
+      case 'getRawPage': {
+        const engine = getEngine(id);
+        const raw = engine.get_raw_page(req.page, req.pageSize);
+        const rows: unknown[] = typeof raw === 'string' ? JSON.parse(raw) : (raw as unknown[]);
+        const total = engine.get_raw_count();
         result = { rows, total };
         break;
       }

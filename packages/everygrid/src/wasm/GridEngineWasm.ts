@@ -170,6 +170,13 @@ export class GridEngineWasm {
     return result as { rows: unknown[]; total: number };
   }
 
+  /** Returns a page of the raw (unfiltered) rows plus the raw total — used by "export all". */
+  async getRawPage(page: number, pageSize: number): Promise<{ rows: unknown[]; total: number }> {
+    const req = { id: this.engineId, cmd: 'getRawPage' as const, page, pageSize };
+    const result = await this.send(req);
+    return result as { rows: unknown[]; total: number };
+  }
+
   /** Returns the filtered row count. */
   async getTotalCount(): Promise<number> {
     const result = await this.send({ id: this.engineId, cmd: 'getTotalCount' });

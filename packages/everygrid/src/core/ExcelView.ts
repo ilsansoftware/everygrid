@@ -343,7 +343,10 @@ export const ExcelView = {
   },
 
   formatObject: (obj: unknown, indent = 0): string => {
-    const MARKER = '_ ';
+    // Indent with non-breaking spaces (U+00A0): preserved in the pre-wrap preview AND in the
+    // .xlsx cell value (not an ASCII space, so nothing trims/collapses it), and — unlike the old
+    // '_ ' marker — it renders as clean whitespace that can't be mistaken for real data.
+    const MARKER = '  ';
     if (obj === null || obj === undefined) {
       return 'null';
     }
