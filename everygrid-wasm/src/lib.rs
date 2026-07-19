@@ -148,7 +148,20 @@ impl FieldVal {
     fn as_cmp_string(&self) -> Option<String> {
         match self {
             FieldVal::Str(s) => Some(s.to_lowercase()),
+            // Enables operator compares on booleans: `active(==true)`, `active(!=false)`.
+            FieldVal::Bool(b) => Some(b.to_string()),
             _ => None,
+        }
+    }
+
+    /// String form for regex matching (`~pattern`); nested JSON matches against its raw text.
+    fn regex_str(&self) -> String {
+        match self {
+            FieldVal::Str(s) => s.to_string(),
+            FieldVal::Num(n) => num_to_str(*n),
+            FieldVal::Bool(b) => b.to_string(),
+            FieldVal::Json(t) => t.to_string(),
+            FieldVal::Null => String::new(),
         }
     }
 
@@ -289,6 +302,14 @@ impl RowData {
         self.fields
             .iter()
             .find(|(k, _)| k.as_ref() == col)
+            .map(|(_, v)| v)
+    }
+
+    /// Case-insensitive column lookup (used by the filter so `role` matches a `Role` column).
+    fn get_ci(&self, col: &str) -> Option<&FieldVal> {
+        self.fields
+            .iter()
+            .find(|(k, _)| k.as_ref().eq_ignore_ascii_case(col))
             .map(|(_, v)| v)
     }
 
@@ -462,6 +483,36 @@ impl Interner {
 /// Split `input` on `sep`, but only at parenthesis depth 0, so '&&'/'||' inside a `col(...)`
 /// group are not treated as top-level separators. `sep`, '(' and ')' are all ASCII, so byte
 /// scanning never lands mid-UTF-8-char.
+/// Split an expression on AND boundaries at paren depth 0: both `&&` and a `.` that immediately
+/// follows a `)` (the sibling-key chain, e.g. `subRole(front).years(=1)`). A `.` inside a value or
+/// parens (e.g. `email(a.b)`, `salary(>3.14)`) is NOT a boundary.
+fn split_and(input: &str) -> Vec<String> {
+    let bytes = input.as_bytes();
+    let mut parts = Vec::new();
+    let mut depth: i32 = 0;
+    let mut start = 0usize;
+    let mut i = 0usize;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'(' => { depth += 1; i += 1; }
+            b')' => { if depth > 0 { depth -= 1; } i += 1; }
+            _ if depth == 0 && bytes[i..].starts_with(b"&&") => {
+                parts.push(input[start..i].to_string());
+                i += 2;
+                start = i;
+            }
+            b'.' if depth == 0 && i > 0 && bytes[i - 1] == b')' => {
+                parts.push(input[start..i].to_string());
+                i += 1;
+                start = i;
+            }
+            _ => i += 1,
+        }
+    }
+    parts.push(input[start..].to_string());
+    parts
+}
+
 fn split_top_level(input: &str, sep: &str) -> Vec<String> {
     let bytes = input.as_bytes();
     let sep_bytes = sep.as_bytes();
@@ -492,6 +543,7 @@ enum CmpOp {
     Gt,
     Ge,
     Eq,
+    Ne,
 }
 
 impl CmpOp {
@@ -503,6 +555,7 @@ impl CmpOp {
             CmpOp::Gt => ord == Greater,
             CmpOp::Ge => ord != Less,
             CmpOp::Eq => ord == Equal,
+            CmpOp::Ne => ord != Equal,
         }
     }
 }
@@ -542,6 +595,7 @@ fn range_cmp(field: &str, operand: &str, op: CmpOp) -> bool {
         CmpOp::Lt => field < operand,
         CmpOp::Le => field < operand || field.starts_with(operand),
         CmpOp::Gt => field > operand && !field.starts_with(operand),
+        CmpOp::Ne => !field.starts_with(operand),
     }
 }
 
@@ -590,11 +644,63 @@ fn json_leaf_cmp(v: &Value, op: CmpOp, val: &CmpVal) -> bool {
     }
 }
 
+/// True if any string/number/bool leaf inside a nested JSON value matches the regex.
+fn json_leaf_regex(v: &Value, re: &regex_lite::Regex) -> bool {
+    match v {
+        Value::Array(a) => a.iter().any(|x| json_leaf_regex(x, re)),
+        Value::Object(m) => m.values().any(|x| json_leaf_regex(x, re)),
+        Value::String(s) => re.is_match(s),
+        Value::Number(n) => re.is_match(&n.to_string()),
+        Value::Bool(b) => re.is_match(&b.to_string()),
+        Value::Null => false,
+    }
+}
+
+/// True if any leaf value inside a nested JSON value contains `term` (already lowercased).
+fn json_leaf_contains(v: &Value, term: &str) -> bool {
+    match v {
+        Value::Array(a) => a.iter().any(|x| json_leaf_contains(x, term)),
+        Value::Object(m) => m.values().any(|x| json_leaf_contains(x, term)),
+        Value::String(s) => str_contains_ci(s, term),
+        Value::Number(n) => n.to_string().contains(term),
+        Value::Bool(b) => b.to_string().contains(term),
+        Value::Null => false,
+    }
+}
+
+/// Case-insensitive object key lookup (so `engineering` matches a key stored as `Engineering`).
+fn ci_get<'a>(m: &'a serde_json::Map<String, Value>, name: &str) -> Option<&'a Value> {
+    m.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v)
+}
+
+/// Scope into field `name` (case-insensitive) of a JSON value, then evaluate `inner` against the
+/// child. When the child is an ARRAY, `inner` is evaluated PER ELEMENT (match if any element
+/// satisfies it as a whole) — this gives correlated predicates: `engineering(subRole(front) &&
+/// years(>2))` means "an engineering element whose subRole has 'front' AND years > 2".
+fn eval_field_value(name: &str, inner: &ColExpr, v: &Value) -> bool {
+    match v {
+        Value::Object(m) => match ci_get(m, name) {
+            Some(Value::Array(a)) => a.iter().any(|e| inner.matches_value(e)),
+            Some(child) => inner.matches_value(child),
+            None => false,
+        },
+        // Field applied to an array (e.g. an array-of-objects) → any element that has the field.
+        Value::Array(a) => a.iter().any(|e| eval_field_value(name, inner, e)),
+        _ => false,
+    }
+}
+
 #[derive(Clone)]
 enum ColExpr {
     Empty,
     Contains(String),
     Cmp(CmpOp, CmpVal),
+    /// Membership: `in[a,b,c]` — equals any of the listed values.
+    In(Vec<CmpVal>),
+    /// Regex match: `~pattern` (regex-lite; add `(?i)` for case-insensitive).
+    Regex(regex_lite::Regex),
+    /// Nested field scope: `name(inner)`. Recurses to any depth; arrays evaluate `inner` per element.
+    Field(String, Box<ColExpr>),
     And(Box<ColExpr>, Box<ColExpr>),
     Or(Box<ColExpr>, Box<ColExpr>),
 }
@@ -615,7 +721,7 @@ impl ColExpr {
     }
 
     fn parse_and(input: &str) -> Self {
-        let mut exprs: Vec<ColExpr> = split_top_level(input, "&&")
+        let mut exprs: Vec<ColExpr> = split_and(input)
             .iter()
             .map(|p| Self::parse_leaf(p))
             .collect();
@@ -643,16 +749,50 @@ impl ColExpr {
         if t.is_empty() {
             return ColExpr::Empty;
         }
+        // Nested field: `name(inner)` (text followed by parens) → scope into that field.
+        if t.ends_with(')') && !t.to_lowercase().starts_with("in(") {
+            if let Some(open) = t.find('(') {
+                if open > 0 {
+                    let name = t[..open].trim().to_string();
+                    let inner = &t[open + 1..t.len() - 1];
+                    return ColExpr::Field(name, Box::new(ColExpr::parse(inner)));
+                }
+            }
+        }
+        // Regex: `~pattern`.
+        if let Some(pat) = t.strip_prefix('~') {
+            let pat = pat.trim();
+            if !pat.is_empty() {
+                return match regex_lite::Regex::new(pat) {
+                    Ok(re) => ColExpr::Regex(re),
+                    Err(_) => ColExpr::Contains(pat.to_lowercase()),
+                };
+            }
+        }
+        // Membership: `in[a,b,c]` or `in(a,b,c)`.
+        let low = t.to_lowercase();
+        if (low.starts_with("in[") && t.ends_with(']')) || (low.starts_with("in(") && t.ends_with(')')) {
+            let inner = &t[3..t.len() - 1];
+            let items: Vec<CmpVal> = inner
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .map(Self::operand)
+                .collect();
+            if !items.is_empty() {
+                return ColExpr::In(items);
+            }
+        }
         // Operator-first: `<40` = "col < 40", `=qa` = "col == qa". Check multi-char ops first.
-        for (op, cmp) in [("<=", CmpOp::Le), (">=", CmpOp::Ge), ("==", CmpOp::Eq), ("<", CmpOp::Lt), (">", CmpOp::Gt), ("=", CmpOp::Eq)] {
+        for (op, cmp) in [("!=", CmpOp::Ne), ("<=", CmpOp::Le), (">=", CmpOp::Ge), ("==", CmpOp::Eq), ("<", CmpOp::Lt), (">", CmpOp::Gt), ("=", CmpOp::Eq)] {
             if let Some(rest) = t.strip_prefix(op) {
                 if !rest.trim().is_empty() {
                     return ColExpr::Cmp(cmp, Self::operand(rest));
                 }
             }
         }
-        // Value-first: `30<=` = "30 <= col" → col >= 30 (operator reversed). `=` is symmetric.
-        for (op, cmp) in [("<=", CmpOp::Ge), (">=", CmpOp::Le), ("==", CmpOp::Eq), ("<", CmpOp::Gt), (">", CmpOp::Lt), ("=", CmpOp::Eq)] {
+        // Value-first: `30<=` = "30 <= col" → col >= 30 (operator reversed). `=`/`!=` are symmetric.
+        for (op, cmp) in [("!=", CmpOp::Ne), ("<=", CmpOp::Ge), (">=", CmpOp::Le), ("==", CmpOp::Eq), ("<", CmpOp::Gt), (">", CmpOp::Lt), ("=", CmpOp::Eq)] {
             if let Some(pre) = t.strip_suffix(op) {
                 if !pre.trim().is_empty() {
                     return ColExpr::Cmp(cmp, Self::operand(pre));
@@ -671,8 +811,31 @@ impl ColExpr {
             ColExpr::Empty => true,
             ColExpr::Contains(s) => v.contains_term(s),
             ColExpr::Cmp(op, val) => v.cmp_matches(*op, val),
+            ColExpr::In(items) => items.iter().any(|val| v.cmp_matches(CmpOp::Eq, val)),
+            ColExpr::Regex(re) => re.is_match(&v.regex_str()),
+            // Descend into a nested field: only possible when the cell holds nested JSON.
+            ColExpr::Field(name, inner) => match v {
+                FieldVal::Json(t) => serde_json::from_str::<Value>(t)
+                    .ok()
+                    .is_some_and(|root| eval_field_value(name, inner, &root)),
+                _ => false,
+            },
             ColExpr::And(a, b) => a.matches(v) && b.matches(v),
             ColExpr::Or(a, b) => a.matches(v) || b.matches(v),
+        }
+    }
+
+    /// Same as `matches` but against a resolved JSON value (nested-field / dotted-path lookup).
+    fn matches_value(&self, v: &Value) -> bool {
+        match self {
+            ColExpr::Empty => true,
+            ColExpr::Contains(s) => json_leaf_contains(v, s),
+            ColExpr::Cmp(op, val) => json_leaf_cmp(v, *op, val),
+            ColExpr::In(items) => items.iter().any(|val| json_leaf_cmp(v, CmpOp::Eq, val)),
+            ColExpr::Regex(re) => json_leaf_regex(v, re),
+            ColExpr::Field(name, inner) => eval_field_value(name, inner, v),
+            ColExpr::And(a, b) => a.matches_value(v) && b.matches_value(v),
+            ColExpr::Or(a, b) => a.matches_value(v) || b.matches_value(v),
         }
     }
 }
@@ -716,7 +879,7 @@ impl FilterExpr {
     }
 
     fn parse_and(input: &str) -> Self {
-        let mut exprs: Vec<FilterExpr> = split_top_level(input, "&&")
+        let mut exprs: Vec<FilterExpr> = split_and(input)
             .iter()
             .map(|p| Self::parse_token(p))
             .collect();
@@ -735,7 +898,7 @@ impl FilterExpr {
             return FilterExpr::Term(String::new());
         }
         // `column(...)` — scope the inner expression to a single column.
-        if t.ends_with(')') {
+        if t.ends_with(')') && !t.to_lowercase().starts_with("in(") {
             if let Some(open) = t.find('(') {
                 if open > 0 {
                     let col = t[..open].trim().to_string();
@@ -744,7 +907,45 @@ impl FilterExpr {
                 }
             }
         }
+        // Un-parenthesized field query: `path op value` (path may be dotted). Requires an operator
+        // so plain text without one stays a free-text term. e.g. `role.subRole == front`, `age >= 30`.
+        if let Some((col, expr)) = Self::parse_unparen(t) {
+            return FilterExpr::Col(col, Box::new(expr));
+        }
         FilterExpr::Term(t.to_lowercase())
+    }
+
+    /// Parse `path <op> value` (no parens). `path` must look like a bare field/dotted path.
+    fn parse_unparen(t: &str) -> Option<(String, ColExpr)> {
+        let is_path = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_');
+        // Longest ops first so `<=`/`>=`/`==`/`!=` win over their single-char prefixes.
+        for op_str in ["!=", "<=", ">=", "==", "~", "<", ">", "="] {
+            if let Some(idx) = t.find(op_str) {
+                let left = t[..idx].trim();
+                let right = t[idx + op_str.len()..].trim();
+                if left.is_empty() || right.is_empty() || !is_path(left) {
+                    continue;
+                }
+                let expr = if op_str == "~" {
+                    match regex_lite::Regex::new(right) {
+                        Ok(re) => ColExpr::Regex(re),
+                        Err(_) => ColExpr::Contains(right.to_lowercase()),
+                    }
+                } else {
+                    let cmp = match op_str {
+                        "!=" => CmpOp::Ne,
+                        "<=" => CmpOp::Le,
+                        ">=" => CmpOp::Ge,
+                        "<" => CmpOp::Lt,
+                        ">" => CmpOp::Gt,
+                        _ => CmpOp::Eq, // "==" | "="
+                    };
+                    ColExpr::Cmp(cmp, ColExpr::operand(right))
+                };
+                return Some((left.to_string(), expr));
+            }
+        }
+        None
     }
 
     fn is_empty(&self) -> bool {
@@ -759,7 +960,10 @@ impl FilterExpr {
     fn matches(&self, row: &RowData) -> bool {
         match self {
             FilterExpr::Term(t) => t.is_empty() || row.contains_term(t),
-            FilterExpr::Col(col, e) => match row.get(col) {
+            // Top-level column (case-insensitive). Handles leaves, nested `field(...)` scopes, and
+            // recursive leaf match on a nested Json column. (Depth is expressed by nesting parens —
+            // `role(engineering(subRole(front)))` — not by dotted paths.)
+            FilterExpr::Col(col, e) => match row.get_ci(col) {
                 Some(v) => e.matches(v),
                 None => false,
             },

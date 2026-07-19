@@ -109,8 +109,8 @@ export default function App() {
     if (!import.meta.hot) return;
     const reload = () => {
       for (const id of ['vanilla', 'jquery'] as const) {
-        const el = frameRefs.current[id];
-        if (el) el.src = el.src;
+        // Same-origin iframe → reload its document to pick up the freshly built standalone bundle.
+        frameRefs.current[id]?.contentWindow?.location.reload();
       }
     };
     import.meta.hot.on('everygrid:standalone-updated', reload);

@@ -26,6 +26,8 @@
     "resetCell": "원래 값으로 복구",
     "reset": "복구",
     "noData": "데이터 또는 설정이 없습니다.",
+    "noRows": "표시할 데이터가 없습니다.",
+    "noResults": "검색 결과가 없습니다.",
     "checkConfig": "설정을 확인하고 그리드를 구성해 주세요.",
     "targetId": "대상 ID",
     "dataPath": "데이터 경로",

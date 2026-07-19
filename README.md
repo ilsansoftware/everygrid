@@ -190,6 +190,45 @@ cross-origin loads that header must also be listed in the bucket's CORS `ExposeH
 
 ---
 
+## Search & filter syntax
+
+The search box runs a small query language against the WASM engine (case-insensitive throughout,
+keys included). Everything composes with `&&` / `||`.
+
+| Form | Meaning | Example |
+|------|---------|---------|
+| `text` | Free text — matches any field at any depth | `frontend` |
+| `field(expr)` | Scope into a field; nest for depth | `role(engineering(subRole(front)))` |
+| `a(x).b(y)` | Sibling keys ANDed **on the same object/array element** | `subRole(front).years(>=2)` |
+| `field(>n)` … | Comparisons: `>` `>=` `<` `<=` `==`/`=` `!=` | `age(>=30)`, `dept(!=HR)` |
+| `field(in[a,b])` | Membership | `dept(in[HR,Design])` |
+| `field(~re)` | Regex (add `(?i)` for case-insensitive) | `email(~@example\.com$)` |
+| `field op value` | Un-parenthesized comparison (single field) | `age >= 30`, `active == true` |
+
+Notes:
+
+- A field scope over an **array** matches when *any* element satisfies it; with the `.` chain the
+  conditions must hold on the **same** element (`role(engineering(subRole(front).years(=1)))`).
+- Booleans work with the operators: `active(==true)`, `active(!=false)`.
+- The search box **autocompletes keys** for the current scope (top-level fields first, then the
+  selected field's sub-keys), colours parenthesis pairs by depth, and highlights the bracket next to
+  the caret. Enter runs the search; Shift+Enter inserts a newline.
+
+## Excel export
+
+The toolbar's export button downloads the grid as `.xlsx`:
+
+- **Filtered vs All** — when a filter is active the button offers both scopes (with row counts);
+  otherwise it downloads directly.
+- **Nested arrays → child sheets** — object arrays are exported as normalized child sheets linked to
+  the main sheet by `_mainSheetRowNum` (with `_key` / `_idx` for the sub-path and position), so the
+  data stays analysable in Excel/Power Query. Scalar nested objects flatten into `parent_child`
+  columns.
+- **Large data** — built off the main thread in a worker, streamed and zip-split so even multi-GB
+  grids export without freezing the UI; the progress badge shows a percentage and a **Cancel**.
+
+---
+
 ## Other APIs
 
 ```ts

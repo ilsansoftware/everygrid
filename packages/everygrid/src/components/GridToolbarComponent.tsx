@@ -1,20 +1,23 @@
 import {I18n} from '../i18n/I18n';
 import type {KeyboardEvent, ReactElement} from 'react';
-import {useEffect, useRef, useState} from 'react';
+import type {KeyTree} from '../core/types';
+import {useEffect, useLayoutEffect, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 import {ReloadIcon} from '../icons/ReloadIcon';
 import {ColumnWidthIcon} from '../icons/ColumnWidthIcon';
 import {ColumnsIcon} from '../icons/ColumnsIcon';
 import {ExcelIcon} from '../icons/ExcelIcon';
 import {DownloadIcon} from '../icons/DownloadIcon';
 import {SortResetIcon} from '../icons/SortResetIcon';
-import {ProgressBadge} from './ProgressBadge';
 
 export interface GridToolbarProps {
   isExcelViewMode: boolean;
   /** While an export runs, filter/sort/reload/reset are locked (they'd corrupt the in-flight file). */
   isExporting?: boolean;
-  /** When set (indexing / processing / exporting), a progress pill replaces the search box. */
+  /** When set (indexing / processing / exporting), loading progress shows inside the search box. */
   statusText?: string;
+  /** Numeric progress 0–100 for the loading bar; -1 = indeterminate. */
+  progress?: number;
   /** When set, the progress pill shows a Cancel action (abortable worker export only). */
   onCancelExport?: () => void;
   /** True when any column has a custom width — highlights the width-reset segment. */
@@ -37,6 +40,8 @@ export interface GridToolbarProps {
   sortInfo: { field: string; direction: 'asc' | 'desc' | null } | undefined;
   filterText?: string;
   onFilter?: (text: string) => void;
+  /** Searchable-key tree for the search-box autocomplete (sub-keys per scope). */
+  searchKeys?: KeyTree;
   wasmReady?: boolean;
   gridTitle?: string;
   isIndexing?: boolean;
@@ -46,6 +51,7 @@ export const GridToolbarComponent = ({
                                        isExcelViewMode,
                                        isExporting = false,
                                        statusText,
+                                       progress = -1,
                                        onCancelExport,
                                        hasCustomWidths = false,
                                        onToggleExcelView,
@@ -64,6 +70,7 @@ export const GridToolbarComponent = ({
                                        sortInfo,
                                        filterText = '',
                                        onFilter,
+                                       searchKeys = {},
                                        wasmReady = false,
                                        gridTitle,
                                        isIndexing = false,
@@ -123,20 +130,166 @@ export const GridToolbarComponent = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [exportMenuOpen]);
 
-  // Search runs only on Enter — typing just updates the local input value.
-  const handleFilterChange = (value: string) => {
-    setInputValue(value);
+  const filterRef = useRef<HTMLTextAreaElement>(null);
+  // Key autocomplete: suggestions for the field key being typed at a "key position".
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestIndex, setSuggestIndex] = useState(0);
+  // Caret + focus, for highlighting the bracket pair adjacent to the caret.
+  const [caret, setCaret] = useState(0);
+  const [focused, setFocused] = useState(false);
+  // Screen position for the suggestion dropdown (portalled to <body>), measured after layout.
+  const [dropRect, setDropRect] = useState<{top: number; left: number; width: number} | null>(null);
+
+  // Indices of the bracket pair adjacent to `pos` (checks the char before, then at, the caret).
+  const matchingPair = (text: string, pos: number): [number, number] | null => {
+    const at = (i: number): [number, number] | null => {
+      if (text[i] === '(') {
+        let d = 0;
+        for (let j = i; j < text.length; j++) { if (text[j] === '(') d++; else if (text[j] === ')' && --d === 0) return [i, j]; }
+      } else if (text[i] === ')') {
+        let d = 0;
+        for (let j = i; j >= 0; j--) { if (text[j] === ')') d++; else if (text[j] === '(' && --d === 0) return [j, i]; }
+      }
+      return null;
+    };
+    return at(pos - 1) ?? at(pos);
   };
 
-  const handleFilterKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+  // The identifier word ending at the caret (may be empty right after `(`/`.`), and whether it sits
+  // where a field key is expected (start, or right after `(`, `&`, `|`, `.`). Not a key position →
+  // it's a value inside `(...)`.
+  const keyContext = (value: string, caret: number): {token: string; start: number} | null => {
+    const before = value.slice(0, caret);
+    const token = (before.match(/[\w]*$/) ?? [''])[0];
+    const prev = before.slice(0, before.length - token.length).replace(/\s+$/, '').slice(-1);
+    if (prev !== '' && !'(&|.'.includes(prev)) return null;
+    return {token, start: before.length - token.length};
+  };
+
+  // Field-scope path enclosing the caret: each `name(` pushes name, each `)` pops.
+  const scopePath = (text: string): string[] => {
+    const stack: string[] = [];
+    let word = '';
+    for (const ch of text) {
+      if (/[\w]/.test(ch)) { word += ch; continue; }
+      if (ch === '(') stack.push(word);
+      else if (ch === ')') stack.pop();
+      word = '';
+    }
+    return stack.filter(Boolean);
+  };
+
+  // Walk the key tree down the scope path (case-insensitive). null = unknown path → no suggestions.
+  const navigate = (tree: KeyTree, path: string[]): KeyTree | null => {
+    let node: KeyTree = tree;
+    for (const seg of path) {
+      const k = Object.keys(node).find(key => key.toLowerCase() === seg.toLowerCase());
+      if (k === undefined) return null;
+      node = node[k];
+    }
+    return node;
+  };
+
+  const refreshSuggestions = (value: string, caret: number) => {
+    const ctx = keyContext(value, caret);
+    if (!ctx) { setSuggestions([]); return; }
+    const node = navigate(searchKeys, scopePath(value.slice(0, ctx.start)));
+    // A leaf field (no sub-keys) means we're at a value position → no suggestions.
+    if (!node || Object.keys(node).length === 0) { setSuggestions([]); return; }
+    const tl = ctx.token.toLowerCase();
+    setSuggestions(Object.keys(node).filter(k => k.toLowerCase().includes(tl)).slice(0, 8));
+    setSuggestIndex(0);
+  };
+
+  // Search runs on Enter (Shift+Enter inserts a newline) — typing just updates the local value.
+  const handleFilterChange = (value: string, caret: number) => {
+    setInputValue(value);
+    refreshSuggestions(value, caret);
+  };
+
+  // Replace the token being typed with `key(` (caret placed inside the parens).
+  const applySuggestion = (key: string) => {
+    const el = filterRef.current;
+    const caret = el?.selectionStart ?? inputValue.length;
+    const ctx = keyContext(inputValue, caret);
+    const start = ctx ? ctx.start : caret;
+    const next = inputValue.slice(0, start) + key + '(' + ')' + inputValue.slice(caret);
+    const pos = start + key.length + 1;
+    setInputValue(next);
+    setCaret(pos);
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(pos, pos); });
+    // Immediately offer the inserted field's sub-keys (empty for a leaf → dropdown closes).
+    refreshSuggestions(next, pos);
+  };
+
+  const handleFilterKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (suggestions.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSuggestIndex(i => (i + 1) % suggestions.length); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setSuggestIndex(i => (i - 1 + suggestions.length) % suggestions.length); return; }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); applySuggestion(suggestions[suggestIndex]); return; }
+      if (e.key === 'Escape') { e.preventDefault(); setSuggestions([]); return; }
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onFilter?.(inputValue);
     }
   };
 
+  // Colour each parenthesis by its nesting depth (rainbow brackets) for the overlay behind the
+  // transparent textarea. Non-bracket text keeps the normal colour.
+  const BRACKET_COLORS = ['#e11d48', '#d97706', '#059669', '#2563eb', '#7c3aed'];
+  const renderHighlighted = (text: string, matchSet: Set<number>): ReactElement[] => {
+    const parts: ReactElement[] = [];
+    let depth = 0;
+    let buf = '';
+    const flush = () => { if (buf) { parts.push(<span key={parts.length}>{buf}</span>); buf = ''; } };
+    const bracket = (ch: string, i: number, d: number) => {
+      const matched = matchSet.has(i);
+      parts.push(
+        <span key={parts.length} style={{
+          color: BRACKET_COLORS[d % BRACKET_COLORS.length],
+          ...(matched ? {backgroundColor: '#fde68a', fontWeight: 700, borderRadius: '2px'} : {}),
+        }}>{ch}</span>,
+      );
+    };
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === '(') { flush(); bracket(ch, i, depth); depth++; }
+      else if (ch === ')') { flush(); depth = Math.max(0, depth - 1); bracket(ch, i, depth); }
+      else buf += ch;
+    }
+    flush();
+    return parts;
+  };
+
+  // Auto-grow the search textarea to fit its content (single row when empty).
+  useLayoutEffect(() => {
+    const el = filterRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [inputValue]);
+
+  // Position the suggestion dropdown under the textarea (measured after layout, so no ref reads
+  // during render — the portal uses this state).
+  useLayoutEffect(() => {
+    if (suggestions.length === 0 || !filterRef.current) return;
+    const r = filterRef.current.getBoundingClientRect();
+    setDropRect({top: r.bottom + 4, left: r.left, width: r.width});
+    // Fixed positioning doesn't follow the page, so instead of chasing it, just dismiss on any
+    // scroll (capture: true, to catch scrolling containers too) or resize. Typing brings it back.
+    const dismiss = () => setSuggestions([]);
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    return () => {
+      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('resize', dismiss);
+    };
+  }, [suggestions]);
+
   const handleFilterClear = () => {
     setInputValue('');
+    setSuggestions([]);
     onFilter?.('');
   };
 
@@ -207,37 +360,82 @@ export const GridToolbarComponent = ({
   // Reset Sort Button
   const resetSortBtnText = (sortInfo && sortInfo.direction) ? I18n.t('toolbar.resetSort') : null;
 
-  // While indexing / processing / exporting, a progress pill takes the search box's place.
-  // Otherwise, the search box (filtering locked during export).
-  const filterInput = statusText ? (
-      <ProgressBadge text={statusText} onCancel={onCancelExport}/>
-  ) : (wasmReady && onFilter) ? (
-      <div className="relative flex items-center flex-1 min-w-0 max-w-96">
-        <input
-            type="text"
-            value={inputValue}
-            onChange={e => handleFilterChange(e.target.value)}
-            onKeyDown={handleFilterKeyDown}
-            placeholder={I18n.t('toolbar.filterPlaceholder')}
-            disabled={isExporting}
-            className="pl-7 pr-2 py-1.5 text-xs border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:border-indigo-400 w-full disabled:opacity-50 disabled:cursor-not-allowed"
-        />
-        <svg className="absolute left-2 text-slate-400 pointer-events-none" width="12" height="12"
-             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        {inputValue && (
-            <button
-                className="absolute right-1.5 text-slate-400 hover:text-slate-600 text-xs"
-                onClick={handleFilterClear}
-            >✕</button>
+  // The search box is always the same box; while indexing / processing / exporting it shows loading
+  // progress INSIDE it (a fill bar + spinner + text + cancel) instead of the input.
+  const filterInput = (statusText || (wasmReady && onFilter)) ? (
+      <div className="relative flex-1 min-w-0 max-w-2xl">
+        <div className="relative overflow-hidden rounded border border-slate-200 bg-white focus-within:border-indigo-400">
+          {statusText ? (
+            <div className="relative flex items-center gap-2 px-2 py-1.5 text-xs">
+              {progress >= 0
+                ? <div aria-hidden className="absolute inset-y-0 left-0 bg-indigo-100 transition-[width] duration-200" style={{width: `${progress}%`}}/>
+                : <div aria-hidden className="absolute inset-0 bg-indigo-50 animate-pulse"/>}
+              <div className="relative w-3.5 h-3.5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin shrink-0"/>
+              <span className="relative truncate text-slate-600">{statusText}</span>
+              {onCancelExport && (
+                <button type="button" onClick={onCancelExport}
+                        className="relative ml-auto shrink-0 text-[11px] font-medium text-slate-400 hover:text-red-500">
+                  {I18n.t('popup.cancel')}
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Colour overlay behind the transparent textarea — same metrics so text lines up. */}
+              <div aria-hidden
+                   className="absolute inset-0 pl-7 pr-6 py-1.5 text-xs leading-snug whitespace-pre-wrap break-words text-slate-700 overflow-hidden pointer-events-none">
+                {renderHighlighted(inputValue, new Set(focused ? (matchingPair(inputValue, caret) ?? []) : []))}{'\n'}
+              </div>
+              <textarea
+                  ref={filterRef}
+                  rows={1}
+                  value={inputValue}
+                  onChange={e => handleFilterChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
+                  onKeyDown={handleFilterKeyDown}
+                  onSelect={e => setCaret(e.currentTarget.selectionStart ?? 0)}
+                  onFocus={e => { setFocused(true); setCaret(e.target.selectionStart ?? 0); refreshSuggestions(e.target.value, e.target.selectionStart ?? e.target.value.length); }}
+                  onBlur={() => { setFocused(false); setTimeout(() => setSuggestions([]), 120); }}
+                  placeholder={I18n.t('toolbar.filterPlaceholder')}
+                  className="relative block w-full pl-7 pr-6 py-1.5 text-xs leading-snug bg-transparent text-transparent caret-slate-700 placeholder:text-slate-400 resize-none overflow-hidden focus:outline-none"
+              />
+              <svg className="absolute left-2 top-2 text-slate-400 pointer-events-none" width="12" height="12"
+                   viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              {inputValue && (
+                  <button
+                      className="absolute right-1.5 top-1.5 text-slate-400 hover:text-slate-600 text-xs"
+                      onClick={handleFilterClear}
+                  >✕</button>
+              )}
+            </>
+          )}
+        </div>
+        {/* Portal to <body> with position:fixed so the dropdown floats above the grids instead of
+            being trapped behind them by an ancestor's stacking context / overflow. */}
+        {!statusText && suggestions.length > 0 && dropRect && createPortal(
+          <div
+              style={{position: 'fixed', top: dropRect.top, left: dropRect.left, minWidth: dropRect.width, zIndex: 1000}}
+              className="flex flex-wrap gap-1 rounded-md border border-slate-200 bg-white p-1.5 shadow-lg max-w-[90vw]">
+            {suggestions.map((k, i) => (
+              <button
+                  key={k}
+                  type="button"
+                  // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
+                  onMouseDown={e => { e.preventDefault(); applySuggestion(k); }}
+                  className={`rounded px-2 py-0.5 text-[11px] font-medium ${i === suggestIndex ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              >{k}</button>
+            ))}
+          </div>,
+          document.body,
         )}
       </div>
   ) : null;
 
-  // In Excel preview mode, grid-editing icons (reload/reset/columns) don't apply — disable them.
-  const gridActionsDisabled = isExcelViewMode;
+  // Grid-editing icons don't apply in Excel preview mode or while indexing (data not ready yet) —
+  // disable them, but keep the toolbar itself visible so it doesn't collapse during the skeleton.
+  const gridActionsDisabled = isExcelViewMode || isIndexing;
 
   // All toolbar actions as one outlined, connected segmented group. Preview is highlighted when
   // active; the download/export segment is always shown (disabled while an export is running).
@@ -257,11 +455,12 @@ export const GridToolbarComponent = ({
         {segmentButton(ColumnsIcon, 'columns', selectColsBtnText, onShowColumnSelector, {disabled: gridActionsDisabled || isExporting})}
         {segmentButton(ExcelIcon, 'preview', excelBtnText, onToggleExcelView, {
           active: isExcelViewMode,
+          disabled: isIndexing,
         })}
         {/* No active filter (filtered == all) → nothing to choose, download straight away. */}
         {segmentButton(DownloadIcon, 'export', downloadExcelBtnText,
           () => { if (filteredCount === allCount) onDownloadExcel('all'); else setExportMenuOpen(prev => !prev); },
-          {active: exportMenuOpen, disabled: isExporting})}
+          {active: exportMenuOpen, disabled: isExporting || isIndexing})}
       </div>
   );
 
@@ -290,19 +489,6 @@ export const GridToolbarComponent = ({
         )}
       </div>
   );
-
-  // While indexing a stream grid, hide toolbar buttons and pagination, keep only the title (and indexing progress).
-  if (isIndexing) {
-    return (
-        <div className="everygrid-toolbar" ref={toolbarRef}>
-          {filterInput}
-          {gridTitle && (
-              <span
-                  className="ml-auto text-[11px] font-bold text-slate-500 uppercase tracking-wider">{gridTitle}</span>
-          )}
-        </div>
-    );
-  }
 
   if (isMobile) {
     return (

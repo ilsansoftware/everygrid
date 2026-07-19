@@ -7,6 +7,9 @@ import {GridTableComponent} from './GridTableComponent';
 import {PaginationComponent} from './PaginationComponent';
 import {ExcelViewWrapperComponent} from './ExcelViewComponent';
 import {PinnedTableComponent} from './PinnedTableComponent';
+import {PopupComponent} from './PopupComponent';
+import {NestedTableComponent} from './NestedTableComponent';
+import {makeElementGate} from '../core/highlightUtils';
 import {I18n} from '../i18n/I18n';
 
 export const EverygridComponent = <T extends Record<string, unknown>>({
@@ -71,7 +74,15 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
     ? () => grid.cancelExport(containerId)
     : undefined;
 
+  // Numeric progress (0–100) for the in-search-box loading bar; -1 = indeterminate.
+  const progress = (isExporting && exportState)
+    ? (exportState.total > 0 ? Math.min(100, Math.round((exportState.done / exportState.total) * 100)) : -1)
+    : isProcessing ? -1
+      : isIndexing ? indexingProgress
+        : -1;
+
   const displayItems = grid.getDisplayItems(containerId, items);
+  const searchKeys = grid.getSearchKeys(containerId, displayItems);
   const columns = grid.getColumns(containerId, items);
   const dataFields = grid.getDataFields(containerId);
   const currentWidths = grid.getCurrentWidths(containerId);
@@ -103,6 +114,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           isExcelViewMode={grid.isExcelViewMode}
           isExporting={isExporting}
           statusText={statusText}
+          progress={progress}
           onCancelExport={onCancelExport}
           onToggleExcelView={() => grid.toggleExcelViewMode(container)}
           onResetWidths={() => grid.resetColumnWidths(container)}
@@ -121,6 +133,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           sortInfo={grid.sortConfig.get(containerId)}
           filterText={grid.filterText}
           onFilter={(text) => grid.setFilter(text, container)}
+          searchKeys={searchKeys}
           wasmReady={grid.wasmReady}
         />
       </div>
@@ -138,49 +151,39 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   return (
     <div className="everygrid-wrapper relative bg-white overflow-hidden flex flex-col border-b border-slate-200 pb-2">
       <div className="flex-1 flex flex-col min-h-0 pt-0">
-        {/* `|| isIndexing`: the toolbar hosts the progress bar, so it has to be up for the
-            whole indexing window — including before a single row exists. Gating on row counts
-            alone hid it until the first chunk landed, which on reload (page cache and totals
-            cleared on the click) left the grid showing nothing but its title for ~1s. */}
-        {items && (items.length > 0 || streamTotalRaw > 0 || isIndexing) ? (
-          <div className="everygrid-toolbar-container px-2 shrink-0">
-            <GridToolbarComponent
-              gridTitle={gridTitle}
-              isExporting={isExporting}
-              statusText={statusText}
-              onCancelExport={onCancelExport}
-              hasCustomWidths={currentWidths.size > 0}
-              isExcelViewMode={grid.isExcelViewMode}
-              onToggleExcelView={() => grid.toggleExcelViewMode(container)}
-              onResetWidths={() => grid.resetColumnWidths(container)}
-              onShowColumnSelector={() => grid.showColumnSelector(dataFields, container)}
-              onShowHiddenColumnSelector={() => grid.showHiddenColumnSelector(container)}
-              onDownloadExcel={(scope) => { void grid.exportExcel(containerId, scope); }}
-              filteredCount={streamTotal}
-              allCount={streamTotalRaw}
-              // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
-              onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
-              isReloading={grid._reloading?.get(containerId) ?? false}
-              onReset={() => grid.reset(container)}
-              onResetSort={() => grid.resetSort(container)}
-              hasChanges={grid.checkHasChanges()}
-              hiddenFields={grid.hiddenFieldsMap.get(containerId) || new Set()}
-              sortInfo={grid.sortConfig.get(containerId)}
-              filterText={grid.filterText}
-              onFilter={(text) => grid.setFilter(text, container)}
-              wasmReady={grid.wasmReady}
-              isIndexing={isIndexing}
-            />
-          </div>
-        ) : gridTitle ? (
-          <div className="px-3 py-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 bg-white">
-            {gridTitle}
-          </div>
-        ) : (
-          <div className="shrink-0">
-            <EmptyGridPlaceholder targetId={containerId}/>
-          </div>
-        )}
+        {/* The toolbar is always up (even for an empty/skeleton grid) — it hosts the search box,
+            title and the loading progress; the empty state lives in the body below. */}
+        <div className="everygrid-toolbar-container px-2 shrink-0">
+          <GridToolbarComponent
+            gridTitle={gridTitle}
+            isExporting={isExporting}
+            statusText={statusText}
+            progress={progress}
+            onCancelExport={onCancelExport}
+            hasCustomWidths={currentWidths.size > 0}
+            isExcelViewMode={grid.isExcelViewMode}
+            onToggleExcelView={() => grid.toggleExcelViewMode(container)}
+            onResetWidths={() => grid.resetColumnWidths(container)}
+            onShowColumnSelector={() => grid.showColumnSelector(dataFields, container)}
+            onShowHiddenColumnSelector={() => grid.showHiddenColumnSelector(container)}
+            onDownloadExcel={(scope) => { void grid.exportExcel(containerId, scope); }}
+            filteredCount={streamTotal}
+            allCount={streamTotalRaw}
+            // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
+            onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
+            isReloading={grid._reloading?.get(containerId) ?? false}
+            onReset={() => grid.reset(container)}
+            onResetSort={() => grid.resetSort(container)}
+            hasChanges={grid.checkHasChanges()}
+            hiddenFields={grid.hiddenFieldsMap.get(containerId) || new Set()}
+            sortInfo={grid.sortConfig.get(containerId)}
+            filterText={grid.filterText}
+            onFilter={(text) => grid.setFilter(text, container)}
+            searchKeys={searchKeys}
+            wasmReady={grid.wasmReady}
+            isIndexing={isIndexing}
+          />
+        </div>
 
         {!isIndexing && pagination && pagination.active !== false && (pagination.position === 'top' || pagination.position === 'all') && (
           <div className="everygrid-pagination-top shrink-0">
@@ -201,6 +204,10 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
         {isIndexing ? (
           <div className="relative w-full flex-1 min-h-0 overflow-hidden">
             <EmptyGridPlaceholder targetId={containerId} indexing/>
+          </div>
+        ) : (items.length === 0 && streamTotalRaw === 0) ? (
+          <div className="relative w-full flex-1 min-h-0 overflow-hidden">
+            <EmptyGridPlaceholder targetId={containerId}/>
           </div>
         ) : (
           <div
@@ -235,6 +242,15 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
                 isExporting={isExporting}
               />
             </div>
+            {/* Columns exist but no rows to show — an empty result (filtered out) or an empty
+                dataset. Overlaid on the body so the header stays visible. */}
+            {displayItems.length === 0 && !isProcessing && (
+              <div className="absolute inset-0 top-8 flex flex-col items-center justify-center gap-1 text-slate-400 pointer-events-none bg-slate-50/30">
+                <span className="text-sm font-medium italic">
+                  {grid.filterText ? I18n.t('grid.noResults') : I18n.t('grid.noRows')}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -253,6 +269,17 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
         )}
       </div>
       {grid.activePopup && createPortal(grid.activePopup, document.body)}
+      {/* Nested-table popup built here so it uses the CURRENT filterText (live highlighting). */}
+      {grid.activePopupData && createPortal(
+        <PopupComponent onClose={() => grid.closePopup()} title={I18n.t('popup.detailTitle')} data={grid.activePopupData.data}>
+          <NestedTableComponent
+            data={grid.activePopupData.data}
+            filterText={grid.filterText}
+            elementGate={makeElementGate(grid.activePopupRow ?? grid.activePopupData.data, grid.filterText)}
+          />
+        </PopupComponent>,
+        document.body,
+      )}
     </div>
   );
 };

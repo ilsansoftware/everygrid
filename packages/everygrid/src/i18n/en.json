@@ -26,6 +26,8 @@
     "resetCell": "Reset to original value",
     "reset": "Reset",
     "noData": "No data or configuration found.",
+    "noRows": "No data to display.",
+    "noResults": "No matching results.",
     "checkConfig": "Please check your configuration and set up the grid.",
     "targetId": "Target ID",
     "dataPath": "Data Path",

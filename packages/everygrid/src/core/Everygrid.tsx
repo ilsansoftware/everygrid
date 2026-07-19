@@ -8,7 +8,6 @@ import {ColumnSelectorComponent} from '../components/ColumnSelectorComponent';
 import {HiddenColumnSelectorComponent} from '../components/HiddenColumnSelectorComponent';
 import {I18n} from '../i18n/I18n';
 import React from 'react';
-import {NestedTableComponent} from '../components/NestedTableComponent';
 import {PopupComponent} from '../components/PopupComponent';
 import {TextEditorPopupComponent} from '../components/TextEditorPopupComponent';
 import {createRoot, type Root} from 'react-dom/client';
@@ -18,6 +17,7 @@ import {
   type GridPaginationConfig,
   type GridTargetConfig,
   type IEverygrid,
+  type KeyTree,
   type ServerFetchParams,
 } from './types';
 
@@ -42,7 +42,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public sortConfig: Map<string, { field: string; direction: 'asc' | 'desc' | null }> = new Map();
   public columnWidths: Map<string, Map<string, number>> = new Map(); // Manages column widths per targetId
   public activeEditFields: Map<string, Set<string>> = new Map();
+  // Cache of the searchable-key tree per target, for the search autocomplete. See getSearchKeys.
+  private _searchKeysCache: Map<string, KeyTree> = new Map();
   public activePopup: React.ReactNode | null = null;
+  // Nested-table popup data. Stored (not pre-built) so the popup is assembled at render time with
+  // the CURRENT filterText — highlighting stays live if the filter changes while it is open.
+  public activePopupData: {data: unknown} | null = null;
   public activePopupRow: unknown | null = null;
   public activePopupRowKey: string | null = null;
   private originalData: T[] = [];
@@ -336,6 +341,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private async _setRows(targetId: string, rows: Record<string, unknown>[]): Promise<void> {
     this._streamRows.delete(targetId);
     this._streamUrl.delete(targetId);
+    this._searchKeysCache.delete(targetId); // recompute autocomplete keys for the new data
     (this.options as { data: unknown[] }).data = rows;
     // The rows just fetched are the new baseline — edits made against the previous load no
     // longer have anything to compare to, so drop them rather than leave stale "modified"
@@ -601,6 +607,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   public closePopup() {
     this.activePopup = null;
+    this.activePopupData = null;
     this.activePopupRow = null;
     this.activePopupRowKey = null;
     const {targets} = this.options;
@@ -793,7 +800,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Show loading indicator after 150ms delay only when filter/sort is active (avoids flicker for fast ops)
     let processingTimer: ReturnType<typeof setTimeout> | undefined;
     if (hasFilterOrSort && !suppressProcessing) {
+      // Cancel a timer left by a prior (superseded) call — otherwise it fires after this call's
+      // finally has cleared _processing, flipping it back on with nothing left to clear it.
+      const prevTimer = this._processingTimer.get(containerId);
+      if (prevTimer !== undefined) clearTimeout(prevTimer);
       processingTimer = setTimeout(() => {
+        // Only the latest call may raise the indicator; a stale timer must not.
+        if (this._filterSeq.get(containerId) !== seq) return;
         this._processing.set(containerId, true);
         const elBefore = document.getElementById(containerId);
         if (elBefore) this.renderGrid(elBefore);
@@ -1032,6 +1045,36 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return this.buildBaseColumns(containerId, items)
       .filter(c => c.type !== 'data_checkbox')
       .map(c => c.field);
+  }
+
+  // A TREE of searchable keys (all depths) built from a data sample — used by the search box's
+  // autocomplete so it can suggest only the sub-keys valid at the current scope
+  // (`role(engineering(…))` → suggest subRole/years). Arrays merge their elements' keys into one
+  // node. Cached per target; recomputed when the data changes.
+  public getSearchKeys(containerId: string, fallbackSample?: unknown[]): KeyTree {
+    const cached = this._searchKeysCache.get(containerId);
+    if (cached) return cached;
+    // Sample from whichever source holds JS rows: in-memory data, JS stream rows, or the rows the
+    // caller is rendering (guaranteed present for a visible streamed/WASM-only grid).
+    const data = this.options.data as unknown[] | undefined;
+    const sample = (data && data.length > 0)
+      ? data
+      : (this._streamRows.get(containerId) ?? fallbackSample ?? []);
+    const tree: KeyTree = {};
+    const merge = (v: unknown, node: KeyTree) => {
+      if (Array.isArray(v)) { for (const x of v) merge(x, node); return; }
+      if (v && typeof v === 'object') {
+        for (const [k, child] of Object.entries(v as Record<string, unknown>)) {
+          if (!node[k]) node[k] = {};
+          merge(child, node[k]);
+        }
+      }
+    };
+    for (const r of sample.slice(0, 200)) merge(r, tree);
+    // Cache only a non-empty result — an empty tree means data hasn't arrived yet, so recompute
+    // on the next render instead of getting stuck empty.
+    if (Object.keys(tree).length > 0) this._searchKeysCache.set(containerId, tree);
+    return tree;
   }
 
   // Excel export for the whole dataset, from whichever source holds it. In-memory data (or JS
@@ -1303,15 +1346,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public showPopup(data: unknown, rowData?: unknown) {
     this.activePopupRow = rowData || null;
     this.activePopupRowKey = rowData ? JSON.stringify(rowData) : null;
-    this.activePopup = (
-      <PopupComponent
-        onClose={() => this.closePopup()}
-        title={I18n.t('popup.detailTitle')}
-        data={data}
-      >
-        <NestedTableComponent data={data} filterText={this.filterText}/>
-      </PopupComponent>
-    );
+    // Store data only; EverygridComponent builds the popup with the live filterText each render.
+    this.activePopupData = {data};
+    this.activePopup = null;
     const {targets} = this.options;
     targets?.forEach(idConfig => {
       const id = typeof idConfig === 'string' ? idConfig : idConfig.id;

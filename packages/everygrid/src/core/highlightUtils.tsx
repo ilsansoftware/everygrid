@@ -4,11 +4,13 @@ import React from 'react';
 interface HTerm { term: string; col?: string }
 // A column-scoped comparison (`>`,`<`,`>=`,`<=`); the operand is kept raw (lowercased at test time).
 interface Pred { col: string; op: string; operand: string }
+// A column-scoped regex literal (`~pattern`), highlighted where it matches.
+interface HRegex { pattern: string; col?: string }
 
-// Comparison operators, longest-first so `<=` wins over `<`, `==` over `=`.
-const CMP_OPS = ['<=', '>=', '==', '<', '>', '='];
-// Operator flip for the value-first form (`30<=col` means `col >= 30`).
-const REVERSE: Record<string, string> = { '<': '>', '>': '<', '<=': '>=', '>=': '<=', '=': '=', '==': '==' };
+// Comparison operators, longest-first so `<=` wins over `<`, `==` over `=`, `!=` over `=`.
+const CMP_OPS = ['!=', '<=', '>=', '==', '<', '>', '='];
+// Operator flip for the value-first form (`30<=col` means `col >= 30`). `=`/`!=` are symmetric.
+const REVERSE: Record<string, string> = { '<': '>', '>': '<', '<=': '>=', '>=': '<=', '=': '=', '==': '==', '!=': '!=' };
 
 // Split on a separator only at paren depth 0 — mirrors the WASM grammar's top-level split so
 // `age(<40 && 30<=) && role(qa)` breaks into its real top-level tokens, not on inner `&&`.
@@ -22,9 +24,27 @@ const splitTopLevel = (input: string, sep: string): string[] => {
     else if (c === ')') { if (depth > 0) depth--; }
     else if (depth === 0 && input.startsWith(sep, i)) {
       out.push(input.slice(last, i));
+      // i now sits on the separator's first char; advance past it. `last` must be the first char
+      // AFTER the separator — since the loop's i++ lands i there, that's `i + sep.length`.
       i += sep.length - 1;
-      last = i + sep.length;
+      last = i + 1;
     }
+  }
+  out.push(input.slice(last));
+  return out;
+};
+
+// Split on AND boundaries: `&&`, and a `.` right after `)` (the sibling-key chain
+// `subRole(front).years(=1)`), at paren depth 0 — mirrors the WASM `split_and`.
+const splitAnd = (input: string): string[] => {
+  const out: string[] = [];
+  let depth = 0, last = 0;
+  for (let i = 0; i < input.length; i++) {
+    const c = input[i];
+    if (c === '(') depth++;
+    else if (c === ')') { if (depth > 0) depth--; }
+    else if (depth === 0 && input.startsWith('&&', i)) { out.push(input.slice(last, i)); i++; last = i + 1; }
+    else if (c === '.' && depth === 0 && i > 0 && input[i - 1] === ')') { out.push(input.slice(last, i)); last = i + 1; }
   }
   out.push(input.slice(last));
   return out;
@@ -104,28 +124,61 @@ const objSatisfies = (val: unknown, op: string, operand: string): boolean => {
 
 // ---- query parsing ---------------------------------------------------------------
 
-const extractCol = (inner: string, col: string, terms: HTerm[], preds: Pred[]): void => {
-  for (const raw of splitTopLevel(inner, '||').flatMap(p => splitTopLevel(p, '&&'))) {
+// Classify one leaf (already known not to be a nested `field(...)`) into a highlight term, an
+// `in[...]` member list, a regex, or an ordered comparison. `!=` is skipped (nothing to highlight).
+const classifyLeaf = (leaf: string, col: string | undefined, terms: HTerm[], preds: Pred[], regexes: HRegex[]): void => {
+  if (leaf.startsWith('~')) { const p = leaf.slice(1).trim(); if (p) regexes.push({ pattern: p, col }); return; }
+  const low = leaf.toLowerCase();
+  if ((low.startsWith('in[') && leaf.endsWith(']')) || (low.startsWith('in(') && leaf.endsWith(')'))) {
+    for (const it of leaf.slice(3, -1).split(',').map(s => s.trim()).filter(Boolean)) terms.push({ term: it.toLowerCase(), col });
+    return;
+  }
+  const { op, operand } = parseLeaf(leaf);
+  if (!op) terms.push({ term: leaf.toLowerCase(), col });                 // contains
+  else if (op === '!=') { /* exclusion — nothing to highlight */ }
+  else if (op === '=' || op === '==') { if (operand) terms.push({ term: operand.toLowerCase(), col }); }
+  else if (operand) preds.push({ col: col ?? '', op, operand });         // ordered comparison
+};
+
+// Recurse into an inner expression, descending through nested `field(...)` scopes (keeping the
+// top-level column for scoping) so terms at ANY depth get collected — matching the WASM grammar.
+const extractCol = (inner: string, col: string | undefined, terms: HTerm[], preds: Pred[], regexes: HRegex[]): void => {
+  for (const raw of splitTopLevel(inner, '||').flatMap(p => splitAnd(p))) {
     const leaf = raw.trim();
     if (!leaf) continue;
-    const { op, operand } = parseLeaf(leaf);
-    if (!op) terms.push({ term: leaf.toLowerCase(), col });                 // contains
-    else if (op === '=' || op === '==') { if (operand) terms.push({ term: operand.toLowerCase(), col }); }
-    else if (operand) preds.push({ col, op, operand });                     // ordered comparison
+    const open = (leaf.endsWith(')') && !/^in\(/i.test(leaf)) ? leaf.indexOf('(') : -1;
+    if (open > 0) extractCol(leaf.slice(open + 1, leaf.length - 1), col, terms, preds, regexes);
+    else classifyLeaf(leaf, col, terms, preds, regexes);
   }
 };
 
-const parseQuery = (query: string): { terms: HTerm[]; preds: Pred[] } => {
+// Un-parenthesized `path op value` → (col, remainder) so highlight matches the filter's no-paren form.
+const splitUnparen = (t: string): { col: string; rest: string } | null => {
+  const isPath = (s: string) => s.length > 0 && /^\w+$/.test(s);
+  for (const op of ['!=', '<=', '>=', '==', '~', '<', '>', '=']) {
+    const idx = t.indexOf(op);
+    if (idx <= 0) continue;
+    const left = t.slice(0, idx).trim();
+    const right = t.slice(idx + op.length).trim();
+    if (isPath(left) && right) return { col: left.toLowerCase(), rest: op + right };
+  }
+  return null;
+};
+
+const parseQuery = (query: string): { terms: HTerm[]; preds: Pred[]; regexes: HRegex[] } => {
   const terms: HTerm[] = [];
   const preds: Pred[] = [];
-  for (const raw of splitTopLevel(query, '||').flatMap(p => splitTopLevel(p, '&&'))) {
+  const regexes: HRegex[] = [];
+  for (const raw of splitTopLevel(query, '||').flatMap(p => splitAnd(p))) {
     const t = raw.trim();
     if (!t) continue;
-    const open = t.endsWith(')') ? t.indexOf('(') : -1;
-    if (open > 0) extractCol(t.slice(open + 1, t.length - 1), t.slice(0, open).trim().toLowerCase(), terms, preds);
+    const open = (t.endsWith(')') && !/^in\(/i.test(t)) ? t.indexOf('(') : -1;
+    if (open > 0) { extractCol(t.slice(open + 1, t.length - 1), t.slice(0, open).trim().toLowerCase(), terms, preds, regexes); continue; }
+    const up = splitUnparen(t);
+    if (up) classifyLeaf(up.rest, up.col, terms, preds, regexes);
     else terms.push({ term: t.toLowerCase() });
   }
-  return { terms, preds };
+  return { terms, preds, regexes };
 };
 
 // Terms that apply to a field: global terms + column-scoped terms whose column matches. With no
@@ -135,8 +188,8 @@ const termsForField = (terms: HTerm[], field?: string): string[] => {
   return [...new Set(terms.filter(h => !h.col || f === undefined || h.col === f).map(h => h.term).filter(t => t.length > 0))];
 };
 
-const highlightWithTerms = (text: string, terms: string[]): React.JSX.Element | string => {
-  if (terms.length === 0) return text;
+const highlightWithTerms = (text: string, terms: string[], regexPatterns: string[] = []): React.JSX.Element | string => {
+  if (terms.length === 0 && regexPatterns.length === 0) return text;
   const lower = text.toLowerCase();
   const matches: { start: number; end: number }[] = [];
   for (const term of terms) {
@@ -146,6 +199,15 @@ const highlightWithTerms = (text: string, terms: string[]): React.JSX.Element | 
       if (pos === -1) break;
       matches.push({ start: pos, end: pos + term.length });
       cursor = pos + term.length;
+    }
+  }
+  for (const pattern of regexPatterns) {
+    let re: RegExp;
+    try { re = new RegExp(pattern, 'g'); } catch { continue; }
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      if (m[0].length === 0) { re.lastIndex++; continue; } // avoid zero-width infinite loop
+      matches.push({ start: m.index, end: m.index + m[0].length });
     }
   }
   if (matches.length === 0) return text;
@@ -172,34 +234,169 @@ const highlightWithTerms = (text: string, terms: string[]): React.JSX.Element | 
 
 export const highlightText = (text: string, query: string, field?: string): React.JSX.Element | string => {
   if (!query) return text;
-  const { terms, preds } = parseQuery(query);
-  // A matching ordered comparison highlights the whole cell (the value itself is the match).
-  if (field) {
-    const f = field.toLowerCase();
-    if (preds.some(p => p.col === f && scalarSatisfies(text, p.op, p.operand))) {
-      return <mark className="everygrid-highlight">{text}</mark>;
-    }
+  const { terms, preds, regexes } = parseQuery(query);
+  const f = field?.toLowerCase();
+  // A matching ordered comparison highlights the whole cell (the value itself is the match). With a
+  // known field, scope to that column; in a nested cell (field unknown) apply best-effort — it only
+  // marks when the value actually satisfies the comparison.
+  if (preds.some(p => (f === undefined || p.col === f) && scalarSatisfies(text, p.op, p.operand))) {
+    return <mark className="everygrid-highlight">{text}</mark>;
   }
-  return highlightWithTerms(text, termsForField(terms, field));
+  const regexPatterns = [...new Set(regexes.filter(r => !r.col || f === undefined || r.col === f).map(r => r.pattern))];
+  return highlightWithTerms(text, termsForField(terms, field), regexPatterns);
+};
+
+// ---- correlation-aware element gating (nested-table highlight) --------------------
+// A JS mirror of the WASM filter grammar. Its job: find the ARRAY ELEMENTS that actually satisfy a
+// field-scope's (correlated) inner condition, so a `.`-chained predicate (`subRole(back).years(=4)`)
+// only highlights the element where BOTH held — not every element with years=4.
+
+type QNode =
+  | {t: 'empty'}
+  | {t: 'contains'; v: string}
+  | {t: 'cmp'; op: string; operand: string}
+  | {t: 'in'; items: string[]}
+  | {t: 'regex'; pattern: string}
+  | {t: 'field'; name: string; inner: QNode}
+  | {t: 'and'; items: QNode[]}
+  | {t: 'or'; items: QNode[]};
+
+const parseLeafNode = (tok: string): QNode => {
+  const t = tok.trim();
+  if (!t) return {t: 'empty'};
+  if (t.endsWith(')') && !/^in\(/i.test(t)) {
+    const open = t.indexOf('(');
+    if (open > 0) return {t: 'field', name: t.slice(0, open).trim(), inner: parseNodeExpr(t.slice(open + 1, -1))};
+  }
+  if (t.startsWith('~')) { const p = t.slice(1).trim(); return p ? {t: 'regex', pattern: p} : {t: 'empty'}; }
+  const low = t.toLowerCase();
+  if ((low.startsWith('in[') && t.endsWith(']')) || (low.startsWith('in(') && t.endsWith(')'))) {
+    const items = t.slice(3, -1).split(',').map(s => s.trim()).filter(Boolean).map(s => s.toLowerCase());
+    return items.length ? {t: 'in', items} : {t: 'empty'};
+  }
+  const {op, operand} = parseLeaf(t);
+  return op ? {t: 'cmp', op, operand} : {t: 'contains', v: t.toLowerCase()};
+};
+const parseAndNode = (input: string): QNode => {
+  const items = splitAnd(input).map(parseLeafNode).filter(n => n.t !== 'empty');
+  return items.length === 0 ? {t: 'empty'} : items.length === 1 ? items[0] : {t: 'and', items};
+};
+const parseNodeExpr = (input: string): QNode => {
+  const items = splitTopLevel(input, '||').map(parseAndNode).filter(n => n.t !== 'empty');
+  return items.length === 0 ? {t: 'empty'} : items.length === 1 ? items[0] : {t: 'or', items};
+};
+
+const ciGetVal = (obj: Record<string, unknown>, name: string): unknown => {
+  const k = Object.keys(obj).find(key => key.toLowerCase() === name.toLowerCase());
+  return k === undefined ? undefined : obj[k];
+};
+const leafContains = (v: unknown, term: string): boolean => {
+  if (v === null || v === undefined) return false;
+  if (typeof v === 'string') return v.toLowerCase().includes(term);
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v).toLowerCase().includes(term);
+  if (Array.isArray(v)) return v.some(x => leafContains(x, term));
+  return Object.entries(v as Record<string, unknown>).some(([k, c]) => k.toLowerCase().includes(term) || leafContains(c, term));
+};
+const leafRegex = (v: unknown, re: RegExp): boolean => {
+  if (v === null || v === undefined) return false;
+  if (typeof v === 'string') return re.test(v);
+  if (typeof v === 'number' || typeof v === 'boolean') return re.test(String(v));
+  if (Array.isArray(v)) return v.some(x => leafRegex(x, re));
+  return Object.values(v as Record<string, unknown>).some(x => leafRegex(x, re));
+};
+
+const evalNode = (node: QNode, v: unknown): boolean => {
+  switch (node.t) {
+    case 'empty': return true;
+    case 'contains': return leafContains(v, node.v);
+    case 'cmp': return objSatisfies(v, node.op, node.operand);
+    case 'in': return node.items.some(it => objSatisfies(v, '==', it));
+    case 'regex': { try { return leafRegex(v, new RegExp(node.pattern)); } catch { return false; } }
+    case 'and': return node.items.every(n => evalNode(n, v));
+    case 'or': return node.items.some(n => evalNode(n, v));
+    case 'field': return evalField(node.name, node.inner, v);
+  }
+};
+const evalField = (name: string, inner: QNode, v: unknown): boolean => {
+  if (Array.isArray(v)) return v.some(e => evalField(name, inner, e));
+  if (v && typeof v === 'object') {
+    const child = ciGetVal(v as Record<string, unknown>, name);
+    if (child === undefined) return false;
+    return Array.isArray(child) ? child.some(e => evalNode(inner, e)) : evalNode(inner, child);
+  }
+  return false;
+};
+
+// Record every array element that satisfies a field-scope's inner (the correlated matches).
+const recordMatches = (node: QNode, v: unknown, out: Set<object>): void => {
+  if (node.t === 'and' || node.t === 'or') { node.items.forEach(n => recordMatches(n, v, out)); return; }
+  if (node.t !== 'field') return;
+  const resolve = (val: unknown) => {
+    if (Array.isArray(val)) { val.forEach(resolve); return; }
+    if (!val || typeof val !== 'object') return;
+    const child = ciGetVal(val as Record<string, unknown>, node.name);
+    if (child === undefined) return;
+    if (Array.isArray(child)) {
+      for (const e of child) {
+        if (e && typeof e === 'object' && evalNode(node.inner, e)) out.add(e as object);
+        recordMatches(node.inner, e, out);
+      }
+    } else {
+      recordMatches(node.inner, child, out);
+    }
+  };
+  resolve(v);
+};
+
+// Plain (non-field-scoped) contains/regex terms — highlight any element containing them, so a bare
+// search term still works alongside correlated conditions.
+const collectPlain = (node: QNode, terms: string[], regexes: string[]): void => {
+  switch (node.t) {
+    case 'contains': terms.push(node.v); break;
+    case 'regex': regexes.push(node.pattern); break;
+    case 'in': node.items.forEach(i => terms.push(i)); break;
+    case 'and': case 'or': node.items.forEach(n => collectPlain(n, terms, regexes)); break;
+    default: break; // field → correlation; cmp → handled by pred/correlation
+  }
+};
+
+// Build a gate for nested-table highlighting: an element highlights only if it is a correlated match
+// or contains a plain term. `rootData` should be the whole row so top-level column scopes resolve.
+export const makeElementGate = (rootData: unknown, query: string): (el: unknown) => boolean => {
+  if (!query) return () => true;
+  const root = parseNodeExpr(query);
+  const matched = new Set<object>();
+  recordMatches(root, rootData, matched);
+  const terms: string[] = [];
+  const regexes: string[] = [];
+  const top: QNode[] = [];
+  const flatten = (n: QNode) => { if (n.t === 'and' || n.t === 'or') n.items.forEach(flatten); else top.push(n); };
+  flatten(root);
+  for (const tok of top) collectPlain(tok.t === 'field' ? tok.inner : tok, terms, regexes);
+  const compiled = regexes.map(p => { try { return new RegExp(p); } catch { return null; } }).filter(Boolean) as RegExp[];
+  return (el: unknown) => {
+    if (el && typeof el === 'object' && matched.has(el as object)) return true;
+    if (terms.some(t => leafContains(el, t))) return true;
+    return compiled.some(re => leafRegex(el, re));
+  };
 };
 
 export const objectContainsFilter = (val: unknown, query: string, field?: string): boolean => {
   if (!query) return false;
-  const { terms, preds } = parseQuery(query);
+  const { terms, preds, regexes } = parseQuery(query);
   const f = field?.toLowerCase();
-  if (f !== undefined && preds.some(p => p.col === f && objSatisfies(val, p.op, p.operand))) return true;
+  if (preds.some(p => (f === undefined || p.col === f) && objSatisfies(val, p.op, p.operand))) return true;
   const scoped = termsForField(terms, field);
-  if (scoped.length === 0) return false;
-  const checkTerm = (v: unknown, term: string): boolean => {
+  const scopedRes = regexes.filter(r => !r.col || f === undefined || r.col === f).map(r => r.pattern);
+  if (scoped.length === 0 && scopedRes.length === 0) return false;
+  const compiled = scopedRes.map(p => { try { return new RegExp(p); } catch { return null; } }).filter(Boolean) as RegExp[];
+  const check = (v: unknown): boolean => {
     if (v === null || v === undefined) return false;
-    if (typeof v === 'string') return v.toLowerCase().includes(term);
-    if (typeof v === 'number' || typeof v === 'boolean') return String(v).toLowerCase().includes(term);
-    if (Array.isArray(v)) return v.some(item => checkTerm(item, term));
-    if (typeof v === 'object') {
-      const obj = v as Record<string, unknown>;
-      return Object.entries(obj).some(([k, child]) => k.toLowerCase().includes(term) || checkTerm(child, term));
-    }
+    if (typeof v === 'string') return scoped.some(t => v.toLowerCase().includes(t)) || compiled.some(re => re.test(v));
+    if (typeof v === 'number' || typeof v === 'boolean') { const s = String(v); return scoped.some(t => s.toLowerCase().includes(t)) || compiled.some(re => re.test(s)); }
+    if (Array.isArray(v)) return v.some(check);
+    if (typeof v === 'object') return Object.entries(v as Record<string, unknown>).some(([k, child]) => scoped.some(t => k.toLowerCase().includes(t)) || check(child));
     return false;
   };
-  return scoped.some(term => checkTerm(val, term));
+  return check(val);
 };

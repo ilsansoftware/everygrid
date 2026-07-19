@@ -534,7 +534,7 @@ export const ExcelView = {
     // Indent with non-breaking spaces (U+00A0): preserved in the pre-wrap preview AND in the
     // .xlsx cell value (not an ASCII space, so nothing trims/collapses it), and — unlike the old
     // '_ ' marker — it renders as clean whitespace that can't be mistaken for real data.
-    const MARKER = '  ';
+    const MARKER = '\u00A0\u00A0';
     if (obj === null || obj === undefined) {
       return 'null';
     }
@@ -555,7 +555,7 @@ export const ExcelView = {
       }
       return obj.map(item => {
         // YAML list style: each element starts with a "- " bullet so element boundaries are clear.
-        const dash = `${MARKER.repeat(indent)}- `;
+        const dash = `${MARKER.repeat(indent)}-\u00A0`;
         if (typeof item !== 'object' || item === null) {
           const val = String(item);
           return `${dash}${item === '' ? '""' : val}`;

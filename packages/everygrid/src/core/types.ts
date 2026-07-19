@@ -1,5 +1,8 @@
 import React from 'react';
 
+// Recursive tree of searchable keys (child keys under each key) for search autocomplete.
+export interface KeyTree { [key: string]: KeyTree }
+
 export interface GridTargetConfig {
   id: string;
   title?: string;
@@ -81,6 +84,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   linkFields: Set<string>;
   isExcelViewMode: boolean;
   activePopup: React.ReactNode | null;
+  activePopupData: {data: unknown} | null;
   activePopupRow: unknown | null;
   activePopupRowKey: string | null;
   wasmReady: boolean;
@@ -111,6 +115,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   syncRowHeights(container: HTMLElement): void;
 
   showPopup?(data: unknown, rowData?: unknown): void;
+  closePopup(): void;
 
   showTextPopup?(text: string, rowData?: unknown): void;
 
@@ -135,6 +140,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   getColumns(containerId: string, items: T[]): GridColumn[];
 
   getDataFields(containerId: string): string[];
+  getSearchKeys(containerId: string, fallbackSample?: unknown[]): KeyTree;
 
   exportExcel(containerId: string, scope?: 'filtered' | 'all'): Promise<void>;
   cancelExport(containerId: string): void;
