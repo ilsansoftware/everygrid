@@ -513,6 +513,30 @@ fn split_and(input: &str) -> Vec<String> {
     parts
 }
 
+/// Split on `.` directly following a `)` at depth 0 — the CORRELATED and: `subRole(front).years(3)`
+/// must hold for one and the same array element, where `&&` lets each side match a different one.
+fn split_dot(input: &str) -> Vec<String> {
+    let bytes = input.as_bytes();
+    let mut parts = Vec::new();
+    let mut depth: i32 = 0;
+    let mut start = 0usize;
+    let mut i = 0usize;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'(' => { depth += 1; i += 1; }
+            b')' => { if depth > 0 { depth -= 1; } i += 1; }
+            b'.' if depth == 0 && i > 0 && bytes[i - 1] == b')' => {
+                parts.push(input[start..i].to_string());
+                i += 1;
+                start = i;
+            }
+            _ => i += 1,
+        }
+    }
+    parts.push(input[start..].to_string());
+    parts
+}
+
 fn split_top_level(input: &str, sep: &str) -> Vec<String> {
     let bytes = input.as_bytes();
     let sep_bytes = sep.as_bytes();
@@ -674,13 +698,14 @@ fn ci_get<'a>(m: &'a serde_json::Map<String, Value>, name: &str) -> Option<&'a V
 }
 
 /// Scope into field `name` (case-insensitive) of a JSON value, then evaluate `inner` against the
-/// child. When the child is an ARRAY, `inner` is evaluated PER ELEMENT (match if any element
-/// satisfies it as a whole) — this gives correlated predicates: `engineering(subRole(front) &&
-/// years(>2))` means "an engineering element whose subRole has 'front' AND years > 2".
+/// child. When the child is an ARRAY the two conjunctions differ: `.` is correlated (one element
+/// must satisfy both sides) while `&&` is not (each side may find its own element). So
+/// `engineering(subRole(front).years(3) && subRole(back))` means "one element that is front with
+/// 3 years, AND some element that is back" — see `matches_array`.
 fn eval_field_value(name: &str, inner: &ColExpr, v: &Value) -> bool {
     match v {
         Value::Object(m) => match ci_get(m, name) {
-            Some(Value::Array(a)) => a.iter().any(|e| inner.matches_value(e)),
+            Some(Value::Array(a)) => inner.matches_array(a),
             Some(child) => inner.matches_value(child),
             None => false,
         },
@@ -701,7 +726,10 @@ enum ColExpr {
     Regex(regex_lite::Regex),
     /// Nested field scope: `name(inner)`. Recurses to any depth; arrays evaluate `inner` per element.
     Field(String, Box<ColExpr>),
+    /// `a && b` — over an array, each side may be satisfied by a DIFFERENT element.
     And(Box<ColExpr>, Box<ColExpr>),
+    /// `a.b` — over an array, both sides must hold for the SAME element.
+    Dot(Box<ColExpr>, Box<ColExpr>),
     Or(Box<ColExpr>, Box<ColExpr>),
 }
 
@@ -721,7 +749,22 @@ impl ColExpr {
     }
 
     fn parse_and(input: &str) -> Self {
-        let mut exprs: Vec<ColExpr> = split_and(input)
+        let mut exprs: Vec<ColExpr> = split_top_level(input, "&&")
+            .iter()
+            .map(|p| Self::parse_dot(p))
+            .collect();
+        while exprs.len() > 1 && exprs.last().is_some_and(|e| e.is_empty()) {
+            exprs.pop();
+        }
+        exprs
+            .into_iter()
+            .reduce(|a, b| ColExpr::And(Box::new(a), Box::new(b)))
+            .unwrap_or(ColExpr::Empty)
+    }
+
+    /// `.` binds tighter than `&&` and keeps both sides on the same array element.
+    fn parse_dot(input: &str) -> Self {
+        let mut exprs: Vec<ColExpr> = split_dot(input)
             .iter()
             .map(|p| Self::parse_leaf(p))
             .collect();
@@ -730,7 +773,7 @@ impl ColExpr {
         }
         exprs
             .into_iter()
-            .reduce(|a, b| ColExpr::And(Box::new(a), Box::new(b)))
+            .reduce(|a, b| ColExpr::Dot(Box::new(a), Box::new(b)))
             .unwrap_or(ColExpr::Empty)
     }
 
@@ -820,8 +863,19 @@ impl ColExpr {
                     .is_some_and(|root| eval_field_value(name, inner, &root)),
                 _ => false,
             },
-            ColExpr::And(a, b) => a.matches(v) && b.matches(v),
+            ColExpr::And(a, b) | ColExpr::Dot(a, b) => a.matches(v) && b.matches(v),
             ColExpr::Or(a, b) => a.matches(v) || b.matches(v),
+        }
+    }
+
+    /// Evaluate against an ARRAY child. `&&` and `||` distribute over the array — each operand
+    /// gets the whole array and may match a different element. Everything else (including `.`)
+    /// has to be satisfied by a single element, which is what makes `.` the correlated and.
+    fn matches_array(&self, a: &[Value]) -> bool {
+        match self {
+            ColExpr::And(x, y) => x.matches_array(a) && y.matches_array(a),
+            ColExpr::Or(x, y) => x.matches_array(a) || y.matches_array(a),
+            _ => a.iter().any(|e| self.matches_value(e)),
         }
     }
 
@@ -834,7 +888,7 @@ impl ColExpr {
             ColExpr::In(items) => items.iter().any(|val| json_leaf_cmp(v, CmpOp::Eq, val)),
             ColExpr::Regex(re) => json_leaf_regex(v, re),
             ColExpr::Field(name, inner) => eval_field_value(name, inner, v),
-            ColExpr::And(a, b) => a.matches_value(v) && b.matches_value(v),
+            ColExpr::And(a, b) | ColExpr::Dot(a, b) => a.matches_value(v) && b.matches_value(v),
             ColExpr::Or(a, b) => a.matches_value(v) || b.matches_value(v),
         }
     }
@@ -1640,5 +1694,36 @@ mod cmp_str_ci_tests {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod col_expr_array_tests {
+    use super::ColExpr;
+    use serde_json::json;
+
+    fn matches(query: &str, role: &serde_json::Value) -> bool {
+        ColExpr::parse(query).matches_value(role)
+    }
+
+    /// `&&` over an array is NOT correlated: its sides may be satisfied by different elements.
+    /// `.` is, so it constrains one element. Collapsing the two made the first case unsatisfiable.
+    #[test]
+    fn dot_correlates_within_an_element_and_ampersand_does_not() {
+        let role = json!({"Engineering": [
+            {"subRole": "Frontend", "years": 3},
+            {"subRole": "Backend", "years": 2},
+        ]});
+
+        assert!(matches("Engineering(subRole(front).years(3) && subRole(back))", &role));
+        assert!(matches("Engineering(subRole(front) && subRole(back))", &role));
+        // Correlated: no single element is both front and back.
+        assert!(!matches("Engineering(subRole(front).subRole(back))", &role));
+        // Correlated with the wrong pairing: Backend has 2 years, not 3.
+        assert!(!matches("Engineering(subRole(back).years(3))", &role));
+        assert!(matches("Engineering(subRole(back).years(2))", &role));
+        // Or still matches whichever side holds.
+        assert!(matches("Engineering(subRole(front).years(3) || subRole(nope))", &role));
+        assert!(!matches("Engineering(subRole(nope).years(9) || subRole(other))", &role));
     }
 }

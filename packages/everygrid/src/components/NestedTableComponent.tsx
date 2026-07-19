@@ -7,9 +7,10 @@ interface NestedTableProps {
   depth?: number;
   onShowPopup?: () => void;
   filterText?: string;
-  // Correlation-aware gate: returns true for elements that should be highlighted. Built once at the
-  // popup root (over the whole row) and threaded down so `.`-correlated conditions don't bleed.
-  elementGate?: (el: unknown) => boolean;
+  // Correlation-aware gate: returns the part of the query that holds for an element ('' = none).
+  // Built once at the popup root (over the whole row) and threaded down so a condition only
+  // highlights inside the element it actually matched.
+  elementGate?: (el: unknown) => string;
 }
 
 const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onShowPopup, filterText = '', elementGate}) => {
@@ -33,11 +34,11 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
     return <button className="everygrid-popup-btn" onClick={onShowPopup}>View Details</button>;
   }
 
-  // Element-scoped highlight: within a collection, only elements the gate accepts (a correlated
-  // match, or containing a plain term) get highlighted, so a sibling condition
-  // (`subRole(back).years(=4)`) doesn't bleed onto other elements (e.g. Frontend's years).
-  const gate = elementGate ?? (() => true);
-  const elFilter = (el: unknown): string => (filterText && gate(el)) ? filterText : '';
+  // Element-scoped highlight: each element is highlighted with the sub-query that matched IT, so a
+  // sibling condition (`subRole(back).years(=4)`) doesn't bleed onto other elements — and neither
+  // does the other side of an `||` that this element didn't satisfy.
+  const gate = elementGate ?? ((): string => filterText);
+  const elFilter = (el: unknown): string => (filterText ? gate(el) : '');
 
   if (Array.isArray(data)) {
     // Check if it's an array of objects with identical single key

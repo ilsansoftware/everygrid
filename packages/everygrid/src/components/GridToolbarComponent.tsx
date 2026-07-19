@@ -10,6 +10,9 @@ import {ExcelIcon} from '../icons/ExcelIcon';
 import {DownloadIcon} from '../icons/DownloadIcon';
 import {SortResetIcon} from '../icons/SortResetIcon';
 
+/** Hard cap on the search box: it grows to this many rows, and edits past it are rejected. */
+const MAX_FILTER_ROWS = 10;
+
 export interface GridToolbarProps {
   isExcelViewMode: boolean;
   /** While an export runs, filter/sort/reload/reset are locked (they'd corrupt the in-flight file). */
@@ -131,6 +134,9 @@ export const GridToolbarComponent = ({
   }, [exportMenuOpen]);
 
   const filterRef = useRef<HTMLTextAreaElement>(null);
+  // Last value that fit within the row cap, and the height it had — what an over-long edit reverts to.
+  const acceptedRef = useRef('');
+  const lastHeightRef = useRef(0);
   // Key autocomplete: suggestions for the field key being typed at a "key position".
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestIndex, setSuggestIndex] = useState(0);
@@ -139,6 +145,10 @@ export const GridToolbarComponent = ({
   const [focused, setFocused] = useState(false);
   // Screen position for the suggestion dropdown (portalled to <body>), measured after layout.
   const [dropRect, setDropRect] = useState<{top: number; left: number; width: number} | null>(null);
+  // The search box grew past one row: it floats over the grid, and `rowHeight` holds the layout
+  // space it left behind so the toolbar keeps its height.
+  const [expanded, setExpanded] = useState(false);
+  const [rowHeight, setRowHeight] = useState(0);
 
   // Indices of the bracket pair adjacent to `pos` (checks the char before, then at, the caret).
   const matchingPair = (text: string, pos: number): [number, number] | null => {
@@ -262,12 +272,36 @@ export const GridToolbarComponent = ({
     return parts;
   };
 
-  // Auto-grow the search textarea to fit its content (single row when empty).
+  // Auto-grow the search textarea to fit its content (single row when empty). Past one row the
+  // box is lifted out of the flow (see `expanded` below) so it floats over the grid instead of
+  // pushing it down — a multi-line query shouldn't reflow everything underneath it.
   useLayoutEffect(() => {
     const el = filterRef.current;
     if (!el) return;
+    const cs = getComputedStyle(el);
+    // Row metrics derived rather than hard-coded, so they track the CSS.
+    const line = parseFloat(cs.lineHeight) || 16;
+    const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    const oneRow = line + padY;
+    const maxHeight = line * MAX_FILTER_ROWS + padY;
     el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
+    // Hard cap: rather than scrolling the overflow out of sight, reject the edit that crossed the
+    // limit and put the previous text back. Measuring is the only way to count WRAPPED rows, so the
+    // check has to run after the value is applied — the revert lands in the same frame.
+    if (el.scrollHeight > maxHeight) {
+      const prev = acceptedRef.current;
+      const pos = Math.max(0, Math.min((el.selectionStart ?? prev.length) - (inputValue.length - prev.length), prev.length));
+      el.style.height = `${lastHeightRef.current}px`;
+      setInputValue(prev);
+      requestAnimationFrame(() => el.setSelectionRange(pos, pos));
+      return;
+    }
+    acceptedRef.current = inputValue;
+    const grown = el.scrollHeight;
+    el.style.height = `${grown}px`;
+    lastHeightRef.current = grown;
+    setRowHeight(oneRow);
+    setExpanded(grown > oneRow + 1);
   }, [inputValue]);
 
   // Position the suggestion dropdown under the textarea (measured after layout, so no ref reads
@@ -363,8 +397,11 @@ export const GridToolbarComponent = ({
   // The search box is always the same box; while indexing / processing / exporting it shows loading
   // progress INSIDE it (a fill bar + spinner + text + cancel) instead of the input.
   const filterInput = (statusText || (wasmReady && onFilter)) ? (
-      <div className="relative flex-1 min-w-0 max-w-2xl">
-        <div className="relative overflow-hidden rounded border border-slate-200 bg-white focus-within:border-indigo-400">
+      <div className="relative flex-1 min-w-0 max-w-2xl"
+           // +2 for the box's own borders, which the derived row height doesn't include.
+           style={expanded ? {minHeight: rowHeight + 2} : undefined}>
+        <div className={`overflow-hidden rounded border border-slate-200 bg-white focus-within:border-indigo-400 ${
+            expanded ? 'absolute inset-x-0 top-0 z-200 shadow-lg' : 'relative'}`}>
           {statusText ? (
             <div className="relative flex items-center gap-2 px-2 py-1.5 text-xs">
               {progress >= 0
@@ -466,10 +503,12 @@ export const GridToolbarComponent = ({
 
   // Icon group + the export scope selector (revealed by the download segment). One wrapper ref
   // covers both, so the outside-click handler treats a click on the toggle as "inside".
+  // A zero-row scope has nothing to write — offer it greyed out rather than producing an empty file.
   const scopeButton = (label: string, scope: 'filtered' | 'all', count?: number) => (
       <button
           type="button"
-          className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-indigo-700 hover:bg-indigo-50"
+          disabled={count === 0}
+          className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-indigo-700 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
           onClick={() => { onDownloadExcel(scope); setExportMenuOpen(false); }}
       >
         <span className="text-[11px] font-semibold leading-none">{label}</span>

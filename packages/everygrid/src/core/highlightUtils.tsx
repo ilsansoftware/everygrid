@@ -34,8 +34,24 @@ const splitTopLevel = (input: string, sep: string): string[] => {
   return out;
 };
 
+// Split on a `.` right after `)` at depth 0 — the correlated and (`subRole(front).years(=1)`,
+// both sides on the SAME array element). Mirrors the WASM `split_dot`.
+const splitDot = (input: string): string[] => {
+  const out: string[] = [];
+  let depth = 0, last = 0;
+  for (let i = 0; i < input.length; i++) {
+    const c = input[i];
+    if (c === '(') depth++;
+    else if (c === ')') { if (depth > 0) depth--; }
+    else if (c === '.' && depth === 0 && i > 0 && input[i - 1] === ')') { out.push(input.slice(last, i)); last = i + 1; }
+  }
+  out.push(input.slice(last));
+  return out;
+};
+
 // Split on AND boundaries: `&&`, and a `.` right after `)` (the sibling-key chain
-// `subRole(front).years(=1)`), at paren depth 0 — mirrors the WASM `split_and`.
+// `subRole(front).years(=1)`), at paren depth 0. Used by the flat term extraction, which only
+// needs the leaves and doesn't care which and-flavour separated them.
 const splitAnd = (input: string): string[] => {
   const out: string[] = [];
   let depth = 0, last = 0;
@@ -251,7 +267,9 @@ export const highlightText = (text: string, query: string, field?: string): Reac
 // field-scope's (correlated) inner condition, so a `.`-chained predicate (`subRole(back).years(=4)`)
 // only highlights the element where BOTH held — not every element with years=4.
 
-type QNode =
+// Every node carries the source text it was parsed from, so a match can be reported back as the
+// sub-query that actually held — see makeElementGate.
+type QNode = {src: string} & (
   | {t: 'empty'}
   | {t: 'contains'; v: string}
   | {t: 'cmp'; op: string; operand: string}
@@ -259,31 +277,43 @@ type QNode =
   | {t: 'regex'; pattern: string}
   | {t: 'field'; name: string; inner: QNode}
   | {t: 'and'; items: QNode[]}
-  | {t: 'or'; items: QNode[]};
+  /** `.` — same-element conjunction. Separate from 'and', which distributes over array elements. */
+  | {t: 'dot'; items: QNode[]}
+  | {t: 'or'; items: QNode[]});
 
 const parseLeafNode = (tok: string): QNode => {
   const t = tok.trim();
-  if (!t) return {t: 'empty'};
+  if (!t) return {t: 'empty', src: t};
   if (t.endsWith(')') && !/^in\(/i.test(t)) {
     const open = t.indexOf('(');
-    if (open > 0) return {t: 'field', name: t.slice(0, open).trim(), inner: parseNodeExpr(t.slice(open + 1, -1))};
+    if (open > 0) return {t: 'field', name: t.slice(0, open).trim(), inner: parseNodeExpr(t.slice(open + 1, -1)), src: t};
   }
-  if (t.startsWith('~')) { const p = t.slice(1).trim(); return p ? {t: 'regex', pattern: p} : {t: 'empty'}; }
+  if (t.startsWith('~')) { const p = t.slice(1).trim(); return p ? {t: 'regex', pattern: p, src: t} : {t: 'empty', src: t}; }
   const low = t.toLowerCase();
   if ((low.startsWith('in[') && t.endsWith(']')) || (low.startsWith('in(') && t.endsWith(')'))) {
     const items = t.slice(3, -1).split(',').map(s => s.trim()).filter(Boolean).map(s => s.toLowerCase());
-    return items.length ? {t: 'in', items} : {t: 'empty'};
+    return items.length ? {t: 'in', items, src: t} : {t: 'empty', src: t};
   }
   const {op, operand} = parseLeaf(t);
-  return op ? {t: 'cmp', op, operand} : {t: 'contains', v: t.toLowerCase()};
+  return op ? {t: 'cmp', op, operand, src: t} : {t: 'contains', v: t.toLowerCase(), src: t};
+};
+const parseDotNode = (input: string): QNode => {
+  const items = splitDot(input).map(parseLeafNode).filter(n => n.t !== 'empty');
+  return items.length === 0 ? {t: 'empty', src: input.trim()}
+    : items.length === 1 ? items[0]
+      : {t: 'dot', items, src: input.trim()};
 };
 const parseAndNode = (input: string): QNode => {
-  const items = splitAnd(input).map(parseLeafNode).filter(n => n.t !== 'empty');
-  return items.length === 0 ? {t: 'empty'} : items.length === 1 ? items[0] : {t: 'and', items};
+  const items = splitTopLevel(input, '&&').map(parseDotNode).filter(n => n.t !== 'empty');
+  return items.length === 0 ? {t: 'empty', src: input.trim()}
+    : items.length === 1 ? items[0]
+      : {t: 'and', items, src: input.trim()};
 };
 const parseNodeExpr = (input: string): QNode => {
   const items = splitTopLevel(input, '||').map(parseAndNode).filter(n => n.t !== 'empty');
-  return items.length === 0 ? {t: 'empty'} : items.length === 1 ? items[0] : {t: 'or', items};
+  return items.length === 0 ? {t: 'empty', src: input.trim()}
+    : items.length === 1 ? items[0]
+      : {t: 'or', items, src: input.trim()};
 };
 
 const ciGetVal = (obj: Record<string, unknown>, name: string): unknown => {
@@ -312,24 +342,43 @@ const evalNode = (node: QNode, v: unknown): boolean => {
     case 'cmp': return objSatisfies(v, node.op, node.operand);
     case 'in': return node.items.some(it => objSatisfies(v, '==', it));
     case 'regex': { try { return leafRegex(v, new RegExp(node.pattern)); } catch { return false; } }
-    case 'and': return node.items.every(n => evalNode(n, v));
+    case 'and': case 'dot': return node.items.every(n => evalNode(n, v));
     case 'or': return node.items.some(n => evalNode(n, v));
     case 'field': return evalField(node.name, node.inner, v);
   }
+};
+// Against an ARRAY child, `&&`/`||` distribute (each operand may match its own element) while
+// everything else — `.` included — must be satisfied by a single element. Mirrors the WASM
+// `ColExpr::matches_array`; keeping the two in step is what stops the highlight from disagreeing
+// with the filter.
+const matchesArray = (node: QNode, arr: unknown[]): boolean => {
+  if (node.t === 'and') return node.items.every(n => matchesArray(n, arr));
+  if (node.t === 'or') return node.items.some(n => matchesArray(n, arr));
+  return arr.some(e => evalNode(node, e));
 };
 const evalField = (name: string, inner: QNode, v: unknown): boolean => {
   if (Array.isArray(v)) return v.some(e => evalField(name, inner, e));
   if (v && typeof v === 'object') {
     const child = ciGetVal(v as Record<string, unknown>, name);
     if (child === undefined) return false;
-    return Array.isArray(child) ? child.some(e => evalNode(inner, e)) : evalNode(inner, child);
+    return Array.isArray(child) ? matchesArray(inner, child) : evalNode(inner, child);
   }
   return false;
 };
 
-// Record every array element that satisfies a field-scope's inner (the correlated matches).
-const recordMatches = (node: QNode, v: unknown, out: Set<object>): void => {
-  if (node.t === 'and' || node.t === 'or') { node.items.forEach(n => recordMatches(n, v, out)); return; }
+// The branches that can independently light up an element. `||` obviously splits; `&&` splits too,
+// because its sides may be satisfied by different elements (the row already matched as a whole, so
+// each element shows the conjunct it contributed). `.` never splits — that is the correlated and,
+// and its sides only mean anything together.
+const alternatives = (node: QNode): QNode[] =>
+  node.t === 'or' || node.t === 'and' ? node.items.flatMap(alternatives) : [node];
+
+// Record, per array element, WHICH alternatives of a field-scope's inner it satisfies — not just
+// that it matched. `Engineering(subRole(front).years(3) || subRole(back))` matches the Backend
+// element through `subRole(back)` alone, so only that branch may highlight inside it; carrying the
+// whole query over would light up any 3 it happens to contain.
+const recordMatches = (node: QNode, v: unknown, out: Map<object, Set<string>>): void => {
+  if (node.t === 'and' || node.t === 'or' || node.t === 'dot') { node.items.forEach(n => recordMatches(n, v, out)); return; }
   if (node.t !== 'field') return;
   const resolve = (val: unknown) => {
     if (Array.isArray(val)) { val.forEach(resolve); return; }
@@ -338,7 +387,14 @@ const recordMatches = (node: QNode, v: unknown, out: Set<object>): void => {
     if (child === undefined) return;
     if (Array.isArray(child)) {
       for (const e of child) {
-        if (e && typeof e === 'object' && evalNode(node.inner, e)) out.add(e as object);
+        if (e && typeof e === 'object') {
+          for (const alt of alternatives(node.inner)) {
+            if (!evalNode(alt, e)) continue;
+            const hit = out.get(e as object) ?? new Set<string>();
+            hit.add(alt.src);
+            out.set(e as object, hit);
+          }
+        }
         recordMatches(node.inner, e, out);
       }
     } else {
@@ -360,24 +416,31 @@ const collectPlain = (node: QNode, terms: string[], regexes: string[]): void => 
   }
 };
 
-// Build a gate for nested-table highlighting: an element highlights only if it is a correlated match
-// or contains a plain term. `rootData` should be the whole row so top-level column scopes resolve.
-export const makeElementGate = (rootData: unknown, query: string): (el: unknown) => boolean => {
-  if (!query) return () => true;
+// Build a gate for nested-table highlighting. Returns, for an element, the part of the query that
+// actually holds for it — '' when none does, so the caller highlights nothing. `rootData` should be
+// the whole row so top-level column scopes resolve.
+export const makeElementGate = (rootData: unknown, query: string): (el: unknown) => string => {
+  if (!query) return () => '';
   const root = parseNodeExpr(query);
-  const matched = new Set<object>();
+  const matched = new Map<object, Set<string>>();
   recordMatches(root, rootData, matched);
   const terms: string[] = [];
   const regexes: string[] = [];
   const top: QNode[] = [];
-  const flatten = (n: QNode) => { if (n.t === 'and' || n.t === 'or') n.items.forEach(flatten); else top.push(n); };
+  const flatten = (n: QNode) => { if (n.t === 'and' || n.t === 'or' || n.t === 'dot') n.items.forEach(flatten); else top.push(n); };
   flatten(root);
   for (const tok of top) collectPlain(tok.t === 'field' ? tok.inner : tok, terms, regexes);
   const compiled = regexes.map(p => { try { return new RegExp(p); } catch { return null; } }).filter(Boolean) as RegExp[];
   return (el: unknown) => {
-    if (el && typeof el === 'object' && matched.has(el as object)) return true;
-    if (terms.some(t => leafContains(el, t))) return true;
-    return compiled.some(re => leafRegex(el, re));
+    const parts: string[] = [];
+    if (el && typeof el === 'object') {
+      const hit = matched.get(el as object);
+      if (hit) parts.push(...hit);
+    }
+    // Plain terms aren't scoped to an element, so they stand on their own wherever they appear.
+    for (const t of terms) if (leafContains(el, t)) parts.push(t);
+    for (const re of compiled) if (leafRegex(el, re)) parts.push(`~${re.source}`);
+    return parts.join(' || ');
   };
 };
 
