@@ -31,3 +31,7 @@ everygrid-wasm/target/
 .claude
 .ai
 
+
+# Markdown (keep README only)
+*.md
+!README.md
