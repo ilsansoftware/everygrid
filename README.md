@@ -171,6 +171,7 @@ You can use Everygrid directly in the browser via CDN (no build step required).
 | `editableCols` | `EditableColConfig[]` | Editable column settings per grid |
 | `rowCheckbox` | `GridRowCheckboxConfig[]` | Row checkbox settings per grid |
 | `pagination` | `GridPaginationConfig[]` | Pagination settings per grid |
+| `virtualScroll` | `GridVirtualScrollConfig[]` | Virtual scrolling settings per grid (replaces pagination for that grid) |
 | `colors` | `GridColorConfig[]` | Header/body color settings per grid |
 | `dataCache` | `RequestCache` | `cache` mode for URL data loads. Defaults to `'no-store'` (always re-fetch). Use `'default'` for large, rarely-changing datasets so a reload revalidates instead of re-downloading. |
 
@@ -202,6 +203,82 @@ screen that renders its container later must mount it itself. Prefer `loadConfig
 |-----------|------|---------|-------------|
 | `apiFetchers` | `Record<string, string \| (() => Promise<Row[]>)>` | `{}` | Per target id: a URL to fetch, or a function returning the rows |
 | `entryConfigUrl` | `string` | `'/everygrid.config.json'` | Path to the entry config file |
+
+### Row count placement
+
+Every grid states what it is showing — "Showing 1–5 of 10" — in a band **above and below the
+table**, always, whether or not it has pagination. `rowCount` only decides who draws that line:
+
+```json
+{
+  "pagination": [
+    { "id": "user-grid", "pageSize": 10, "position": "bottom", "rowCount": "inline" }
+  ]
+}
+```
+
+| Value | Layout |
+|-------|--------|
+| `'strip'` *(default)* | The band draws the count itself; pagination bars hold only the page controls |
+| `'inline'` | The pagination bar draws it beside its controls, as before the band existed |
+
+`'inline'` applies only at an end that actually has a pagination bar — where there is none, the
+band draws the count itself, so both ends always carry it. Virtual grids always use `'strip'`,
+having no pagination bar at all.
+
+---
+
+### Virtual scrolling
+
+Renders only the rows in view instead of a page at a time, so one continuous scroll covers the
+whole filtered result. Rows are fetched from the engine in blocks as you scroll; a block that
+hasn't arrived yet shows a placeholder row rather than shifting the scrollbar.
+
+```json
+{
+  "virtualScroll": [
+    {
+      "id": "user-grid",
+      "active": true,
+      "rowHeight": 34,
+      "overscan": 8
+    }
+  ]
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `id` | `string` | — | Target grid id |
+| `active` | `boolean` | `true` | Set `false` to turn it off without removing the entry |
+| `rowHeight` | `number` | `36` | Row height in px. Every row is forced to exactly this |
+| `overscan` | `number` | `6` | Extra rows rendered above and below the viewport |
+| `blockSize` | `number` | `200` | Rows fetched from the engine per request |
+
+**Constraints.** Enabling it for a grid changes a few behaviours, all of them consequences of
+never having more than a screenful of rows in the DOM:
+
+- **Pagination is ignored** for that grid, and its controls are hidden.
+- **Row heights are fixed.** Cells are clipped to `rowHeight`; variable-height rows are not
+  supported in this mode.
+- **The header "select all" checkbox is hidden.** It means "every row rendered right now", which
+  under virtual scrolling is whatever happens to be in the viewport — not a selection anyone
+  asked for. Per-row checkboxes work as usual.
+- **Server-side pagination is not supported** alongside it; `serverSide` pagination wins and
+  virtual scrolling stays off for that grid.
+- **Excel view** previews the head of the current result rather than a page.
+
+The container must have a bounded height — with an auto height there is nothing to overflow and
+every row would render:
+
+```css
+#user-grid { height: 560px; display: flex; flex-direction: column; }
+```
+
+Browsers cap element height (~33.5M px in Chrome), which at the default 36px row is around
+930,000 rows before the scrollbar stops tracking exactly. Lower `rowHeight` to raise the ceiling.
+
+---
 
 ### Serving large datasets
 
@@ -261,6 +338,27 @@ The toolbar's export button downloads the grid as `.xlsx`:
   columns.
 - **Large data** — built off the main thread in a worker, streamed and zip-split so even multi-GB
   grids export without freezing the UI; the progress badge shows a percentage and a **Cancel**.
+
+### Excel preview
+
+The toolbar's preview button swaps the grid for a spreadsheet-shaped rendering of the same data —
+the nested-column layout the export produces — without downloading anything. It takes over the
+grid's own box, so a grid with a fixed height keeps it and the preview scrolls inside.
+
+**It navigates the way the grid does**, so the whole result is reachable either way:
+
+| Grid | Preview |
+|------|---------|
+| Paged | Pages, using that grid's own `pageSize` |
+| Virtual scrolling | Keeps scrolling, appending the next chunk as you near the end |
+| Neither | One page of 50 |
+
+The row count under the table reports what is on screen against the full result — `Showing
+1–50 of 2,000`. Leaving and re-entering the preview returns to the page you were on; changing the
+filter or sort starts again from the top.
+
+A grid sized by its content is capped at `60vh` so a preview of wide, deeply nested rows cannot
+push the page around; it scrolls within the cap. Override with `.everygrid-excel-body`.
 
 ---
 

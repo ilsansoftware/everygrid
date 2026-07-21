@@ -16,6 +16,8 @@
   <main>
     <div id="demo-grid"></div>
     <div id="users"></div>
+    <!-- Virtual scrolling needs a bounded height to scroll inside — see .virtual-host in index.css. -->
+    <div id="virtual-grid" class="virtual-host"></div>
   </main>
 </div>
 <script>
@@ -41,6 +43,27 @@
         return fetch('https://jsonplaceholder.typicode.com/users').then(function (r) {
           return r.json();
         })
+      },
+      // Generated in the page rather than shipped as JSON: 100k rows is ~25 MB on the wire but
+      // costs well under a second to build here. Override with ?rows=500000 to push it.
+      'virtual-grid': function () {
+        var rows = parseInt(new URLSearchParams(location.search).get('rows'), 10) || 100000;
+        var cities = ['Seoul', 'Busan', 'Incheon', 'Daegu', 'Daejeon', 'Gwangju', 'Ulsan'];
+        var teams = ['Platform', 'Growth', 'Payments', 'Data', 'Infra', 'Design'];
+        var out = new Array(rows);
+        for (var i = 0; i < rows; i++) {
+          out[i] = {
+            id: i + 1,
+            name: 'User ' + (i + 1),
+            team: teams[i % teams.length],
+            city: cities[i % cities.length],
+            score: (i * 7919) % 1000,
+            joinedDate: new Date(Date.UTC(2015 + (i % 10), i % 12, (i % 28) + 1))
+              .toISOString().slice(0, 10),
+            active: i % 3 !== 0,
+          };
+        }
+        return Promise.resolve(out);
       },
     },
     './everygrid.config.json'

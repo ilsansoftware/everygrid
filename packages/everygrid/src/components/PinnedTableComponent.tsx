@@ -11,7 +11,7 @@ import {TableCellComponent} from './TableCellComponent';
 interface PinnedTableComponentProps<T extends Record<string, unknown>> {
   instance: IEverygrid<T>;
   columns: GridColumn[];
-  displayItems: T[];
+  displayItems: (T | undefined)[];
   container: HTMLElement;
   containerId: string;
   editableFields: string[];
@@ -20,6 +20,9 @@ interface PinnedTableComponentProps<T extends Record<string, unknown>> {
   filterText?: string;
   isIndexing?: boolean;
   isExporting?: boolean;
+  /** Must match the main table's spacers exactly — that identity is what keeps the two
+   *  tables' rows aligned without any JS height syncing. */
+  virtual?: {topPad: number; bottomPad: number; rowHeight: number};
 }
 
 export const PinnedTableComponent = React.memo(<T extends Record<string, unknown>>({
@@ -33,6 +36,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
                                                                                      isExporting = false,
                                                                                      filterText = '',
                                                                                      isIndexing = false,
+                                                                                     virtual,
                                                                                    }: PinnedTableComponentProps<T>) => {
   const pinnedFields = instance.pinnedColumns;
   const pinnedColumns = columns.filter((col) => pinnedFields.has(col.field));
@@ -86,7 +90,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
   };
 
   return (
-    <div className="z-100 everygrid-pinned-table-container flex flex-col">
+    <div className="z-40 everygrid-pinned-table-container flex flex-col">
       <table
         className={`min-w-0 min-w-none w-auto everygrid-table ${(currentWidths && currentWidths.size > 0) || pinnedColumns.some(c => c.width) ? 'table-fixed' : 'table-auto'}`}>
         <thead>
@@ -123,7 +127,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
                     )}
                     {(() => {
                       const isJsonCol = displayItems.some(item => {
-                        const v = item[col.field];
+                        const v = item?.[col.field];
                         return (typeof v === 'object' && v !== null) ||
                           (typeof v === 'string' && v.trimStart().startsWith('{'));
                       });
@@ -154,11 +158,24 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
         </tr>
         </thead>
         <tbody>
+        {virtual && virtual.topPad > 0 && (
+          <tr className="everygrid-spacer-row" style={{height: `${virtual.topPad}px`}} aria-hidden="true">
+            <td colSpan={pinnedColumns.length}/>
+          </tr>
+        )}
         {displayItems.map((rowData, index) => {
           const rowIndex = startIndex + index;
+          if (rowData === undefined) {
+            return (
+              <tr key={rowIndex} className="everygrid-row-placeholder" style={{height: `${virtual?.rowHeight}px`}}>
+                <td colSpan={pinnedColumns.length}><span/></td>
+              </tr>
+            );
+          }
           const isActiveRow = instance.activePopupRowKey != null && instance.activePopupRowKey === JSON.stringify(rowData);
           return (
             <tr key={rowIndex}
+                style={virtual ? {height: `${virtual.rowHeight}px`} : undefined}
                 className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} ${isActiveRow ? 'is-popup-active' : ''}`}>
               {pinnedColumns.map((col) => (
                 <TableCellComponent
@@ -176,6 +193,11 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
             </tr>
           );
         })}
+        {virtual && virtual.bottomPad > 0 && (
+          <tr className="everygrid-spacer-row" style={{height: `${virtual.bottomPad}px`}} aria-hidden="true">
+            <td colSpan={pinnedColumns.length}/>
+          </tr>
+        )}
         </tbody>
       </table>
     </div>

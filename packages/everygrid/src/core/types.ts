@@ -55,6 +55,31 @@ export interface GridPaginationConfig {
   active?: boolean;
   position?: 'top' | 'bottom' | 'all';
   serverSide?: boolean;
+  /**
+   * Where the "Showing 1–5 of 10" line goes.
+   * - `'strip'` (default) — the band between the toolbar and the table, so it shows even on a
+   *   grid with a single page or no pagination at all.
+   * - `'inline'` — inside the pagination bar, the layout used before that band existed.
+   */
+  rowCount?: 'strip' | 'inline';
+}
+
+/**
+ * Virtual scrolling: renders only the rows in view instead of a whole page.
+ * When active for a target, that target's pagination is ignored (the grid becomes one
+ * continuous scroll over the full filtered result).
+ *
+ * Requires a fixed row height — variable-height rows are not supported in this mode.
+ */
+export interface GridVirtualScrollConfig {
+  id: string;
+  active?: boolean;
+  /** Row height in px. Every row is forced to exactly this. Default 36. */
+  rowHeight?: number;
+  /** Extra rows rendered above and below the viewport. Default 6. */
+  overscan?: number;
+  /** Rows fetched from the engine per request. Default 200. */
+  blockSize?: number;
 }
 
 export interface GridRowCheckboxConfig {
@@ -151,6 +176,16 @@ export interface IEverygrid<T extends Record<string, unknown>> {
 
   getPagination(containerId: string): GridPaginationConfig | undefined;
 
+  /** Resolved virtual-scroll config, or undefined when the target scrolls by pages. */
+  getVirtualScroll(containerId: string): GridVirtualScrollConfig | undefined;
+
+  /**
+   * Rows for the half-open range [start, end) of the current filtered result.
+   * Returns synchronously from the block cache; blocks that are missing come back as `undefined`
+   * holes and are fetched in the background, which re-renders the grid when they land.
+   */
+  getRowsInRange(containerId: string, start: number, end: number): (T | undefined)[];
+
   toggleExcelViewMode(container: HTMLElement): void;
 
   resetColumnWidths(container: HTMLElement): void;
@@ -205,6 +240,7 @@ export interface GridOptions<T = Record<string, unknown>> {
   links?: GridLinkConfig[];
   checkbox?: GridCheckboxConfig[];
   pagination?: GridPaginationConfig | GridPaginationConfig[];
+  virtualScroll?: GridVirtualScrollConfig | GridVirtualScrollConfig[];
   serverFetcher?: (params: ServerFetchParams) => Promise<ServerFetchResult>;
   /**
    * `cache` mode for the fetch that loads a target's data from a URL.

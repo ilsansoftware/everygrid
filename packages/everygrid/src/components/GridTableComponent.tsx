@@ -13,7 +13,8 @@ import {SortUpIcon} from '../icons/SortUpIcon.tsx';
 export interface GridTableProps<T extends Record<string, unknown>> {
   grid: IEverygrid<T>;
   columns: GridColumn[];
-  displayItems: T[];
+  /** In virtual mode a row whose block hasn't arrived yet is `undefined` — render a placeholder. */
+  displayItems: (T | undefined)[];
   container: HTMLElement;
   containerId: string;
   editableFields: string[];
@@ -23,6 +24,8 @@ export interface GridTableProps<T extends Record<string, unknown>> {
   filterText?: string;
   isIndexing?: boolean;
   isExporting?: boolean;
+  /** Set when the target scrolls virtually: spacer heights standing in for the unrendered rows. */
+  virtual?: {topPad: number; bottomPad: number; rowHeight: number};
 }
 
 export const GridTableComponent = React.memo(<T extends Record<string, unknown>>({
@@ -37,20 +40,26 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                                                                                    filterText = '',
                                                                                    isIndexing = false,
                                                                                    isExporting = false,
+                                                                                   virtual,
                                                                                  }: GridTableProps<T>) => {
+  // "Select/check all" means "every row rendered right now". Under virtual scrolling that set is
+  // whatever happens to be in the viewport, which is not a selection anyone asked for — so the
+  // header checkboxes are dropped there rather than given a surprising meaning.
+  const loadedItems = useMemo(() => displayItems.filter((i): i is T => i !== undefined), [displayItems]);
+
   const isAllSelected = useMemo(() => {
-    return displayItems.length > 0 && displayItems.every(item => grid.getSelectedRows(containerId)?.has(item));
-  }, [displayItems, grid, containerId]);
+    return loadedItems.length > 0 && loadedItems.every(item => grid.getSelectedRows(containerId)?.has(item));
+  }, [loadedItems, grid, containerId]);
 
   const isAllChecked = useMemo(() => {
     if (!grid.checkedValues) return false;
     const checkedSet = grid.checkedValues.get(containerId);
-    if (!checkedSet || checkedSet.size === 0 || displayItems.length === 0) return false;
+    if (!checkedSet || checkedSet.size === 0 || loadedItems.length === 0) return false;
     const checkboxCol = columns.find(c => c.type === 'data_checkbox');
     if (!checkboxCol) return false;
     const mappingField = checkboxCol.mapping ?? checkboxCol.field;
-    return displayItems.every(item => checkedSet.has(item[mappingField]));
-  }, [displayItems, grid, containerId, columns]);
+    return loadedItems.every(item => checkedSet.has(item[mappingField]));
+  }, [loadedItems, grid, containerId, columns]);
 
   const handleCheckAll = (checked: boolean) => {
     if (!grid.checkedValues) return;
@@ -59,9 +68,9 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
     const mappingField = checkboxCol.mapping ?? checkboxCol.field;
     const set = grid.checkedValues.get(containerId) ?? new Set();
     if (checked) {
-      displayItems.forEach(item => set.add(item[mappingField]));
+      loadedItems.forEach(item => set.add(item[mappingField]));
     } else {
-      displayItems.forEach(item => set.delete(item[mappingField]));
+      loadedItems.forEach(item => set.delete(item[mappingField]));
     }
     grid.checkedValues.set(containerId, set);
     grid.renderGrid(container);
@@ -70,9 +79,9 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
   const handleSelectAll = (checked: boolean) => {
     const selected = new Set(grid.getSelectedRows(containerId));
     if (checked) {
-      displayItems.forEach(item => selected.add(item));
+      loadedItems.forEach(item => selected.add(item));
     } else {
-      displayItems.forEach(item => selected.delete(item));
+      loadedItems.forEach(item => selected.delete(item));
     }
     grid.setSelectedRows(containerId, selected);
     grid.renderGrid(container);
@@ -166,15 +175,19 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
               >
                 {col.type === 'row_checkbox' ? (
                   <div className="flex justify-center w-full">
-                    <input type="checkbox" className="cursor-pointer" checked={isAllSelected}
-                           disabled={isIndexing || isExporting}
-                           onChange={(e) => handleSelectAll(e.target.checked)}/>
+                    {!virtual && (
+                      <input type="checkbox" className="cursor-pointer" checked={isAllSelected}
+                             disabled={isIndexing || isExporting}
+                             onChange={(e) => handleSelectAll(e.target.checked)}/>
+                    )}
                   </div>
                 ) : col.type === 'data_checkbox' ? (
                   <div className="flex justify-center w-full">
-                    <input type="checkbox" className="cursor-pointer" checked={isAllChecked}
-                           disabled={isIndexing || isExporting}
-                           onChange={(e) => handleCheckAll(e.target.checked)}/>
+                    {!virtual && (
+                      <input type="checkbox" className="cursor-pointer" checked={isAllChecked}
+                             disabled={isIndexing || isExporting}
+                             onChange={(e) => handleCheckAll(e.target.checked)}/>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -227,7 +240,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                         <HideIcon/>
                       </button>
                       {(() => {
-                        const isJsonCol = displayItems.some(item => {
+                        const isJsonCol = loadedItems.some(item => {
                           const v = item[col.field];
                           return (typeof v === 'object' && v !== null) ||
                             (typeof v === 'string' && v.trimStart().startsWith('{'));
@@ -267,11 +280,28 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
         </tr>
         </thead>
         <tbody>
+        {/* Spacer rows stand in for the rows above/below the window. Kept inside the tbody as
+            real <tr>s so table-fixed layout, column widths and the sticky header all keep
+            working — a transform/absolute body would break every one of them. */}
+        {virtual && virtual.topPad > 0 && (
+          <tr className="everygrid-spacer-row" style={{height: `${virtual.topPad}px`}} aria-hidden="true">
+            <td colSpan={gridColumns.length}/>
+          </tr>
+        )}
         {displayItems.map((item, index) => {
           const rowIndex = startIndex + index;
+          if (item === undefined) {
+            // Block still in flight: hold the row's space so the scrollbar doesn't jump.
+            return (
+              <tr key={rowIndex} className="everygrid-row-placeholder" style={{height: `${virtual?.rowHeight}px`}}>
+                <td colSpan={gridColumns.length}><span/></td>
+              </tr>
+            );
+          }
           const isActiveRow = grid.activePopupRowKey != null && grid.activePopupRowKey === JSON.stringify(item);
           return (
             <tr key={rowIndex}
+                style={virtual ? {height: `${virtual.rowHeight}px`} : undefined}
                 className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} ${isActiveRow ? 'is-popup-active' : ''}`}>
               {gridColumns.map((col) => (
                 <TableCellComponent
@@ -289,6 +319,11 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
             </tr>
           );
         })}
+        {virtual && virtual.bottomPad > 0 && (
+          <tr className="everygrid-spacer-row" style={{height: `${virtual.bottomPad}px`}} aria-hidden="true">
+            <td colSpan={gridColumns.length}/>
+          </tr>
+        )}
         </tbody>
       </table>
     </div>

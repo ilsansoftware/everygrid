@@ -16,10 +16,17 @@ import {
   type GridOptions,
   type GridPaginationConfig,
   type GridTargetConfig,
+  type GridVirtualScrollConfig,
   type IEverygrid,
   type KeyTree,
   type ServerFetchParams,
 } from './types';
+
+/** Rows per engine fetch in virtual mode. Big enough that a normal scroll rarely crosses a
+ *  boundary, small enough that a fetch stays imperceptible. */
+const VIRTUAL_BLOCK_SIZE = 200;
+/** Blocks kept per grid before the oldest are evicted (200 × 60 = 12k rows). */
+const VIRTUAL_BLOCK_CACHE_MAX = 60;
 
 export class Everygrid<T extends Record<string, unknown> = Record<string, unknown>> implements IEverygrid<T> {
   public static readonly POPUP_OVERLAY_CLASS = 'everygrid-popup-overlay';
@@ -90,6 +97,17 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public _processing: Map<string, boolean> = new Map();
   private _processingTimer: Map<string, ReturnType<typeof setTimeout>> = new Map();
   private _filterSeq: Map<string, number> = new Map();
+  // Virtual scrolling: engine rows cached in fixed-size blocks, keyed by the filter/sort
+  // generation (`seq`) they were fetched under so a filter change drops all of them at once.
+  private _blockCache: Map<string, {seq: number; blocks: Map<number, unknown[]>; order: number[]}> = new Map();
+  private _blockPending: Map<string, Set<number>> = new Map();
+  private _blockRenderScheduled: Set<string> = new Set();
+  // Engine loads, serialised per target. setData uploads the dataset as a sequence of awaited
+  // batches, so two overlapping loads interleave in the worker: the second one's opening "clear"
+  // lands between the first one's appends and both datasets end up half-written on top of each
+  // other. These keep one load in flight at a time and drop any that a newer one superseded.
+  private _loadChain: Map<string, Promise<void>> = new Map();
+  private _loadSeq: Map<string, number> = new Map();
   // Raw (unfiltered) total per containerId — updated after each WASM handoff/filter
   public _wasmRawTotal: Map<string, number> = new Map();
   public _indexingAllRows: Map<string, Record<string, unknown>[]> = new Map();
@@ -170,12 +188,17 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       }).then(engine => {
         this._wasmEngines.set(id, engine);
         this._wasmEngineReady.set(id, true);
-        if (this.options.data && this.options.data.length > 0) {
-          engine.setData(this.options.data as unknown[]).then(() => {
+        // `this.options.data` is read here, not at construction, so by now a fetcher's rows may
+        // already have been installed by _setRows — which is itself waiting on this very engine
+        // to load them. Loading them here too would run the same upload twice, concurrently.
+        // _wasmDataLoaded is set by _setRows before it awaits the engine, so it marks exactly
+        // that case: someone else owns this target's load.
+        if (this.options.data && this.options.data.length > 0 && !this._wasmDataLoaded.get(id)) {
+          this._loadIntoEngine(id, engine, this.options.data as unknown[]).then(() => {
             this._wasmDataLoaded.set(id, true);
             this.applyWasmFilter(id).catch(console.error);
           }).catch(console.error);
-        } else {
+        } else if (!this._wasmDataLoaded.get(id)) {
           this.applyWasmFilter(id).catch(console.error);
         }
       }).catch(err => {
@@ -465,13 +488,32 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       return;
     }
     try {
-      await engine.setData(rows);
+      await this._loadIntoEngine(targetId, engine, rows);
       this._wasmEngineReady.set(targetId, true);
       await this.applyWasmFilter(targetId);
     } catch {
       const el = document.getElementById(targetId);
       if (el) this.renderGrid(el);
     }
+  }
+
+  /**
+   * The single way rows reach an engine. Queues behind any load already running for the same
+   * target, and skips itself if a newer load was requested while it waited — by then its rows
+   * are stale and writing them would just undo the newer ones.
+   */
+  private _loadIntoEngine(targetId: string, engine: GridEngineWasm, rows: unknown[]): Promise<void> {
+    const seq = (this._loadSeq.get(targetId) ?? 0) + 1;
+    this._loadSeq.set(targetId, seq);
+    const run = (this._loadChain.get(targetId) ?? Promise.resolve())
+      // A failed predecessor must not poison the queue — the next load still has to run.
+      .catch(() => {})
+      .then(() => {
+        if (this._destroyed || this._loadSeq.get(targetId) !== seq) return;
+        return engine.setData(rows);
+      });
+    this._loadChain.set(targetId, run);
+    return run;
   }
 
   /** Resolves with the target's engine once it exists, or null if it never shows up. */
@@ -875,7 +917,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // Server-side: sync current page data to the WASM engine
       const engine = this._wasmEngines.get(containerId);
       if (engine && this._wasmEngineReady.get(containerId)) {
-        engine.setData(this.options.data as unknown[]).then(() => {
+        this._loadIntoEngine(containerId, engine, this.options.data as unknown[]).then(() => {
           this.applyWasmFilter(containerId).catch(console.error);
         }).catch(console.error);
       }
@@ -926,12 +968,20 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const isPaginationActive = (paginationConfig?.active ?? true);
       const pageSize = Math.min((paginationConfig?.pageSize && paginationConfig.pageSize > 0) ? paginationConfig.pageSize : 10, 100);
       const currentPage = this.currentPage.get(containerId) || 1;
-      const pageIndex = isPaginationActive ? currentPage - 1 : 0;
-      const fetchSize = isPaginationActive ? pageSize : 10000;
+      // Virtual mode has no page to land on: a filter/sort always returns to the top of the
+      // result, so it fetches block 0 and seeds the block cache with it — the first screenful
+      // is already there when the scroller re-renders.
+      const virtual = this.getVirtualScroll(containerId);
+      const pageIndex = (virtual || !isPaginationActive) ? 0 : currentPage - 1;
+      const fetchSize = virtual ? this._blockSize(containerId) : (isPaginationActive ? pageSize : 10000);
       const result = await engine.filterSortAndGetPage(this.filterText, sortField, sortAsc, pageIndex, fetchSize);
       // If a newer call has been issued, skip caching and rendering
       if (this._filterSeq.get(containerId) !== seq) return;
       this._wasmPageCache.set(containerId, { rows: result.rows, total: result.filtered });
+      if (virtual) {
+        this._blockCache.set(containerId, {seq, blocks: new Map([[0, result.rows]]), order: [0]});
+        this._blockPending.delete(containerId);
+      }
       this._wasmRawTotal.set(containerId, result.raw);
     } finally {
       // Only clean up processing state if this is still the latest call
@@ -1137,6 +1187,117 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       }
     }
     return undefined;
+  }
+
+  public getVirtualScroll(containerId: string): GridVirtualScrollConfig | undefined {
+    const vs = this.options.virtualScroll;
+    if (!vs) return undefined;
+    const conf = Array.isArray(vs) ? vs.find(v => v.id === containerId) : (vs.id === containerId ? vs : undefined);
+    if (!conf || conf.active === false) return undefined;
+    // Server-side pagination owns its own windowing contract (page/pageSize requests), so the two
+    // can't both drive the view. Pagination wins; virtual scroll stays off for that target.
+    if (this.getPagination(containerId)?.serverSide && this.options.serverFetcher) return undefined;
+    return conf;
+  }
+
+  /** Resolved block size for a virtualised target — the unit every engine fetch is aligned to. */
+  private _blockSize(containerId: string): number {
+    const size = this.getVirtualScroll(containerId)?.blockSize;
+    return (size && size > 0) ? Math.min(size, 1000) : VIRTUAL_BLOCK_SIZE;
+  }
+
+  /**
+   * Rows for [start, end) of the current filtered result. Synchronous: whatever is cached comes
+   * back immediately, missing blocks come back as `undefined` holes and are fetched in the
+   * background. Callers render a placeholder for the holes; the fetch re-renders when it lands.
+   */
+  public getRowsInRange(containerId: string, start: number, end: number): (T | undefined)[] {
+    if (end <= start) return [];
+
+    // Streaming mode: rows are already in JS memory, so the window is a plain slice.
+    const streamRows = this._streamRows.get(containerId);
+    if (streamRows) {
+      return this._applyStreamFilter(containerId, streamRows).slice(start, end) as T[];
+    }
+
+    const engine = this._wasmEngines.get(containerId);
+    if (!engine || !this._wasmEngineReady.get(containerId)) {
+      return ((this.options.data || []) as T[]).slice(start, end);
+    }
+
+    const blockSize = this._blockSize(containerId);
+    const seq = this._filterSeq.get(containerId) ?? 0;
+    let cache = this._blockCache.get(containerId);
+    if (!cache || cache.seq !== seq) {
+      // A new filter/sort generation invalidates every cached block at once.
+      cache = {seq, blocks: new Map(), order: []};
+      this._blockCache.set(containerId, cache);
+    }
+
+    const out: (T | undefined)[] = [];
+    for (let b = Math.floor(start / blockSize); b <= Math.floor((end - 1) / blockSize); b++) {
+      const block = cache.blocks.get(b);
+      if (!block) this._fetchBlock(containerId, b, seq);
+      const blockStart = b * blockSize;
+      const from = Math.max(start, blockStart);
+      const to = Math.min(end, blockStart + blockSize);
+      for (let i = from; i < to; i++) {
+        const row = block?.[i - blockStart] as T | undefined;
+        // WASM hands back fresh copies; swap edited rows for their live reference so the
+        // modification marker (reference-based isCellModified) and reset keep working.
+        out.push(row && this._editedKeys.size > 0 ? (this._editedKeys.get(JSON.stringify(row)) ?? row) : row);
+      }
+    }
+    return out;
+  }
+
+  /** Fetches one block from the engine into the cache, then coalesces a re-render. */
+  private _fetchBlock(containerId: string, blockIndex: number, seq: number): void {
+    let pending = this._blockPending.get(containerId);
+    if (!pending) { pending = new Set(); this._blockPending.set(containerId, pending); }
+    if (pending.has(blockIndex)) return;
+    pending.add(blockIndex);
+
+    const engine = this._wasmEngines.get(containerId);
+    if (!engine) return;
+    const blockSize = this._blockSize(containerId);
+    engine.getPage(blockIndex, blockSize).then(result => {
+      pending.delete(blockIndex);
+      // The generation moved on while this was in flight — the rows belong to a result set that
+      // is no longer on screen, so they must not be cached under the new seq.
+      const cache = this._blockCache.get(containerId);
+      if (this._destroyed || !cache || cache.seq !== seq || this._filterSeq.get(containerId) !== seq) return;
+      cache.blocks.set(blockIndex, result.rows);
+      cache.order.push(blockIndex);
+      while (cache.order.length > VIRTUAL_BLOCK_CACHE_MAX) {
+        const evicted = cache.order.shift();
+        if (evicted !== undefined) cache.blocks.delete(evicted);
+      }
+      this._scheduleVirtualRender(containerId);
+    }).catch(err => {
+      pending.delete(blockIndex);
+      console.error('Everygrid: virtual block fetch failed:', err);
+    });
+  }
+
+  /**
+   * Blocks land one by one but a fast scroll requests several at once, so renders are coalesced
+   * into a single pass instead of one per arriving block.
+   *
+   * A timeout rather than requestAnimationFrame: rAF does not run in a background tab or an
+   * occluded window, and this render is what makes arrived rows visible at all — not just a
+   * smoothing step. Waiting on a frame left the Excel preview showing its cold-start stand-in
+   * long after the real rows had been cached.
+   */
+  private _scheduleVirtualRender(containerId: string): void {
+    if (this._blockRenderScheduled.has(containerId)) return;
+    this._blockRenderScheduled.add(containerId);
+    setTimeout(() => {
+      this._blockRenderScheduled.delete(containerId);
+      if (this._destroyed) return;
+      const el = document.getElementById(containerId);
+      if (el) this.renderGrid(el);
+    }, 0);
   }
 
   public getEditableFields(containerId: string): string[] {
@@ -1543,8 +1704,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
         const eng = this._wasmEngines.get(id);
         if (eng && this._wasmEngineReady.get(id)) {
-          eng.setData(this.options.data as unknown[]);
-          this.applyWasmFilter(id);
+          void this._loadIntoEngine(id, eng, this.options.data as unknown[])
+            .then(() => this.applyWasmFilter(id)).catch(console.error);
         }
       });
 
@@ -1583,8 +1744,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
         const eng = this._wasmEngines.get(id);
         if (eng && this._wasmEngineReady.get(id)) {
-          eng.setData(this.options.data as unknown[]);
-          this.applyWasmFilter(id);
+          void this._loadIntoEngine(id, eng, this.options.data as unknown[])
+            .then(() => this.applyWasmFilter(id)).catch(console.error);
         }
       });
 
@@ -1634,8 +1795,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
         const eng = this._wasmEngines.get(id);
         if (eng && this._wasmEngineReady.get(id)) {
-          eng.setData(this.options.data as unknown[]);
-          this.applyWasmFilter(id);
+          void this._loadIntoEngine(id, eng, this.options.data as unknown[])
+            .then(() => this.applyWasmFilter(id)).catch(console.error);
         }
       });
 
@@ -1867,12 +2028,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
       const engine = this._wasmEngines.get(id);
       if (engine && this._wasmEngineReady.get(id) && this.options.data && !this._wasmDataLoaded.get(id)) {
-        try {
-          engine.setData(this.options.data as unknown[]);
-          this._wasmDataLoaded.set(id, true);
-        } catch (err) {
-          console.warn(`Everygrid: WASM setData failed for ${id}:`, err);
-        }
+        void this._loadIntoEngine(id, engine, this.options.data as unknown[])
+          .then(() => { this._wasmDataLoaded.set(id, true); })
+          .catch(err => console.warn(`Everygrid: WASM setData failed for ${id}:`, err));
       }
     });
 

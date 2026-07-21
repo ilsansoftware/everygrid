@@ -1,17 +1,25 @@
 import {I18n} from '../i18n/I18n';
 import type {IEverygrid} from '../core/types';
 import {useEffect, useRef, useState} from 'react';
+import {RowCountComponent, type RowCountProps} from './RowCountComponent';
 
 export interface PaginationProps<T extends Record<string, unknown>> {
   grid: IEverygrid<T>;
   container: HTMLElement;
   currentPage: number;
   totalPages: number;
-  totalItems: number;
-  totalCount: number;
-  pageSize: number;
   /** Greys the controls out without removing them — used while a reload is in flight. */
   disabled?: boolean;
+  /**
+   * Set to render the row count inside the bar — the layout from before the count moved to the
+   * strip under the toolbar. Selected per grid with `pagination.rowCount: 'inline'`.
+   */
+  rowCount?: Omit<RowCountProps, 'className'>;
+  /**
+   * Overrides where a page click goes. The Excel preview pages through the same result on its own
+   * axis, so it drives its own state rather than moving the grid underneath.
+   */
+  onPageChange?: (page: number) => void;
 }
 
 export const PaginationComponent = <T extends Record<string, unknown>>({
@@ -19,10 +27,9 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
                                                                          container,
                                                                          currentPage,
                                                                          totalPages,
-                                                                         totalItems,
-                                                                         totalCount,
-                                                                         pageSize,
                                                                          disabled = false,
+                                                                         rowCount,
+                                                                         onPageChange,
                                                                        }: PaginationProps<T>) => {
   const containerId = container.id;
   const [isMobile, setIsMobile] = useState(false);
@@ -41,11 +48,9 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
   }, []);
 
   const handlePageChange = (page: number) => {
-    grid.setCurrentPage(containerId, page, container);
+    if (onPageChange) onPageChange(page);
+    else grid.setCurrentPage(containerId, page, container);
   };
-
-  const startIdx = totalItems > 0 ? (currentPage - 1) * pageSize + 1 : 0;
-  const endIdx = Math.min(currentPage * pageSize, totalItems);
 
   const maxVisible = isMobile ? 5 : 10;
   const mobileRadius = 2;
@@ -62,6 +67,10 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
     pages.push(i);
   }
 
+  // A single page has no controls worth drawing; with an inline row count there is still the
+  // count itself, so the bar stays.
+  if (totalPages <= 1 && !rowCount) return null;
+
   const renderBtn = (text: string, title: string, page: number, atEdge: boolean, active: boolean = false) => (
     <button
       className={`everygrid-pagination-btn ${atEdge || disabled ? 'disabled' : ''} ${active ? 'active' : ''}`}
@@ -72,28 +81,9 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
     />
   );
 
-  const isFiltered = grid.filterText.length > 0 && totalItems !== totalCount;
-  const fmt = (n: number) => n.toLocaleString();
-
   return (
-    <div className="everygrid-pagination" ref={paginationRef}>
-      {!isMobile && (
-        <div className="everygrid-pagination-info">
-          {isFiltered
-            ? I18n.t('pagination.showingFiltered', {
-                start: fmt(startIdx),
-                end: fmt(endIdx),
-                filtered: fmt(totalItems),
-                total: fmt(totalCount)
-              })
-            : I18n.t('pagination.showing', {
-                start: fmt(startIdx),
-                end: fmt(endIdx),
-                total: fmt(totalItems)
-              })
-          }
-        </div>
-      )}
+    <div className={`everygrid-pagination ${rowCount ? 'has-row-count' : ''}`} ref={paginationRef}>
+      {rowCount && !isMobile && <RowCountComponent {...rowCount}/>}
       {totalPages > 1 && (
         <div className={`everygrid-pagination-controls${isMobile ? ' everygrid-pagination-controls-mobile' : ''}`}>
           {renderBtn('&laquo;', I18n.t('pagination.first'), 1, currentPage === 1)}
@@ -115,22 +105,9 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
           {renderBtn('&raquo;', I18n.t('pagination.last'), totalPages, currentPage === totalPages)}
         </div>
       )}
-      {isMobile && (
-        <div className="everygrid-pagination-info everygrid-pagination-info-mobile">
-          {isFiltered
-            ? I18n.t('pagination.showingFiltered', {
-                start: fmt(startIdx),
-                end: fmt(endIdx),
-                filtered: fmt(totalItems),
-                total: fmt(totalCount)
-              })
-            : I18n.t('pagination.showing', {
-                start: fmt(startIdx),
-                end: fmt(endIdx),
-                total: fmt(totalItems)
-              })
-          }
-        </div>
+      {/* Narrow bars put the count under the controls instead of beside them. */}
+      {rowCount && isMobile && (
+        <RowCountComponent {...rowCount} className="everygrid-pagination-info-mobile"/>
       )}
     </div>
   );

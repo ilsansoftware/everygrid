@@ -7,6 +7,26 @@
  */
 
 
+/* --- Stacking scale --------------------------------------------------------------------------
+   Two bands, because the grid body isolates its own stacking context (see EverygridComponent).
+   Numbers inside a band are only ever compared with each other, so they stay small and spaced.
+   Nothing outside this block should invent a z-index.
+
+   Within the grid body (isolated — never competes with the host page):
+     10  cell affordances: column resizer
+     20  cell overlays: modified marker, cell reset button
+     30  sticky column header
+     40  pinned column block
+     50  pinned column header, resize guide
+     60  busy overlay — has to cover every header above it
+
+   Page level (competes with the host page and with portalled content):
+     10  grid chrome panels: the strip under the toolbar, the bottom bar
+     20  the toolbar panel — outranks the other panels because it hosts popovers
+     30  toolbar popovers: mobile menu, expanded search
+     40  modals: popups, portalled to <body>
+   ------------------------------------------------------------------------------------------ */
+
 :root {
   --everygrid-header-color: #475569;
   --everygrid-header-bg: #f8fafc;
@@ -29,11 +49,16 @@
 
 .everygrid-table thead th {
   @apply px-1 py-1 font-semibold whitespace-nowrap sticky top-0
-  text-left z-80 overflow-hidden border-l border-b border-slate-200;
+  text-left z-30 overflow-hidden border-l border-b border-slate-200;
   color: var(--everygrid-header-color, inherit) !important;
   background-color: var(--everygrid-header-bg, #f8fafc) !important;
   box-sizing: border-box;
-  background-clip: padding-box;
+  /* border-box, NOT padding-box: the table is `border-collapse: collapse`, so the header's
+     borders belong to the table — which is not sticky and scrolls away underneath. With the
+     background clipped to the padding box, the 1px border band the borders vacated was left
+     transparent and the rows sliding under the header showed through it as a moving sliver.
+     Painting the background across the border box closes that band for good. */
+  background-clip: border-box;
   border-top: 1px solid #e2e8f0;
   min-width: 50px;
 }
@@ -92,8 +117,14 @@
   @apply shrink-0;
 }
 
+/* Above the other panels: the mobile menu opens downward across the strip and the table, and a
+   later sibling at the same z-index would paint over it. */
+.everygrid-toolbar-container.everygrid-panel {
+  @apply z-20;
+}
+
 .everygrid-mobile-menu {
-  @apply absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-[200] min-w-[180px] py-1 flex flex-col;
+  @apply absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-30 min-w-[180px] py-1 flex flex-col;
 }
 
 .everygrid-link {
@@ -111,11 +142,11 @@
 
 /* Modification Indicators */
 .modified-marker {
-  @apply absolute! top-0! right-0! w-3! h-3! bg-orange-500! z-100! block! [clip-path:polygon(100%_0,0_0,100%_100%)]! cursor-pointer;
+  @apply absolute! top-0! right-0! w-3! h-3! bg-orange-500! z-20! block! [clip-path:polygon(100%_0,0_0,100%_100%)]! cursor-pointer;
 }
 
 .everygrid-cell-reset-btn {
-  @apply absolute top-1 right-3 bg-white border border-orange-200 px-1.5 py-0.5 shadow-sm text-orange-600 hover:text-orange-800 cursor-pointer text-[10px] font-bold transition-colors duration-150 z-30 leading-none;
+  @apply absolute top-1 right-3 bg-white border border-orange-200 px-1.5 py-0.5 shadow-sm text-orange-600 hover:text-orange-800 cursor-pointer text-[10px] font-bold transition-colors duration-150 z-20 leading-none;
 }
 
 .everygrid-cell-edit-btn {
@@ -159,7 +190,7 @@
 
 /* Modals */
 .everygrid-popup-overlay {
-  @apply fixed inset-0 bg-slate-900/30 flex items-center justify-center z-100 p-4;
+  @apply fixed inset-0 bg-slate-900/30 flex items-center justify-center z-40 p-4;
 }
 
 .everygrid-popup-content {
@@ -201,6 +232,13 @@
 }
 
 /* Excel View Mode Styles */
+/* Cap on the preview's own growth. A grid with a fixed height already bounds it (flex-1 wins,
+   well under this), but one sized by its content would otherwise stretch to whatever the nested
+   Excel columns need — a three-row grid ballooned past 1300px. Scrolls inside the cap. */
+.everygrid-excel-body {
+  @apply max-h-[60vh];
+}
+
 .excel-format-table {
   @apply border-separate border-spacing-0 border-t border-l border-slate-200 w-full;
 }
@@ -245,12 +283,21 @@ button {
 
 /* Pagination */
 .everygrid-pagination {
-  @apply flex flex-wrap items-center justify-between p-3 bg-white text-xs text-slate-500;
+  /* flex-1 so the bar keeps its full width: it measures itself to decide between the wide and the
+     compact control layout, and shrunk to its own contents it always read as narrow and dropped
+     the numbered pages. justify-end keeps the controls at the right regardless. */
+  @apply flex flex-1 flex-wrap items-center justify-end p-3 bg-white text-xs text-slate-500;
 }
 
-/* Bottom pagination sits at the grid's edge — drop its bottom padding (the wrapper handles spacing). */
-.everygrid-pagination-bottom .everygrid-pagination {
-  @apply pb-0;
+/* With an inline row count the bar holds two things and pushes them to opposite ends; with only
+   controls it hugs the right. */
+.everygrid-pagination.has-row-count {
+  @apply justify-between w-full;
+}
+
+/* The inline copy already sits inside the bar's own padding. */
+.everygrid-pagination .everygrid-row-count {
+  @apply p-0;
 }
 
 .everygrid-pagination-controls {
@@ -282,7 +329,7 @@ button {
 }
 
 .everygrid-resizer {
-  @apply absolute top-0 right-0 w-1.5 h-full cursor-col-resize select-none z-20 hover:bg-slate-300/50 hover:w-1.5 transition-all duration-150;
+  @apply absolute top-0 right-0 w-1.5 h-full cursor-col-resize select-none z-10 hover:bg-slate-300/50 hover:w-1.5 transition-all duration-150;
   touch-action: none;
 }
 
@@ -311,8 +358,115 @@ button {
   height: 41px;
 }
 
+/* --- Virtual scrolling ---------------------------------------------------------------------
+   One scroller for the whole body so the pinned and main tables move together. The inner table
+   containers give up their own y overflow here — two independent y scrollbars would let the two
+   halves of a row drift apart. */
+/* Grid chrome — toolbar and pagination — drawn as part of the table's frame rather than as
+   strips floating around it. Composed: every panel gets .everygrid-panel, plus whichever of the
+   position modifiers below apply. z-index because the body is a later sibling and would
+   otherwise paint over a panel that overlaps it. */
+.everygrid-panel {
+  @apply relative z-10 bg-white border-x border-slate-200;
+}
+
+.everygrid-panel-top {
+  @apply border-t rounded-t-md;
+}
+
+.everygrid-panel-bottom {
+  @apply border-b rounded-b-md;
+}
+
+/* The strip between the toolbar and the table. Holds the top pagination when it is configured
+   and stands empty when it is not, at the same height either way — 53px is the pagination's own
+   50px of content plus this panel's overlap padding and bottom border. */
+.everygrid-panel-strip {
+  @apply min-h-[53px] flex items-center justify-between gap-2;
+}
+
+/* The footer keeps its height even when PaginationComponent renders nothing (a single page has
+   no controls worth showing), so the frame keeps a footer and its rounded bottom corners instead
+   of collapsing onto the table's edge. 54px = the pagination's own 50px of content plus this
+   panel's 2px overlap padding and its two borders. */
+.everygrid-pagination-bottom {
+  @apply min-h-[54px] flex items-center justify-between gap-2;
+}
+
+/* The row count. Carries the same padding as the pagination beside it so the two sit on one
+   baseline whether or not pagination is there. */
+.everygrid-row-count {
+  @apply p-3 text-xs text-slate-500 font-medium;
+}
+
+/* Sits directly on the table. The negative margin pulls the scroll container up underneath and
+   the matching padding keeps the panel's own contents where they were, so its opaque box covers
+   the scroller's first two pixels — the band a row surfaces in as it slides under the sticky
+   header. Its bottom border then lands on the header's own top border and the two read as the
+   single dividing line instead of stacking into a thick one. */
+.everygrid-panel-above-body {
+  @apply border-b;
+  margin-bottom: -2px;
+  padding-bottom: 2px;
+}
+
+/* Sits directly under the table: overlaps its last two pixels so the table's bottom border and
+   this panel's top border likewise read as one line. */
+.everygrid-panel-below-body {
+  @apply border-t;
+  margin-top: -2px;
+  padding-top: 2px;
+}
+
+.everygrid-virtual-scroller {
+  @apply overflow-auto overscroll-x-none;
+}
+
+/* Both axes move to the scroller. `overflow-y: visible` alongside `overflow-x: auto` is not a
+   thing CSS honours — the visible axis is computed back to `auto` — so leaving x here would
+   quietly give each container its own vertical scrollbar again. The pinned container's
+   `sticky left-0` keeps it parked during horizontal scrolling either way. */
+.everygrid-virtual-scroller .everygrid-table-container,
+.everygrid-virtual-scroller .everygrid-pinned-table-container {
+  @apply overflow-visible!;
+}
+
+/* Rows are a fixed height in this mode — that is what makes the spacer arithmetic exact.
+   Cells must not be able to grow past it, so overflow is clipped rather than wrapped. */
+.everygrid-virtual-scroller .everygrid-table tbody tr {
+  height: var(--everygrid-row-height, 36px);
+}
+
+.everygrid-virtual-scroller .everygrid-table tbody tr:not(.everygrid-spacer-row) td {
+  height: var(--everygrid-row-height, 36px);
+  @apply overflow-hidden whitespace-nowrap;
+}
+
+/* Pure spacers: they only carry height, so every bit of cell chrome is stripped or they would
+   draw borders and padding across the empty region. */
+.everygrid-table tbody tr.everygrid-spacer-row,
+.everygrid-table tbody tr.everygrid-spacer-row td {
+  @apply p-0 border-0 bg-transparent;
+}
+
+/* A row whose block is still in flight. Holds its space and reads as "loading" rather than
+   flashing an empty row that looks like missing data. */
+.everygrid-table tbody tr.everygrid-row-placeholder td {
+  @apply p-0 border-b border-slate-100;
+}
+
+.everygrid-table tbody tr.everygrid-row-placeholder td span {
+  @apply block h-3 mx-2 rounded bg-slate-100;
+  animation: everygrid-placeholder-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes everygrid-placeholder-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 .everygrid-pinned-table-container {
-  @apply w-auto! min-w-auto! flex-none! max-w-[50%] sticky left-0 z-100 bg-white;
+  @apply w-auto! min-w-auto! flex-none! max-w-[50%] sticky left-0 z-40 bg-white;
   /* When pinned columns are wider than the cap, scroll them here instead of spilling over
      (and covering) the main grid, which would otherwise make the right columns unreachable.
      overscroll-x-none stops a hard horizontal swipe here from triggering browser back/forward. */
@@ -320,12 +474,16 @@ button {
 }
 
 .everygrid-pinned-table-container thead th {
-  @apply sticky top-0 z-110 border-t border-l border-b border-slate-200;
+  @apply sticky top-0 z-50 border-t border-l border-b border-slate-200;
   background-color: var(--everygrid-header-bg, #f8fafc) !important;
   box-sizing: border-box;
   min-width: 50px;
   transform: none !important;
   @apply h-[41px];
+  /* Same reasoning as the main header: draw the separator on the sticky cell, not via a
+     collapsed border that scrolls away. (This one never clipped its background to the padding
+     box, so it had no sliver to begin with.) */
+  box-shadow: inset 0 -1px 0 0 #e2e8f0;
 }
 
 .everygrid-pinned-table-container thead th:last-child {

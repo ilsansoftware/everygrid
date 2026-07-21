@@ -11,7 +11,8 @@
       "id": "large-data-grid",
       "pageSize": 30,
       "active": true,
-      "position": "all"
+      "position": "all",
+      "rowCount": "inline"
     }
   ]
 }

@@ -21,6 +21,14 @@ body {
   background: #fff;
 }
 
+/* A virtual grid scrolls inside itself, so its host has to be a bounded box — with an auto
+   height there is nothing to overflow and every row would render. */
+.virtual-host {
+  height: 560px;
+  display: flex;
+  flex-direction: column;
+}
+
 .container > footer {
   margin-top: 2rem;
   text-align: center;

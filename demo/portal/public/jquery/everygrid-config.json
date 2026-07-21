@@ -60,7 +60,8 @@
       "id": "demo-grid1",
       "pageSize": 3,
       "active": true,
-      "position": "bottom"
+      "position": "bottom",
+      "rowCount": "inline"
     },
     {
       "id": "demo-grid2",
@@ -72,7 +73,8 @@
       "id": "demo-grid3",
       "pageSize": 10,
       "active": true,
-      "position": "bottom"
+      "position": "bottom",
+      "rowCount": "inline"
     }
   ],
   "editableCols": [

@@ -5,6 +5,18 @@
     },
     {
       "id": "users"
+    },
+    {
+      "id": "virtual-grid",
+      "title": "Virtual scroll — 100,000 rows"
+    }
+  ],
+  "virtualScroll": [
+    {
+      "id": "virtual-grid",
+      "active": true,
+      "rowHeight": 34,
+      "overscan": 8
     }
   ],
   "rowCheckbox": [
@@ -30,7 +42,8 @@
       "id": "users",
       "pageSize": 5,
       "active": true,
-      "position": "all"
+      "position": "all",
+      "rowCount": "inline"
     }
   ],
   "editableCols": [

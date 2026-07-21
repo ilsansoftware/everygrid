@@ -5,12 +5,17 @@ import {EmptyGridPlaceholder} from './EmptyGridPlaceholderComponent.tsx';
 import {GridToolbarComponent} from './GridToolbarComponent';
 import {GridTableComponent} from './GridTableComponent';
 import {PaginationComponent} from './PaginationComponent';
-import {ExcelViewWrapperComponent} from './ExcelViewComponent';
+import {RowCountComponent} from './RowCountComponent';
+import {EXCEL_PAGE_SIZE, ExcelViewWrapperComponent} from './ExcelViewComponent';
 import {PinnedTableComponent} from './PinnedTableComponent';
 import {PopupComponent} from './PopupComponent';
 import {NestedTableComponent} from './NestedTableComponent';
 import {makeElementGate} from '../core/highlightUtils';
+import {useVirtualWindow} from '../core/useVirtualWindow';
 import {I18n} from '../i18n/I18n';
+
+const DEFAULT_ROW_HEIGHT = 36;
+const DEFAULT_OVERSCAN = 6;
 
 export const EverygridComponent = <T extends Record<string, unknown>>({
                                                                         grid,
@@ -20,6 +25,12 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   container: HTMLElement;
 }) => {
   const [, setTick] = useState(0);
+  // The Excel preview pages through the result on its own axis, independent of the grid's page.
+  // Stored with the result it belongs to (see excelKey) rather than reset from an effect, which
+  // would cost an extra render landing on page 0.
+  const [excelPageState, setExcelPageState] = useState({key: '', page: 0});
+  // Virtual grids scroll their preview instead of paging it, growing this count as it nears the end.
+  const [excelLoadedState, setExcelLoadedState] = useState({key: '', count: 0});
 
   useEffect(() => {
     return grid.subscribe(() => {
@@ -87,7 +98,37 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
       : isIndexing ? indexingProgress
         : -1;
 
-  const displayItems = grid.getDisplayItems(containerId, items);
+  // --- Virtual scrolling ---------------------------------------------------------------------
+  // Off for this target => virtualConf is undefined and the hook runs against 0 rows, so the
+  // window is empty and nothing below this point changes. The hook itself stays unconditional.
+  const virtualConf = grid.getVirtualScroll(containerId);
+  const rowHeight = virtualConf?.rowHeight ?? DEFAULT_ROW_HEIGHT;
+  const overscan = virtualConf?.overscan ?? DEFAULT_OVERSCAN;
+  const {scrollerRef, onScroll, scrollToTop, window: vwin} = useVirtualWindow(
+    virtualConf ? streamTotal : 0, rowHeight, overscan,
+  );
+
+  const displayItems = virtualConf
+    ? grid.getRowsInRange(containerId, vwin.start, vwin.end)
+    : grid.getDisplayItems(containerId, items);
+  const virtual = virtualConf
+    ? {topPad: vwin.topPad, bottomPad: vwin.bottomPad, rowHeight}
+    : undefined;
+
+  const sortInfo = grid.sortConfig.get(containerId);
+  const sortKey = sortInfo ? `${sortInfo.field}:${sortInfo.direction}` : '';
+  useEffect(() => {
+    scrollToTop();
+  }, [grid.filterText, sortKey, scrollToTop]);
+
+  // Keyed to the result it belongs to: a filter or sort change drops back to page 1, while
+  // leaving and re-entering the preview returns to the page you were on. Clamped on read, so a
+  // page that no longer exists (a smaller result) resolves to the last one.
+  const excelKey = `${grid.isExcelViewMode}|${grid.filterText}|${sortKey}`;
+  const excelPage = excelPageState.key === excelKey ? excelPageState.page : 0;
+  const setExcelPage = (page: number) => setExcelPageState({key: excelKey, page});
+  const excelLoaded = excelLoadedState.key === excelKey ? excelLoadedState.count : 0;
+
   // Three states, one source of truth, so every part of the grid agrees:
   //  - showSkeleton: nothing to show yet. The only case the body is replaced.
   //  - isBusy: something is in flight (load OR filter/sort). Everything visible stays put and
@@ -107,7 +148,10 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
 
 
   useLayoutEffect(() => {
-    grid.syncRowHeights(container);
+    // Virtual rows are a fixed height by definition, and both tables emit identical spacers, so
+    // they are already aligned — measuring them would only cost a layout pass per frame.
+    if (!virtualConf) grid.syncRowHeights(container);
+    if (virtualConf) container.style.setProperty('--everygrid-row-height', `${rowHeight}px`);
   });
 
   useEffect(() => {
@@ -120,10 +164,56 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   }, [colorConfig, container, grid]);
 
 
+  // What the row count describes: the page's slice when the grid is paged, and the whole filtered
+  // result when it is not (virtual grids and single-page grids show all of it at once).
+  const totalPages = grid.getTotalPages(containerId);
+  const countPageSize = (!virtualConf && pagination?.pageSize && pagination.pageSize > 0)
+    ? pagination.pageSize : 0;
+  const isPaged = countPageSize > 0 && pagination?.active !== false;
+  const currentPageNo = grid.getCurrentPage(containerId);
+  const countStart = streamTotal === 0 ? 0 : (isPaged ? (currentPageNo - 1) * countPageSize + 1 : 1);
+  const countEnd = isPaged ? Math.min(currentPageNo * countPageSize, streamTotal) : streamTotal;
+
   // Excel View Mode
   if (grid.isExcelViewMode) {
+    // The preview pages through the entire result rather than showing a truncated head — that is
+    // what removed the old "only the top 50 are shown" banner, and with it the mismatch between
+    // the rows on screen and the number the banner quoted. Pages come straight off the engine, so
+    // this is the same for a paged, virtual or unpaged grid.
+    // The preview navigates the way the grid itself does: a paged grid gets pages of its own page
+    // size, a virtual grid keeps scrolling. Either way the whole result is reachable.
+    const excelPageSize = isPaged ? countPageSize : EXCEL_PAGE_SIZE;
+    const excelScrolls = !!virtualConf;
+    const excelTotalPages = Math.max(1, Math.ceil(streamTotal / excelPageSize));
+    const pageIndex = Math.min(excelPage, excelTotalPages - 1);
+    // Scrolling previews always start at the top of the result and grow downwards; paged ones show
+    // exactly their page.
+    const from = excelScrolls ? 0 : pageIndex * excelPageSize;
+    const to = excelScrolls
+      ? Math.min(streamTotal, Math.max(excelPageSize, excelLoaded))
+      : Math.min(streamTotal, from + excelPageSize);
+
+    // Pull in the next chunk as the body nears its end. The margin is a screenful, so the rows are
+    // already there by the time the reader arrives.
+    const onExcelScroll: React.UIEventHandler<HTMLDivElement> = (e) => {
+      if (!excelScrolls || to >= streamTotal) return;
+      const el = e.currentTarget;
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - el.clientHeight) {
+        setExcelLoadedState({key: excelKey, count: Math.min(streamTotal, to + excelPageSize)});
+      }
+    };
+    const pageRows = grid.getRowsInRange(containerId, from, to);
+    // Rows whose block is still in flight come back as holes; take the contiguous run and let the
+    // arrival re-render the rest rather than rendering gaps.
+    const firstGap = pageRows.findIndex(r => r === undefined);
+    const settled = (firstGap === -1 ? pageRows : pageRows.slice(0, firstGap)) as T[];
+    // Cold start on the first page: the block has not arrived yet, so stand in with the rows
+    // already on screen instead of flashing an empty preview.
+    const excelItems = settled.length > 0
+      ? settled
+      : (pageIndex === 0 ? displayItems.filter((r): r is T => r !== undefined) : []);
     const toolbar = (
-      <div className="everygrid-toolbar-container px-2 shrink-0">
+      <div className="everygrid-toolbar-container px-2 shrink-0 everygrid-panel everygrid-panel-top everygrid-panel-above-body">
         <GridToolbarComponent
           isExcelViewMode={grid.isExcelViewMode}
           isExporting={isExporting}
@@ -153,22 +243,88 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
       </div>
     );
     return (
-      <div className="everygrid-wrapper relative bg-white overflow-hidden flex flex-col border-b border-slate-200 pb-2">
-        <div className="flex-1 min-h-0">
-          <ExcelViewWrapperComponent data={displayItems} toolbar={toolbar}/>
+      // Same shell as the normal view, so toggling the preview swaps content inside the grid's
+      // existing box instead of producing a differently shaped block in its place.
+      <div className="everygrid-wrapper relative bg-white overflow-hidden flex flex-col pb-2">
+        <div className="flex-1 flex flex-col min-h-0">
+          <ExcelViewWrapperComponent
+            data={excelItems}
+            toolbar={toolbar}
+            onBodyScroll={excelScrolls ? onExcelScroll : undefined}
+            footer={
+              <div className="shrink-0 everygrid-pagination-bottom everygrid-panel everygrid-panel-below-body everygrid-panel-bottom">
+                <RowCountComponent
+                  start={streamTotal === 0 ? 0 : from + 1}
+                  end={from + excelItems.length}
+                  total={streamTotal}
+                  rawTotal={streamTotalRaw || items.length}
+                />
+                {!excelScrolls && (
+                  <PaginationComponent
+                    grid={grid}
+                    container={container}
+                    currentPage={pageIndex + 1}
+                    totalPages={excelTotalPages}
+                    disabled={isBusy}
+                    onPageChange={(page) => setExcelPage(page - 1)}
+                  />
+                )}
+              </div>
+            }
+          />
         </div>
       </div>
     );
   }
 
+
+  // Virtual grids have no pagination bar to hold the count, so they always use the strip.
+  const rowCountMode = virtualConf ? 'strip' : (pagination?.rowCount ?? 'strip');
+  const rowCountData = {
+    start: countStart,
+    end: countEnd,
+    total: streamTotal,
+    rawTotal: streamTotalRaw || items.length,
+  };
+
+  // Which chrome sits immediately above/below the table decides where the frame's rounded corners
+  // go and which panel overlaps the body.
+  const paginationActive = !showSkeleton && !virtualConf && !!pagination && pagination.active !== false;
+  const hasTopPagination = paginationActive &&
+    (pagination!.position === 'top' || pagination!.position === 'all');
+  const hasBottomPagination = paginationActive &&
+    (pagination!.position === 'bottom' || pagination!.position === 'all' ||
+      (!pagination!.position && (streamTotal > 0 || streamTotalRaw > 0)));
+  // 'inline' hands the count to the pagination bar — but only at an end that actually has one.
+  // Where there is no bar, the panel draws the count itself so both ends always carry it.
+  const topInlineCount = rowCountMode === 'inline' && hasTopPagination;
+  const bottomInlineCount = rowCountMode === 'inline' && hasBottomPagination;
+
+  // Both tables take the same inputs; virtual mode just renders each of them twice, once per
+  // half. Bundled so the header and the body cannot drift apart through a missed prop.
+  const commonTableProps = {
+    columns,
+    displayItems,
+    container,
+    containerId,
+    editableFields,
+    filterText: grid.filterText,
+    isIndexing: isBusy,
+    isExporting,
+    startIndex: vwin.start,
+    virtual,
+  };
+  const pinnedProps = {instance: grid, ...commonTableProps};
+  const mainProps = {grid, currentWidths, ...commonTableProps};
+
   // Normal View
   return (
-    <div className="everygrid-wrapper relative bg-white overflow-hidden flex flex-col border-b border-slate-200 pb-2">
+    <div className="everygrid-wrapper relative bg-white overflow-hidden flex flex-col pb-2">
       <div className="flex-1 flex flex-col min-h-0 pt-0">
         {/* The toolbar stays up while loading — it hosts the search box, title and the progress
             pill. A settled empty grid gets none of it: search, sort reset, column selection and
             export all act on rows that don't exist. */}
-        {!showEmpty && <div className="everygrid-toolbar-container px-2 shrink-0">
+        {!showEmpty && <div className={`everygrid-toolbar-container px-2 shrink-0 everygrid-panel everygrid-panel-top`}>
           <GridToolbarComponent
             gridTitle={gridTitle}
             isExporting={isExporting}
@@ -200,18 +356,21 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           />
         </div>}
 
-        {!showSkeleton && pagination && pagination.active !== false && (pagination.position === 'top' || pagination.position === 'all') && (
-          <div className="everygrid-pagination-top shrink-0">
-            <PaginationComponent
+        {/* The strip under the toolbar is always here, whether or not top pagination is configured.
+            Two reasons: a grid's chrome is then the same height either way, and the search
+            suggestions have a band to open into before they reach the column headers — without it
+            the dropdown lands straight on top of the columns. */}
+        {!showEmpty && (
+          <div className="everygrid-pagination-top shrink-0 everygrid-panel everygrid-panel-above-body everygrid-panel-strip">
+            {!topInlineCount && <RowCountComponent {...rowCountData}/>}
+            {hasTopPagination && <PaginationComponent
               grid={grid}
               container={container}
-              currentPage={grid.getCurrentPage(containerId)}
-              totalPages={grid.getTotalPages(containerId)}
-              totalItems={grid.getFilteredTotal(containerId)}
-              totalCount={streamTotalRaw || items.length}
-              pageSize={pagination.pageSize || 10}
+              currentPage={currentPageNo}
+              totalPages={totalPages}
               disabled={isBusy}
-            />
+              rowCount={topInlineCount ? rowCountData : undefined}
+            />}
           </div>
         )}
 
@@ -229,48 +388,39 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           </div>
         ) : (
           <div
-            className={`relative w-full flex-1 min-h-0 flex flex-col overflow-hidden ${grid.pinnedColumns.size > 0 ? 'has-pinned' : ''}`}
+            // isolate: the body layers a busy overlay over pinned columns over the sticky header.
+            // Without a stacking context of its own those numbers compete with everything else on
+            // the page — including popups, which portal to <body> and so lost to the grid's own
+            // chrome. Isolated, the in-body band only orders against itself; see the stacking
+            // scale at the top of Everygrid.css.
+            className={`relative w-full flex-1 min-h-0 flex flex-col overflow-hidden isolate ${grid.pinnedColumns.size > 0 ? 'has-pinned' : ''}`}
           >
             {/* inert takes the whole table out of the tab order and kills its events, so cell
                 inputs, links and edit buttons go dead with the rest instead of staying reachable
                 by keyboard underneath the overlay. Header controls also carry `disabled` for the
                 greyed-out look — inert alone changes nothing visually. */}
+            {/* One scroller, header sticky inside it — the original arrangement. What stops a row
+                surfacing at the very top is the toolbar above: it overlaps this element's first
+                couple of pixels (see .everygrid-toolbar-roof), so the seam is covered by an
+                opaque element rather than defended by the header's own painting. */}
             <div
-              className="flex w-full h-full"
+              ref={virtualConf ? scrollerRef : undefined}
+              onScroll={virtualConf ? onScroll : undefined}
+              className={`flex w-full h-full ${virtualConf ? 'everygrid-virtual-scroller' : ''}`}
               inert={isBusy}
             >
               {grid.pinnedColumns.size > 0 && (
-                <PinnedTableComponent
-                  instance={grid}
-                  columns={columns}
-                  displayItems={displayItems}
-                  container={container}
-                  containerId={containerId}
-                  editableFields={editableFields}
-                  filterText={grid.filterText}
-                  isIndexing={isBusy}
-                  isExporting={isExporting}
-                />
+                <PinnedTableComponent {...pinnedProps}/>
               )}
-              <GridTableComponent
-                grid={grid}
-                columns={columns}
-                displayItems={displayItems}
-                container={container}
-                containerId={containerId}
-                editableFields={editableFields}
-                currentWidths={currentWidths}
-                filterText={grid.filterText}
-                isIndexing={isBusy}
-                isExporting={isExporting}
-              />
+              <GridTableComponent {...mainProps}/>
             </div>
             {/* Rows on screen are stale until the operation lands, so the body goes inert as a
                 whole rather than leaving the user to discover which controls still respond.
-                z-120 clears the sticky header (z-80) and the pinned column header (z-110) — the
-                overlay has to cover them, or sort/resize/pin stay live over frozen data. */}
+                z-60 is the top of the in-body band (see the stacking scale in Everygrid.css) —
+                the overlay has to clear both headers, or sort/resize/pin stay live over frozen
+                data. */}
             {isBusy && (
-              <div className="absolute inset-0 z-120 bg-white/60 cursor-progress" aria-hidden="true"/>
+              <div className="absolute inset-0 z-60 bg-white/60 cursor-progress" aria-hidden="true"/>
             )}
             {/* Columns exist but no rows to show — an empty result (filtered out) or an empty
                 dataset. Overlaid on the body so the header stays visible. */}
@@ -284,18 +434,19 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           </div>
         )}
 
-        {!showSkeleton && pagination && pagination.active !== false && (pagination.position === 'bottom' || pagination.position === 'all' || (!pagination.position && (streamTotal > 0 || streamTotalRaw > 0))) && (
-          <div className="everygrid-pagination-bottom shrink-0">
-            <PaginationComponent
+        {/* Always here, like the strip above: the row count is a property of the data, not of the
+            pagination, so a grid without pagination still states what it is showing at both ends. */}
+        {!showEmpty && (
+          <div className="everygrid-pagination-bottom shrink-0 everygrid-panel everygrid-panel-below-body everygrid-panel-bottom">
+            {!bottomInlineCount && <RowCountComponent {...rowCountData}/>}
+            {hasBottomPagination && <PaginationComponent
               grid={grid}
               container={container}
-              currentPage={grid.getCurrentPage(containerId)}
-              totalPages={grid.getTotalPages(containerId)}
-              totalItems={grid.getFilteredTotal(containerId)}
-              totalCount={streamTotalRaw || items.length}
-              pageSize={pagination?.pageSize || items.length}
+              currentPage={currentPageNo}
+              totalPages={totalPages}
               disabled={isBusy}
-            />
+              rowCount={bottomInlineCount ? rowCountData : undefined}
+            />}
           </div>
         )}
       </div>

@@ -12,6 +12,8 @@ import {SortResetIcon} from '../icons/SortResetIcon';
 
 /** Hard cap on the search box: it grows to this many rows, and edits past it are rejected. */
 const MAX_FILTER_ROWS = 10;
+/** Narrow layouts get a lower cap: the box floats over the grid, and ten rows there would bury it. */
+const MAX_FILTER_ROWS_MOBILE = 3;
 
 export interface GridToolbarProps {
   isExcelViewMode: boolean;
@@ -145,10 +147,6 @@ export const GridToolbarComponent = ({
   const [focused, setFocused] = useState(false);
   // Screen position for the suggestion dropdown (portalled to <body>), measured after layout.
   const [dropRect, setDropRect] = useState<{top: number; left: number; width: number} | null>(null);
-  // The search box grew past one row: it floats over the grid, and `rowHeight` holds the layout
-  // space it left behind so the toolbar keeps its height.
-  const [expanded, setExpanded] = useState(false);
-  const [rowHeight, setRowHeight] = useState(0);
 
   // Indices of the bracket pair adjacent to `pos` (checks the char before, then at, the caret).
   const matchingPair = (text: string, pos: number): [number, number] | null => {
@@ -272,9 +270,8 @@ export const GridToolbarComponent = ({
     return parts;
   };
 
-  // Auto-grow the search textarea to fit its content (single row when empty). Past one row the
-  // box is lifted out of the flow (see `expanded` below) so it floats over the grid instead of
-  // pushing it down — a multi-line query shouldn't reflow everything underneath it.
+  // Auto-grow the search textarea to fit its content (single row when empty), up to a row cap.
+  // The toolbar grows with it, so a multi-line query pushes the grid down rather than covering it.
   useLayoutEffect(() => {
     const el = filterRef.current;
     if (!el) return;
@@ -282,8 +279,7 @@ export const GridToolbarComponent = ({
     // Row metrics derived rather than hard-coded, so they track the CSS.
     const line = parseFloat(cs.lineHeight) || 16;
     const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-    const oneRow = line + padY;
-    const maxHeight = line * MAX_FILTER_ROWS + padY;
+    const maxHeight = line * (isMobile ? MAX_FILTER_ROWS_MOBILE : MAX_FILTER_ROWS) + padY;
     el.style.height = 'auto';
     // Hard cap: rather than scrolling the overflow out of sight, reject the edit that crossed the
     // limit and put the previous text back. Measuring is the only way to count WRAPPED rows, so the
@@ -300,9 +296,7 @@ export const GridToolbarComponent = ({
     const grown = el.scrollHeight;
     el.style.height = `${grown}px`;
     lastHeightRef.current = grown;
-    setRowHeight(oneRow);
-    setExpanded(grown > oneRow + 1);
-  }, [inputValue]);
+  }, [inputValue, isMobile]);
 
   // Position the suggestion dropdown under the textarea (measured after layout, so no ref reads
   // during render — the portal uses this state).
@@ -397,11 +391,12 @@ export const GridToolbarComponent = ({
   // The search box is always the same box; while indexing / processing / exporting it shows loading
   // progress INSIDE it (a fill bar + spinner + text + cancel) instead of the input.
   const filterInput = (statusText || (wasmReady && onFilter)) ? (
-      <div className="relative flex-1 min-w-0 max-w-2xl"
-           // +2 for the box's own borders, which the derived row height doesn't include.
-           style={expanded ? {minHeight: rowHeight + 2} : undefined}>
-        <div className={`overflow-hidden rounded border border-slate-200 bg-white focus-within:border-indigo-400 ${
-            expanded ? 'absolute inset-x-0 top-0 z-200 shadow-lg' : 'relative'}`}>
+      <div className="relative flex-1 min-w-0 max-w-2xl">
+        {/* A grown box pushes the toolbar taller rather than floating over the grid. It used to
+            lift out of the flow so a multi-line query wouldn't reflow anything, but the toolbar
+            is the top of the grid's frame now — an overlay reads as the search box falling into
+            the table instead of the frame growing to hold it. */}
+        <div className="relative overflow-hidden rounded border border-slate-200 bg-white focus-within:border-indigo-400">
           {statusText ? (
             <div className="relative flex items-center gap-2 px-2 py-1.5 text-xs">
               {progress >= 0
@@ -548,6 +543,7 @@ export const GridToolbarComponent = ({
             </button>
             {menuOpen && (
                 <div className="everygrid-mobile-menu">
+                  {createMenuButton(excelBtnText, 'bg-white text-slate-700 hover:bg-slate-50', onToggleExcelView)}
                   {onReloadData && createMenuButton(reloadBtnText, 'bg-white text-slate-700 hover:bg-slate-50', onReloadData)}
                   {createMenuButton(`${downloadExcelBtnText} · ${I18n.t('toolbar.exportFiltered')}`, 'bg-white text-slate-700 hover:bg-slate-50', () => onDownloadExcel('filtered'))}
                   {createMenuButton(`${downloadExcelBtnText} · ${I18n.t('toolbar.exportAll')}`, 'bg-white text-slate-700 hover:bg-slate-50', () => onDownloadExcel('all'))}
