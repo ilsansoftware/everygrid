@@ -60,6 +60,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // Nested-table popup data. Stored (not pre-built) so the popup is assembled at render time with
   // the CURRENT filterText — highlighting stays live if the filter changes while it is open.
   public activePopupData: {data: unknown} | null = null;
+  public activePopupTitle: string | null = null;
   public activePopupRow: unknown | null = null;
   public activePopupRowKey: string | null = null;
   private originalData: T[] = [];
@@ -781,6 +782,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public closePopup() {
     this.activePopup = null;
     this.activePopupData = null;
+    this.activePopupTitle = null;
     this.activePopupRow = null;
     this.activePopupRowKey = null;
     const {targets} = this.options;
@@ -1687,11 +1689,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
 
-  public showPopup(data: unknown, rowData?: unknown) {
+  public showPopup(data: unknown, rowData?: unknown, title?: string) {
     this.activePopupRow = rowData || null;
     this.activePopupRowKey = rowData ? JSON.stringify(rowData) : null;
     // Store data only; EverygridComponent builds the popup with the live filterText each render.
     this.activePopupData = {data};
+    this.activePopupTitle = title ?? null;
     this.activePopup = null;
     const {targets} = this.options;
     targets?.forEach(idConfig => {
@@ -1702,11 +1705,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   // Full-text popup for long / multi-line plain string cells (the cell shows a prefix button).
-  public showTextPopup(text: string, rowData?: unknown) {
+  public showTextPopup(text: string, rowData?: unknown, title?: string) {
     this.activePopupRow = rowData || null;
     this.activePopupRowKey = rowData ? JSON.stringify(rowData) : null;
     this.activePopup = (
-      <PopupComponent onClose={() => this.closePopup()} title={I18n.t('popup.detailTitle')}>
+      <PopupComponent onClose={() => this.closePopup()} title={title || I18n.t('popup.detailTitle')}>
         <pre className="m-0 p-4 text-sm whitespace-pre-wrap wrap-break-word text-slate-700">{text}</pre>
       </PopupComponent>
     );

@@ -6,9 +6,15 @@ interface PopupProps {
   title?: string;
   children: React.ReactNode;
   data?: unknown; // Add data prop for JSON view
+  /**
+   * Box size. `s` / `m` / `l` are fixed squares, so detail and text popups all open at the same
+   * shape whatever they hold. `auto` is a content-height rectangle for popups with an action
+   * footer (the editor), where a square wastes space and crowds the buttons.
+   */
+  size?: 's' | 'm' | 'l' | 'auto';
 }
 
-const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data}) => {
+const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, size = 'm'}) => {
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
 
   // If data is a string and looks like XML, we might want to show it as is or formatted
@@ -16,7 +22,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data}) 
 
   return (
     <div className="everygrid-popup-overlay">
-      <div className="everygrid-popup-content">
+      <div className={`everygrid-popup-content everygrid-popup-${size}`}>
         <div className="everygrid-popup-header flex items-center justify-between">
           <div className="flex items-center gap-4">
             {title && <h3 className="m-0">{title}</h3>}

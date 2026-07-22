@@ -194,8 +194,20 @@
 }
 
 .everygrid-popup-content {
-  @apply w-fit min-w-[400px] max-w-[95vw] overflow-hidden flex flex-col max-h-[90vh] bg-white rounded-lg shadow-xl;
+  /* Shared chrome; the size class sets the box. */
+  @apply max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col bg-white rounded-lg shadow-xl;
 }
+
+/* Fixed squares, so detail and long-text popups open at one consistent shape regardless of what
+   they hold; wider/taller content scrolls inside. Squares are capped by the shared max-w/max-h
+   above, so they shrink (and stop being square) only on a screen too small to fit them. */
+.everygrid-popup-s { @apply w-[440px] h-[440px]; }
+.everygrid-popup-m { @apply w-[600px] h-[600px]; }
+.everygrid-popup-l { @apply w-[760px] h-[760px]; }
+
+/* Content-height rectangle for popups with an action footer (the editor) — a square would leave a
+   gap above the buttons and force the textarea into an odd shape. */
+.everygrid-popup-auto { @apply w-[720px]; }
 
 .everygrid-popup-content .everygrid-wrapper {
   @apply w-full h-full min-w-full;
@@ -252,7 +264,8 @@
 }
 
 .everygrid-text-editor {
-  @apply border border-slate-200 p-4 text-xs outline-none w-full min-w-[600px] h-[300px] font-mono;
+  /* Fill the unified popup width instead of forcing a min-width that would widen the box. */
+  @apply border border-slate-200 p-4 text-xs outline-none w-full h-[300px] font-mono;
 }
 
 .everygrid-popup-footer {

@@ -128,6 +128,8 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   isExcelViewMode: boolean;
   activePopup: React.ReactNode | null;
   activePopupData: {data: unknown} | null;
+  /** Title for the active detail popup — the field the cell belongs to, or undefined for a fallback. */
+  activePopupTitle: string | null;
   activePopupRow: unknown | null;
   activePopupRowKey: string | null;
   wasmReady: boolean;
@@ -159,10 +161,10 @@ export interface IEverygrid<T extends Record<string, unknown>> {
 
   syncRowHeights(container: HTMLElement): void;
 
-  showPopup?(data: unknown, rowData?: unknown): void;
+  showPopup?(data: unknown, rowData?: unknown, title?: string): void;
   closePopup(): void;
 
-  showTextPopup?(text: string, rowData?: unknown): void;
+  showTextPopup?(text: string, rowData?: unknown, title?: string): void;
 
   showEditPopup(rowData: Record<string, unknown>, field: string, data: unknown): void;
 

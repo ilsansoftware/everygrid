@@ -129,7 +129,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
                   className="everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300"
                   onClick={(e) => {
                     e.stopPropagation();
-                    grid.showPopup?.(value, item);
+                    grid.showPopup?.(value, item, col.headerName || col.field);
                   }}
                 >
                   {getSummaryLabel(value)}
@@ -253,7 +253,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
             className={`everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300${filterText && objectContainsFilter(obj, filterText, col.field) ? ' everygrid-highlight-btn' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
-              grid.showPopup?.(obj, item);
+              grid.showPopup?.(obj, item, col.headerName || col.field);
             }}
           >
             {getSummaryLabel(obj)}
@@ -322,7 +322,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
         <div className={`flex ${alignRight ? 'justify-end' : isCenter ? 'justify-center' : 'text-left'}`}>
           <button
             className="everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300 truncate max-w-full"
-            onClick={(e) => { e.stopPropagation(); grid.showTextPopup?.(displayValue, item); }}
+            onClick={(e) => { e.stopPropagation(); grid.showTextPopup?.(displayValue, item, col.headerName || col.field); }}
             title={displayValue}
           >
             {highlightText(prefix, filterText, col.field)}

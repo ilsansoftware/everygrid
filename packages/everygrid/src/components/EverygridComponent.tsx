@@ -482,7 +482,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
       {grid.activePopup && createPortal(grid.activePopup, document.body)}
       {/* Nested-table popup built here so it uses the CURRENT filterText (live highlighting). */}
       {grid.activePopupData && createPortal(
-        <PopupComponent onClose={() => grid.closePopup()} title={I18n.t('popup.detailTitle')} data={grid.activePopupData.data}>
+        <PopupComponent onClose={() => grid.closePopup()} title={grid.activePopupTitle || I18n.t('popup.detailTitle')} data={grid.activePopupData.data}>
           <NestedTableComponent
             data={grid.activePopupData.data}
             filterText={grid.filterText}

@@ -58,7 +58,7 @@ export const TextEditorPopupComponent = ({
   };
 
   return (
-    <PopupComponent onClose={onClose} title={I18n.t('popup.textEditorTitle', {field})}>
+    <PopupComponent onClose={onClose} title={I18n.t('popup.textEditorTitle', {field})} size="auto">
       <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
         <div className="flex bg-slate-200 p-0.5 rounded text-[10px] font-bold">
           <button
