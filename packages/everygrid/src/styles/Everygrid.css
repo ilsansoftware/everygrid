@@ -316,18 +316,6 @@ button {
   @apply font-medium;
 }
 
-.everygrid-pagination-controls-mobile {
-  @apply flex-1 justify-center;
-}
-
-.everygrid-pagination-mobile-info {
-  @apply px-3 py-1 text-xs font-semibold text-slate-600;
-}
-
-.everygrid-pagination-info-mobile {
-  @apply w-full text-center pt-1 pb-0;
-}
-
 .everygrid-resizer {
   @apply absolute top-0 right-0 w-1.5 h-full cursor-col-resize select-none z-10 hover:bg-slate-300/50 hover:w-1.5 transition-all duration-150;
   touch-action: none;
@@ -383,6 +371,18 @@ button {
    50px of content plus this panel's overlap padding and bottom border. */
 .everygrid-panel-strip {
   @apply min-h-[53px] flex items-center justify-between gap-2;
+}
+
+/* Standing notice that the load was capped for this device (see dataLimit). Sits between the strip
+   and the table, styled like the Excel preview's limit banner so the two read as the same kind of
+   message. */
+.everygrid-data-limit-banner {
+  @apply flex items-center gap-2 mx-2 mb-1 px-3 py-2 text-xs rounded-md
+  bg-amber-50 border border-amber-200 text-amber-700;
+}
+
+.everygrid-data-limit-banner svg {
+  @apply w-4 h-4 shrink-0;
 }
 
 /* The footer keeps its height even when PaginationComponent renders nothing (a single page has

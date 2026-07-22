@@ -103,6 +103,12 @@ echo -e "${BLUE}☁️  [4/6] Uploading core package assets to Amazon S3...${RES
 # name promises 0.1.0 while its bytes change under it, which is the same lie the tarball told.
 CACHE_IMMUTABLE="public, max-age=31536000, immutable"
 CACHE_LATEST="no-cache"
+# Mutable shells (HTML, config/data JSON). `no-cache` = store but revalidate every load, so a
+# fresh deploy's index.html and everygrid-config.json are picked up on the next visit instead of a
+# browser serving last deploy's shell against this deploy's hashed assets. Without it the shells
+# get heuristic caching and a shipped change stays invisible until a hard refresh — which is
+# exactly how a newly added grid target went missing after deploy.
+CACHE_MUTABLE="no-cache"
 
 aws s3 cp "$OUT_TMP/$INT_TGZ_NAME" "s3://$BUCKET/packages/$INT_TGZ_NAME" --content-type "application/gzip" --cache-control "$CACHE_IMMUTABLE" --quiet
 
@@ -171,7 +177,17 @@ find "$DEMO_STAGE" -name "node_modules" -type d -exec rm -rf {} +
 # /packages/* must be excluded for a different reason: those tarballs are immutable
 # published versions that lockfiles still resolve by URL, so deleting one breaks
 # `pnpm install` for every commit that pinned it — including the one deployed here.
-aws s3 sync "$DEMO_STAGE/" "s3://$BUCKET/" --delete --exclude "latest/*" --exclude "data/*" --exclude "packages/*" --quiet
+#
+# Two passes, because the cache policy differs by file kind:
+#   1. assets/  — Vite's content-hashed JS/CSS. The hash IS the version, so cache forever.
+#      Synced first, without --delete: an index.html a browser still holds from a previous deploy
+#      references the old hash, so old assets must linger (same reasoning as /packages/* tarballs).
+#   2. everything else — index.html and the config/data JSON. These are mutable shells at stable
+#      URLs; they carry no-cache so a browser revalidates them and a deploy is seen immediately.
+#      --delete prunes removed shells; assets/ is excluded so pass 1's immutable headers survive.
+aws s3 sync "$DEMO_STAGE/assets/" "s3://$BUCKET/assets/" --cache-control "$CACHE_IMMUTABLE" --quiet
+aws s3 sync "$DEMO_STAGE/" "s3://$BUCKET/" --delete --cache-control "$CACHE_MUTABLE" \
+  --exclude "assets/*" --exclude "latest/*" --exclude "data/*" --exclude "packages/*" --quiet
 
 # Invalidate only what this deploy actually uploaded, derived from the staged site so
 # new top-level entries are covered automatically. A blanket "/*" would also flush

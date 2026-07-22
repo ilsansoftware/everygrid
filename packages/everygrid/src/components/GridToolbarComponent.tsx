@@ -142,6 +142,9 @@ export const GridToolbarComponent = ({
   // Key autocomplete: suggestions for the field key being typed at a "key position".
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestIndex, setSuggestIndex] = useState(0);
+  // Whether the keyboard is "inside" the dropdown. ↓ enters it, ↑ leaves it. Off while typing, so
+  // ← → still move the text caret until you have deliberately stepped into the suggestions.
+  const [suggestEntered, setSuggestEntered] = useState(false);
   // Caret + focus, for highlighting the bracket pair adjacent to the caret.
   const [caret, setCaret] = useState(0);
   const [focused, setFocused] = useState(false);
@@ -200,13 +203,16 @@ export const GridToolbarComponent = ({
 
   const refreshSuggestions = (value: string, caret: number) => {
     const ctx = keyContext(value, caret);
-    if (!ctx) { setSuggestions([]); return; }
+    if (!ctx) { setSuggestions([]); setSuggestEntered(false); return; }
     const node = navigate(searchKeys, scopePath(value.slice(0, ctx.start)));
     // A leaf field (no sub-keys) means we're at a value position → no suggestions.
-    if (!node || Object.keys(node).length === 0) { setSuggestions([]); return; }
+    if (!node || Object.keys(node).length === 0) { setSuggestions([]); setSuggestEntered(false); return; }
     const tl = ctx.token.toLowerCase();
     setSuggestions(Object.keys(node).filter(k => k.toLowerCase().includes(tl)).slice(0, 8));
     setSuggestIndex(0);
+    // Every new list starts "outside" it — the caret is back in the text, so ↓ must be pressed to
+    // step in again. This is what makes ↓ re-enter the dropdown at each level.
+    setSuggestEntered(false);
   };
 
   // Search runs on Enter (Shift+Enter inserts a newline) — typing just updates the local value.
@@ -232,10 +238,31 @@ export const GridToolbarComponent = ({
 
   const handleFilterKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (suggestions.length > 0) {
-      if (e.key === 'ArrowDown') { e.preventDefault(); setSuggestIndex(i => (i + 1) % suggestions.length); return; }
-      if (e.key === 'ArrowUp') { e.preventDefault(); setSuggestIndex(i => (i - 1 + suggestions.length) % suggestions.length); return; }
-      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); applySuggestion(suggestions[suggestIndex]); return; }
-      if (e.key === 'Escape') { e.preventDefault(); setSuggestions([]); return; }
+      // ↓ step INTO the dropdown (from the text field). Already inside → move to the next item.
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!suggestEntered) { setSuggestEntered(true); setSuggestIndex(0); }
+        else setSuggestIndex(i => (i + 1) % suggestions.length);
+        return;
+      }
+      // ↑ step back OUT to the text field; press it again (now outside) to close the dropdown.
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (suggestEntered) setSuggestEntered(false);
+        else setSuggestions([]);
+        return;
+      }
+      if (suggestEntered) {
+        // ← → move the selection — only while inside, so the text caret still works when outside.
+        if (e.key === 'ArrowRight') { e.preventDefault(); setSuggestIndex(i => (i + 1) % suggestions.length); return; }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); setSuggestIndex(i => (i - 1 + suggestions.length) % suggestions.length); return; }
+        // Enter applies the highlighted field. The inserted field's sub-keys become the new list,
+        // which starts outside again — so ↓ re-enters it.
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); applySuggestion(suggestions[suggestIndex]); return; }
+      }
+      // Tab completes the highlighted field from anywhere, as a shortcut.
+      if (e.key === 'Tab') { e.preventDefault(); applySuggestion(suggestions[suggestIndex]); return; }
+      if (e.key === 'Escape') { e.preventDefault(); setSuggestions([]); setSuggestEntered(false); return; }
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -456,9 +483,11 @@ export const GridToolbarComponent = ({
                   type="button"
                   // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
                   onMouseDown={e => { e.preventDefault(); applySuggestion(k); }}
-                  className={`rounded px-2 py-0.5 text-[11px] font-medium ${i === suggestIndex ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  className={`rounded px-2 py-0.5 text-[11px] font-medium ${suggestEntered && i === suggestIndex ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
               >{k}</button>
             ))}
+            {/* The key map isn't obvious (arrows navigate the scope, not the text), so spell it out. */}
+            <div className="basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none">{I18n.t('toolbar.suggestNav')}</div>
           </div>,
           document.body,
         )}

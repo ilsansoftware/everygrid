@@ -32,11 +32,15 @@ export const EXCEL_PAGE_SIZE = 50;
 export const ExcelViewWrapperComponent = <T extends Record<string, unknown>>({
                                                                                data,
                                                                                toolbar,
+                                                                               header,
                                                                                footer,
                                                                                onBodyScroll,
                                                                              }: {
   data: T[],
   toolbar: React.ReactNode,
+  /** The strip between toolbar and table — row count, and the preview's top pager when the grid
+   *  paginates on top. Mirrors the normal view so toggling the preview keeps the same layout. */
+  header?: React.ReactNode,
   /** Pagination for the preview — it pages through the whole result rather than truncating it. */
   footer?: React.ReactNode,
   /** Set for grids that scroll rather than page: fires as the preview body nears its end. */
@@ -48,6 +52,7 @@ export const ExcelViewWrapperComponent = <T extends Record<string, unknown>>({
     // natural height, overflowed the wrapper's `overflow-hidden` and was silently cut off.
     <div className='everygrid-wrapper h-full flex flex-col min-h-0'>
       {toolbar}
+      {header}
       {/* isolate, for the same reason the normal view's body has it: this table carries the
           `everygrid-table` class, so its header cells are `sticky top-0` at the in-body band's
           z-index. Without a stacking context of its own that number reaches page level, where it

@@ -89,6 +89,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private _serverFetching: Map<string, boolean> = new Map();
   // Streaming mode: total row count
   public _streamTotal: Map<string, number> = new Map();
+  // Set when a target's load was capped by dataLimit: rows actually loaded, and the true total
+  // when known (in-memory) — null when a stream was stopped early and the full size is unknown.
+  public _dataLimited: Map<string, {shown: number; total: number | null}> = new Map();
   // Streaming mode: all rows stored in JS memory
   public _streamRows: Map<string, Record<string, unknown>[]> = new Map();
   // Streaming mode: source URL (stored for reference, no re-fetch needed)
@@ -194,7 +197,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         // _wasmDataLoaded is set by _setRows before it awaits the engine, so it marks exactly
         // that case: someone else owns this target's load.
         if (this.options.data && this.options.data.length > 0 && !this._wasmDataLoaded.get(id)) {
-          this._loadIntoEngine(id, engine, this.options.data as unknown[]).then(() => {
+          // Cap directly-supplied data too, and point options.data at the capped slice so the
+          // count and the engine agree (and the trimmed rows can be freed).
+          const capped = this._capRows(id, this.options.data as Record<string, unknown>[]);
+          (this.options as { data: unknown[] }).data = capped;
+          this._loadIntoEngine(id, engine, capped as unknown[]).then(() => {
             this._wasmDataLoaded.set(id, true);
             this.applyWasmFilter(id).catch(console.error);
           }).catch(console.error);
@@ -464,6 +471,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /** Installs freshly loaded rows as the target's data and hands them to its WASM engine. */
   private async _setRows(targetId: string, rows: Record<string, unknown>[]): Promise<void> {
+    // Cap first, then treat the capped slice as the data everywhere below — installing the full
+    // array would defeat the guard (the whole thing stays in JS memory) and leave the count out
+    // of step with what the engine holds.
+    rows = this._capRows(targetId, rows);
     this._streamRows.delete(targetId);
     this._streamUrl.delete(targetId);
     this._searchKeysCache.delete(targetId); // recompute autocomplete keys for the new data
@@ -677,6 +688,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     doRender();
     const renderTimer = setInterval(doRender, RENDER_INTERVAL_MS);
 
+    // Row cap for this target, if any. Streaming stops once it is reached, so the whole file is
+    // never downloaded or held — the point of the guard on the path where OOM actually happens.
+    const cap = instance.getDataLimit(targetId);
+    instance._dataLimited.delete(targetId);
+
     try {
       await engine.streamStart(false);
       while (true) {
@@ -686,6 +702,14 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         // Transfer raw bytes to the worker — the main thread does NO parsing.
         total = await engine.streamChunk(value);
         instance._streamTotal.set(targetId, total);
+        // Cap reached: stop reading. The chunk just fed may carry a few rows past the cap (bytes,
+        // not rows, are the unit fed), which is fine — memory is bounded to cap + one chunk. The
+        // true total is unknown because we stopped early, so the banner reports shown-only.
+        if (cap !== undefined && total >= cap) {
+          instance._dataLimited.set(targetId, {shown: total, total: null});
+          reader.cancel().catch(() => {});
+          break;
+        }
         if (contentLength > 0) {
           // totalBytes counts what the reader delivered and contentLength is that same
           // (decoded) measure — see _decodedLength — so this ratio is real progress, not an
@@ -1187,6 +1211,55 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       }
     }
     return undefined;
+  }
+
+  /**
+   * Rows this device can safely hold, for `dataLimit: 'auto'`. Derived from reported RAM
+   * (`navigator.deviceMemory`, Chromium only) and whether the device looks mobile. Conservative on
+   * purpose — a grid that loads beats one that shows everything and crashes the tab.
+   */
+  private static _deviceRowBudget(): number | null {
+    const nav = (typeof navigator !== 'undefined' ? navigator : undefined) as
+      (Navigator & {deviceMemory?: number; userAgentData?: {mobile?: boolean}}) | undefined;
+    if (!nav) return null;
+    const mem = nav.deviceMemory; // GB, or undefined
+    const width = typeof window !== 'undefined'
+      ? Math.min(window.innerWidth || Infinity, window.screen?.width || Infinity)
+      : Infinity;
+    const coarse = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      && window.matchMedia('(pointer: coarse)').matches;
+    const mobile = !!nav.userAgentData?.mobile
+      || /Mobi|Android|iPhone|iPod|iPad/i.test(nav.userAgent)
+      || (coarse && nav.maxTouchPoints > 0 && width < 820);
+    if (mobile || width < 820) {
+      // ~3k rows per GB, floored so even a 1–2GB phone shows a working grid; 5k when RAM is unknown.
+      return mem ? Math.max(3000, Math.round(mem * 3000)) : 5000;
+    }
+    if (mem && mem <= 4) return 25000; // low-RAM laptop
+    return null; // roomy desktop — no cap
+  }
+
+  public getDataLimit(containerId: string): number | undefined {
+    const dl = this.options.dataLimit;
+    if (!dl) return undefined;
+    const conf = Array.isArray(dl) ? dl.find(d => d.id === containerId) : (dl.id === containerId ? dl : undefined);
+    if (!conf || conf.active === false || conf.maxRows === undefined) return undefined;
+    const cap = conf.maxRows === 'auto' ? Everygrid._deviceRowBudget() : conf.maxRows;
+    return (typeof cap === 'number' && cap > 0) ? Math.floor(cap) : undefined;
+  }
+
+  /**
+   * Applies the row cap to an in-memory array. Returns the (possibly sliced) rows and records the
+   * cap so the banner can report it. A no-op when there is no cap or the data is within it.
+   */
+  private _capRows(targetId: string, rows: Record<string, unknown>[]): Record<string, unknown>[] {
+    const cap = this.getDataLimit(targetId);
+    if (cap === undefined || rows.length <= cap) {
+      this._dataLimited.delete(targetId);
+      return rows;
+    }
+    this._dataLimited.set(targetId, {shown: cap, total: rows.length});
+    return rows.slice(0, cap);
   }
 
   public getVirtualScroll(containerId: string): GridVirtualScrollConfig | undefined {

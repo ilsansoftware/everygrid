@@ -82,6 +82,24 @@ export interface GridVirtualScrollConfig {
   blockSize?: number;
 }
 
+/**
+ * Caps how many rows a target loads into the browser. Loading a whole large dataset — into JS and
+ * again into the WASM worker — can exceed a device's per-tab memory limit and crash the tab
+ * (typical on phones). With a cap the grid loads only the first N rows and shows a banner instead.
+ *
+ * For genuinely large data the right answer is server-side pagination (`pagination.serverSide` +
+ * `serverFetcher`); this is a safety net for when a full dataset reaches the client anyway.
+ */
+export interface GridDataLimitConfig {
+  id: string;
+  /**
+   * Hard cap on rows loaded. A number caps at exactly that; `'auto'` derives a device-appropriate
+   * cap from reported RAM and whether the device looks mobile. Omit (or `active: false`) for no cap.
+   */
+  maxRows?: number | 'auto';
+  active?: boolean;
+}
+
 export interface GridRowCheckboxConfig {
   id: string;
   active: boolean;
@@ -179,6 +197,12 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   /** Resolved virtual-scroll config, or undefined when the target scrolls by pages. */
   getVirtualScroll(containerId: string): GridVirtualScrollConfig | undefined;
 
+  /** Resolved row cap for a target (`'auto'` turned into a number), or undefined for no cap. */
+  getDataLimit(containerId: string): number | undefined;
+
+  /** Set when a load was capped: how many rows are shown, and the true total if it is known. */
+  _dataLimited: Map<string, {shown: number; total: number | null}>;
+
   /**
    * Rows for the half-open range [start, end) of the current filtered result.
    * Returns synchronously from the block cache; blocks that are missing come back as `undefined`
@@ -241,6 +265,7 @@ export interface GridOptions<T = Record<string, unknown>> {
   checkbox?: GridCheckboxConfig[];
   pagination?: GridPaginationConfig | GridPaginationConfig[];
   virtualScroll?: GridVirtualScrollConfig | GridVirtualScrollConfig[];
+  dataLimit?: GridDataLimitConfig | GridDataLimitConfig[];
   serverFetcher?: (params: ServerFetchParams) => Promise<ServerFetchResult>;
   /**
    * `cache` mode for the fetch that loads a target's data from a URL.

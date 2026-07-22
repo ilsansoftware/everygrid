@@ -18,7 +18,8 @@
     "filterPlaceholder": "검색...",
     "moreActions": "더 보기",
     "indexingPercent": "인덱싱 중... {percent}%",
-    "indexingRows": "인덱싱 중... {count}행"
+    "indexingRows": "인덱싱 중... {count}행",
+    "suggestNav": "↓ 진입 · ← → 선택 · Enter 적용 · ↑ 탈출"
   },
   "grid": {
     "index": "번호",
@@ -47,7 +48,9 @@
     "startEdit": "이 열 수정 시작",
     "finishEdit": "이 열 수정 종료",
     "pinColumn": "열 고정",
-    "edit": "수정"
+    "edit": "수정",
+    "dataLimited": "이 기기 안전 한도로 전체 {total}행 중 상위 {shown}행만 표시합니다.",
+    "dataLimitedStream": "이 기기 안전 한도로 상위 {shown}행만 불러왔습니다. 나머지는 로드하지 않았습니다."
   },
   "pagination": {
     "showing": "전체 {total} 중 {start}-{end} 표시",

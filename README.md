@@ -172,6 +172,7 @@ You can use Everygrid directly in the browser via CDN (no build step required).
 | `rowCheckbox` | `GridRowCheckboxConfig[]` | Row checkbox settings per grid |
 | `pagination` | `GridPaginationConfig[]` | Pagination settings per grid |
 | `virtualScroll` | `GridVirtualScrollConfig[]` | Virtual scrolling settings per grid (replaces pagination for that grid) |
+| `dataLimit` | `GridDataLimitConfig[]` | Cap on rows loaded per grid — a safety net against out-of-memory tab crashes |
 | `colors` | `GridColorConfig[]` | Header/body color settings per grid |
 | `dataCache` | `RequestCache` | `cache` mode for URL data loads. Defaults to `'no-store'` (always re-fetch). Use `'default'` for large, rarely-changing datasets so a reload revalidates instead of re-downloading. |
 
@@ -225,6 +226,41 @@ table**, always, whether or not it has pagination. `rowCount` only decides who d
 `'inline'` applies only at an end that actually has a pagination bar — where there is none, the
 band draws the count itself, so both ends always carry it. Virtual grids always use `'strip'`,
 having no pagination bar at all.
+
+---
+
+### Data limit (memory guard)
+
+Loading a whole large dataset into the browser — once into JS, again into the WASM worker — can
+exceed a device's per-tab memory limit and crash the tab (common on phones: the page opens, then
+reloads itself into an error screen). `dataLimit` caps how many rows a grid loads and shows a
+banner instead of crashing.
+
+```json
+{
+  "dataLimit": [
+    { "id": "user-grid", "maxRows": "auto" }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Target grid id |
+| `maxRows` | `number \| 'auto'` | Hard cap. A number caps at exactly that; `'auto'` derives a device-appropriate cap from reported RAM (`navigator.deviceMemory`) and whether the device looks mobile — a roomy desktop gets no cap. |
+| `active` | `boolean` | Set `false` to disable without removing the entry |
+
+It applies on every load path:
+
+- **In-memory / fetched arrays** — the array is sliced to the cap; the banner reads *"Showing the
+  first N of M rows"*.
+- **Streamed URLs** — ingestion stops once the cap is reached, so the rest of the file is never
+  downloaded or held (this is where a phone actually runs out of memory). The full size isn't known
+  because the stream was cut short, so the banner reads *"Showing the first N rows"*.
+
+**This is a safety net, not the primary tool for large data.** For datasets that are genuinely too
+big for the client, use server-side pagination (`pagination.serverSide` + `serverFetcher`) so only
+one page is ever in memory. `dataLimit` is there for when a full dataset reaches the client anyway.
 
 ---
 
@@ -334,8 +370,12 @@ The toolbar's export button downloads the grid as `.xlsx`:
   otherwise it downloads directly.
 - **Nested arrays → child sheets** — object arrays are exported as normalized child sheets linked to
   the main sheet by `_mainSheetRowNum` (with `_key` / `_idx` for the sub-path and position), so the
-  data stays analysable in Excel/Power Query. Scalar nested objects flatten into `parent_child`
-  columns.
+  data stays analysable in Excel/Power Query. On those child sheets, nested objects flatten to
+  `parent_child` columns to any depth.
+- **Nested objects → one cell** — on the main sheet a nested object stays a single column, its
+  contents rendered into the one cell (the same treatment object arrays get), so every nested value
+  reads the same way rather than a `{name, division}` object splitting into `_name` / `_division`
+  columns while an object holding arrays stays whole.
 - **Large data** — built off the main thread in a worker, streamed and zip-split so even multi-GB
   grids export without freezing the UI; the progress badge shows a percentage and a **Cancel**.
 

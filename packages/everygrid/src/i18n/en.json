@@ -18,7 +18,8 @@
     "filterPlaceholder": "Search...",
     "moreActions": "More",
     "indexingPercent": "Indexing... {percent}%",
-    "indexingRows": "Indexing... {count} rows"
+    "indexingRows": "Indexing... {count} rows",
+    "suggestNav": "↓ enter · ← → select · Enter apply · ↑ exit"
   },
   "grid": {
     "index": "Index",
@@ -47,7 +48,9 @@
     "startEdit": "Start editing this column",
     "finishEdit": "Finish editing this column",
     "pinColumn": "Pin Column",
-    "edit": "Edit"
+    "edit": "Edit",
+    "dataLimited": "Showing the first {shown} of {total} rows — this device's safe limit.",
+    "dataLimitedStream": "Showing the first {shown} rows — this device's safe limit; the rest was not loaded."
   },
   "pagination": {
     "showing": "Showing {start}-{end} of {total}",

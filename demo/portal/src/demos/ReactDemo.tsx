@@ -1,6 +1,10 @@
 import { useEverygridDemo } from '../lib/useEverygridDemo';
 import type { Locale } from '../lib/everygrid';
 
+// The large-data grid streams the real 1.6M-row file. Its config sets `dataLimit: 'auto'`, so on a
+// phone the library stops the stream at a device-safe count (and shows a banner) instead of loading
+// the whole ~100MB and crashing the tab; a roomy desktop streams all of it.
+
 // React demo — grids driven directly by the Everygrid API from a React component.
 export default function ReactDemo({ locale, active = true }: { locale: Locale; active?: boolean }) {
   useEverygridDemo(

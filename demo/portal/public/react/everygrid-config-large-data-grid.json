@@ -14,5 +14,11 @@
       "position": "all",
       "rowCount": "inline"
     }
+  ],
+  "dataLimit": [
+    {
+      "id": "large-data-grid",
+      "maxRows": "auto"
+    }
   ]
 }

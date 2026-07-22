@@ -12,6 +12,7 @@ import {PopupComponent} from './PopupComponent';
 import {NestedTableComponent} from './NestedTableComponent';
 import {makeElementGate} from '../core/highlightUtils';
 import {useVirtualWindow} from '../core/useVirtualWindow';
+import {InfoIcon} from '../icons/InfoIcon';
 import {I18n} from '../i18n/I18n';
 
 const DEFAULT_ROW_HEIGHT = 36;
@@ -145,6 +146,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   const pagination = grid.getPagination(containerId);
   const colorConfig = grid.options.colors?.find(conf => conf.id === containerId);
   const gridTitle = grid.getGridTitle(containerId);
+  const dataLimited = grid._dataLimited?.get(containerId);
 
 
   useLayoutEffect(() => {
@@ -173,6 +175,17 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   const currentPageNo = grid.getCurrentPage(containerId);
   const countStart = streamTotal === 0 ? 0 : (isPaged ? (currentPageNo - 1) * countPageSize + 1 : 1);
   const countEnd = isPaged ? Math.min(currentPageNo * countPageSize, streamTotal) : streamTotal;
+
+  // Where the grid places its pagination — top, bottom, both. The Excel preview reads the same
+  // flags so its own pager lands where the grid's would, and toggling into the preview doesn't
+  // move the controls around. Defined here (not just before the normal-view return) because the
+  // Excel branch below needs them too.
+  const paginationActive = !showSkeleton && !virtualConf && !!pagination && pagination.active !== false;
+  const hasTopPagination = paginationActive &&
+    (pagination!.position === 'top' || pagination!.position === 'all');
+  const hasBottomPagination = paginationActive &&
+    (pagination!.position === 'bottom' || pagination!.position === 'all' ||
+      (!pagination!.position && (streamTotal > 0 || streamTotalRaw > 0)));
 
   // Excel View Mode
   if (grid.isExcelViewMode) {
@@ -212,6 +225,36 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
     const excelItems = settled.length > 0
       ? settled
       : (pageIndex === 0 ? displayItems.filter((r): r is T => r !== undefined) : []);
+
+    // One bar builder for both ends, so the preview's chrome matches the normal view: a row count
+    // always, and the preview's own pager at whichever end the grid paginates (never for a
+    // scrolling preview, which has no pages). `place` picks the panel classes that frame that end.
+    const excelBar = (place: 'top' | 'bottom') => {
+      const showPager = !excelScrolls && (place === 'top' ? hasTopPagination : hasBottomPagination);
+      const frame = place === 'top'
+        ? 'everygrid-pagination-top everygrid-panel-above-body everygrid-panel-strip'
+        : 'everygrid-pagination-bottom everygrid-panel-below-body everygrid-panel-bottom';
+      return (
+        <div className={`shrink-0 everygrid-panel ${frame}`}>
+          <RowCountComponent
+            start={streamTotal === 0 ? 0 : from + 1}
+            end={from + excelItems.length}
+            total={streamTotal}
+            rawTotal={streamTotalRaw || items.length}
+          />
+          {showPager && (
+            <PaginationComponent
+              grid={grid}
+              container={container}
+              currentPage={pageIndex + 1}
+              totalPages={excelTotalPages}
+              disabled={isBusy}
+              onPageChange={(page) => setExcelPage(page - 1)}
+            />
+          )}
+        </div>
+      );
+    };
     const toolbar = (
       <div className="everygrid-toolbar-container px-2 shrink-0 everygrid-panel everygrid-panel-top everygrid-panel-above-body">
         <GridToolbarComponent
@@ -250,27 +293,9 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           <ExcelViewWrapperComponent
             data={excelItems}
             toolbar={toolbar}
+            header={excelBar('top')}
+            footer={excelBar('bottom')}
             onBodyScroll={excelScrolls ? onExcelScroll : undefined}
-            footer={
-              <div className="shrink-0 everygrid-pagination-bottom everygrid-panel everygrid-panel-below-body everygrid-panel-bottom">
-                <RowCountComponent
-                  start={streamTotal === 0 ? 0 : from + 1}
-                  end={from + excelItems.length}
-                  total={streamTotal}
-                  rawTotal={streamTotalRaw || items.length}
-                />
-                {!excelScrolls && (
-                  <PaginationComponent
-                    grid={grid}
-                    container={container}
-                    currentPage={pageIndex + 1}
-                    totalPages={excelTotalPages}
-                    disabled={isBusy}
-                    onPageChange={(page) => setExcelPage(page - 1)}
-                  />
-                )}
-              </div>
-            }
           />
         </div>
       </div>
@@ -287,14 +312,6 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
     rawTotal: streamTotalRaw || items.length,
   };
 
-  // Which chrome sits immediately above/below the table decides where the frame's rounded corners
-  // go and which panel overlaps the body.
-  const paginationActive = !showSkeleton && !virtualConf && !!pagination && pagination.active !== false;
-  const hasTopPagination = paginationActive &&
-    (pagination!.position === 'top' || pagination!.position === 'all');
-  const hasBottomPagination = paginationActive &&
-    (pagination!.position === 'bottom' || pagination!.position === 'all' ||
-      (!pagination!.position && (streamTotal > 0 || streamTotalRaw > 0)));
   // 'inline' hands the count to the pagination bar — but only at an end that actually has one.
   // Where there is no bar, the panel draws the count itself so both ends always carry it.
   const topInlineCount = rowCountMode === 'inline' && hasTopPagination;
@@ -371,6 +388,18 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
               disabled={isBusy}
               rowCount={topInlineCount ? rowCountData : undefined}
             />}
+          </div>
+        )}
+
+        {/* dataLimit banner: the load was capped for this device, so state it plainly instead of
+            silently showing a partial dataset. Persistent — it is a standing fact about the data,
+            not a transient status. */}
+        {!showSkeleton && dataLimited && (
+          <div className="everygrid-data-limit-banner shrink-0">
+            <InfoIcon/>
+            <span>{dataLimited.total != null
+              ? I18n.t('grid.dataLimited', {shown: dataLimited.shown.toLocaleString(), total: dataLimited.total.toLocaleString()})
+              : I18n.t('grid.dataLimitedStream', {shown: dataLimited.shown.toLocaleString()})}</span>
           </div>
         )}
 

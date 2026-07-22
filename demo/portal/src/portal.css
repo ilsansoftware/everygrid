@@ -7,7 +7,8 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #f1f5f9;
-  height: 100vh;
+  height: 100vh;      /* fallback for browsers without dvh */
+  height: 100dvh;     /* the visible viewport — excludes the mobile browser's dynamic toolbar */
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -104,6 +105,40 @@ nav button.active img {
   height: 100%;
   border: none;
 }
+
+/* Slim footer that bookends the dark header — same navy, muted text, flex-shrink:0 so it stays
+   pinned below the scrolling demo panel (body is 100vh / overflow hidden). */
+.portal-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: content-box;
+  height: 40px;
+  padding: 0 24px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #1a1b2e;
+  border-top: 1px solid #2a2b3d;
+  color: #94a3b8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.75rem;
+}
+
+.portal-footer-brand {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #e2e8f0;
+}
+
+.portal-footer-tagline {
+  color: #64748b;
+}
+
+.portal-footer-copy {
+  margin-left: auto;
+  color: #64748b;
+}
+
 
 /* Shared container used by the vanilla / jquery demos */
 .demo-panel .container {
@@ -344,5 +379,15 @@ nav button.active img {
   .show-code-btn {
     height: 32px;
     padding: 4px 10px;
+  }
+
+  .portal-footer {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 0.7rem;
+  }
+
+  .portal-footer-tagline {
+    display: none;
   }
 }

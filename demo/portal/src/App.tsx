@@ -243,6 +243,12 @@ export default function App() {
         )}
       </div>
 
+      <footer className="portal-footer">
+        <span className="portal-footer-brand">Everygrid</span>
+        <span className="portal-footer-tagline">Config-driven data grid · Rust → WASM</span>
+        <span className="portal-footer-copy">© {new Date().getFullYear()}</span>
+      </footer>
+
       <div
         className={`code-modal-overlay${modalOpen ? ' open' : ''}`}
         onClick={(e) => {

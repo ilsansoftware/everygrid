@@ -480,8 +480,9 @@ export const ExcelView = {
 
 
   // `deep`: when true, nested objects are flattened into `parent_child` columns to ANY depth
-  // (used by child sheets, the analysis surface) instead of collapsing a complex object into one
-  // formatObject cell. Object arrays are still one cell either way (single-level normalization).
+  // (used by child sheets, the analysis surface). When false (main sheet / preview) every nested
+  // object is instead collapsed into one formatObject cell, so it reads the same as an object
+  // array. Object arrays are one cell either way (single-level normalization).
   flattenObjectForExcel: (obj: unknown, prefix = '', deep = false): Record<string, unknown> => {
     const flattened: Record<string, unknown> = {};
     if (obj === null || obj === undefined) {
@@ -512,15 +513,16 @@ export const ExcelView = {
         } else if (typeof value === 'object' && value !== null) {
           if (Object.keys(value).length === 0) {
             flattened[propName] = '{}';
+          } else if (!deep) {
+            // Main sheet / preview: a nested object is ONE column, its contents rendered into the
+            // single cell — the same treatment object arrays get, so every nested value reads the
+            // same way. (It used to split an all-scalar object like {name,division,headcount} into
+            // parent_child columns while an object holding arrays stayed one cell — same data,
+            // two shapes.) Child sheets pass deep=true and still flatten fully, for analysis.
+            flattened[propName] = ExcelView.formatObject(value);
           } else {
-            const typedValue = value as Record<string, unknown>;
-            const isComplex = Object.values(typedValue).some(v => typeof v === 'object' && v !== null);
-            if (isComplex && !deep) {
-              flattened[propName] = ExcelView.formatObject(value);
-            } else {
-              const nested = ExcelView.flattenObjectForExcel(value, propName, deep);
-              Object.assign(flattened, nested);
-            }
+            const nested = ExcelView.flattenObjectForExcel(value, propName, deep);
+            Object.assign(flattened, nested);
           }
         } else {
           flattened[propName] = value;

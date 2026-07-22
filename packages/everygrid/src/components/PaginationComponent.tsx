@@ -1,6 +1,5 @@
 import {I18n} from '../i18n/I18n';
 import type {IEverygrid} from '../core/types';
-import {useEffect, useRef, useState} from 'react';
 import {RowCountComponent, type RowCountProps} from './RowCountComponent';
 
 export interface PaginationProps<T extends Record<string, unknown>> {
@@ -22,6 +21,9 @@ export interface PaginationProps<T extends Record<string, unknown>> {
   onPageChange?: (page: number) => void;
 }
 
+/** Numbered pages shown at once before paging jumps to the next block. */
+const MAX_VISIBLE = 10;
+
 export const PaginationComponent = <T extends Record<string, unknown>>({
                                                                          grid,
                                                                          container,
@@ -32,36 +34,15 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
                                                                          onPageChange,
                                                                        }: PaginationProps<T>) => {
   const containerId = container.id;
-  const [isMobile, setIsMobile] = useState(false);
-  const paginationRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = paginationRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setIsMobile(entry.contentRect.width < 720);
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   const handlePageChange = (page: number) => {
     if (onPageChange) onPageChange(page);
     else grid.setCurrentPage(containerId, page, container);
   };
 
-  const maxVisible = isMobile ? 5 : 10;
-  const mobileRadius = 2;
-  const currentBlock = Math.floor((currentPage - 1) / maxVisible);
-  const startPage = isMobile
-    ? Math.max(1, currentPage - mobileRadius)
-    : currentBlock * maxVisible + 1;
-  const endPage = isMobile
-    ? Math.min(totalPages, currentPage + mobileRadius)
-    : Math.min(totalPages, startPage + maxVisible - 1);
-
+  const currentBlock = Math.floor((currentPage - 1) / MAX_VISIBLE);
+  const startPage = currentBlock * MAX_VISIBLE + 1;
+  const endPage = Math.min(totalPages, startPage + MAX_VISIBLE - 1);
   const pages = [];
   for (let i = startPage; i <= endPage; i++) {
     pages.push(i);
@@ -82,19 +63,27 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
   );
 
   return (
-    <div className={`everygrid-pagination ${rowCount ? 'has-row-count' : ''}`} ref={paginationRef}>
-      {rowCount && !isMobile && <RowCountComponent {...rowCount}/>}
+    // `@container`: the bar is a container-query context, so its own width — not the viewport's —
+    // decides the compact layout. A grid dropped into a narrow column goes compact even on a wide
+    // screen, and (unlike the ResizeObserver this replaced) the switch is pure CSS with no render
+    // to wait on. The row count stays at the left on both layouts (flex handles that).
+    <div className={`everygrid-pagination @container ${rowCount ? 'has-row-count' : ''}`}>
+      {rowCount && <RowCountComponent {...rowCount}/>}
       {totalPages > 1 && (
-        <div className={`everygrid-pagination-controls${isMobile ? ' everygrid-pagination-controls-mobile' : ''}`}>
+        <div className="everygrid-pagination-controls">
           {renderBtn('&laquo;', I18n.t('pagination.first'), 1, currentPage === 1)}
           {renderBtn('&lsaquo;', I18n.t('pagination.prev'), Math.max(1, currentPage - 1), currentPage === 1)}
-          {isMobile && (
-            <span className="everygrid-pagination-mobile-info">{currentPage} / {totalPages}</span>
-          )}
-          {!isMobile && pages.map((i) => (
+          {/* Numbered pages hide below 720px of bar width, leaving just the four arrows: the
+              current page and total are already stated by the row count beside them, so repeating
+              "3 / 12" here would only crowd the buttons on a phone. */}
+          {pages.map((i) => (
             <button
               key={i}
-              className={`everygrid-pagination-btn ${i === currentPage ? 'active' : ''} ${disabled ? 'disabled' : ''}`}
+              // hidden! (important), not plain hidden: `.everygrid-pagination-btn` sets display:flex
+              // outside any @layer, and an unlayered rule beats a layered utility — so the container
+              // query needs `!important` to win. Important always beats normal within author styles,
+              // regardless of layers.
+              className={`everygrid-pagination-btn @max-[720px]:hidden! ${i === currentPage ? 'active' : ''} ${disabled ? 'disabled' : ''}`}
               disabled={disabled}
               onClick={() => handlePageChange(i)}
             >
@@ -104,10 +93,6 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
           {renderBtn('&rsaquo;', I18n.t('pagination.next'), Math.min(totalPages, currentPage + 1), currentPage === totalPages)}
           {renderBtn('&raquo;', I18n.t('pagination.last'), totalPages, currentPage === totalPages)}
         </div>
-      )}
-      {/* Narrow bars put the count under the controls instead of beside them. */}
-      {rowCount && isMobile && (
-        <RowCountComponent {...rowCount} className="everygrid-pagination-info-mobile"/>
       )}
     </div>
   );
