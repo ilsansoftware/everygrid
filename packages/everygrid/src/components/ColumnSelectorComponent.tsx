@@ -34,13 +34,13 @@ export const ColumnSelectorComponent = <T extends Record<string, unknown>>({
 
   return (
     <div className={Everygrid.POPUP_OVERLAY_CLASS}>
-      <div className={`${Everygrid.POPUP_CONTENT_CLASS}`}>
+      <div className={`${Everygrid.POPUP_CONTENT_CLASS} everygrid-popup-s`}>
         <div className="everygrid-popup-header">
           <h3>{I18n.t('toolbar.selectColumns')}</h3>
           <span className={Everygrid.POPUP_CLOSE_CLASS} onClick={onClose}
                 dangerouslySetInnerHTML={{__html: Everygrid.POPUP_CLOSE_HTML}}></span>
         </div>
-        <div className="everygrid-popup-body p-6">
+        <div className="everygrid-popup-body flex-1">
           <div className="flex flex-col gap-2">
             {allFields.map(field => (
               <label key={field} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">

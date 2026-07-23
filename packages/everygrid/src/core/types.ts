@@ -126,7 +126,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   commaSeparatedFields: Set<string>;
   linkFields: Set<string>;
   isExcelViewMode: boolean;
-  activePopup: React.ReactNode | null;
+  activePopup: React.ReactElement | null;
   activePopupData: {data: unknown} | null;
   /** Title for the active detail popup — the field the cell belongs to, or undefined for a fallback. */
   activePopupTitle: string | null;

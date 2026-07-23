@@ -56,7 +56,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public activeEditFields: Map<string, Set<string>> = new Map();
   // Cache of the searchable-key tree per target, for the search autocomplete. See getSearchKeys.
   private _searchKeysCache: Map<string, KeyTree> = new Map();
-  public activePopup: React.ReactNode | null = null;
+  public activePopup: React.ReactElement | null = null;
   // Nested-table popup data. Stored (not pre-built) so the popup is assembled at render time with
   // the CURRENT filterText — highlighting stays live if the filter changes while it is open.
   public activePopupData: {data: unknown} | null = null;

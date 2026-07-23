@@ -263,6 +263,15 @@ export const GridToolbarComponent = ({
       // Tab completes the highlighted field from anywhere, as a shortcut.
       if (e.key === 'Tab') { e.preventDefault(); applySuggestion(suggestions[suggestIndex]); return; }
       if (e.key === 'Escape') { e.preventDefault(); setSuggestions([]); setSuggestEntered(false); return; }
+    } else if (e.key === 'ArrowDown') {
+      // Dropdown was dismissed (↑-out or Esc): ↓ re-opens the key suggestions at the current
+      // caret and steps straight into them. No-op if the caret isn't at a key position.
+      e.preventDefault();
+      const el = filterRef.current;
+      const caret = el?.selectionStart ?? inputValue.length;
+      refreshSuggestions(inputValue, caret);
+      setSuggestEntered(true);
+      return;
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();

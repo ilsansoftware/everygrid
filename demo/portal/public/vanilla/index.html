@@ -49,23 +49,23 @@
       // device: a coarse-pointer/narrow/mobile device — or a low-RAM one, when the browser reports
       // navigator.deviceMemory — gets far fewer. Override with ?rows=500000 to force a size.
       'virtual-grid': function () {
-        var mem = navigator.deviceMemory; // GB (Chromium) or undefined
-        var uaMobile = (navigator.userAgentData && navigator.userAgentData.mobile)
+        const mem = navigator.deviceMemory; // GB (Chromium) or undefined
+        const uaMobile = (navigator.userAgentData && navigator.userAgentData.mobile)
           || /Mobi|Android|iPhone|iPod|iPad/i.test(navigator.userAgent);
-        var coarseNarrow = typeof matchMedia === 'function'
+        const coarseNarrow = typeof matchMedia === 'function'
           && matchMedia('(pointer: coarse)').matches
           && navigator.maxTouchPoints > 0
           && Math.min(window.innerWidth || Infinity, (window.screen && window.screen.width) || Infinity) < 820;
-        var constrained = uaMobile || coarseNarrow
+        const constrained = uaMobile || coarseNarrow
           || Math.min(window.innerWidth || Infinity, (window.screen && window.screen.width) || Infinity) < 820;
-        var deviceMax = constrained
+        const deviceMax = constrained
           ? (mem ? Math.max(3000, Math.min(100000, mem * 3000)) : 5000)
           : (mem && mem <= 4 ? 25000 : 100000);
-        var rows = parseInt(new URLSearchParams(location.search).get('rows'), 10) || deviceMax;
-        var cities = ['Seoul', 'Busan', 'Incheon', 'Daegu', 'Daejeon', 'Gwangju', 'Ulsan'];
-        var teams = ['Platform', 'Growth', 'Payments', 'Data', 'Infra', 'Design'];
-        var out = new Array(rows);
-        for (var i = 0; i < rows; i++) {
+        const rows = parseInt(new URLSearchParams(location.search).get('rows'), 10) || deviceMax;
+        const cities = ['Seoul', 'Busan', 'Incheon', 'Daegu', 'Daejeon', 'Gwangju', 'Ulsan'];
+        const teams = ['Platform', 'Growth', 'Payments', 'Data', 'Infra', 'Design'];
+        const out = new Array(rows);
+        for (let i = 0; i < rows; i++) {
           out[i] = {
             id: i + 1,
             name: 'User ' + (i + 1),

@@ -41,13 +41,13 @@ export const HiddenColumnSelectorComponent = <T extends Record<string, unknown>>
 
   return (
     <div className={Everygrid.POPUP_OVERLAY_CLASS}>
-      <div className={`${Everygrid.POPUP_CONTENT_CLASS}`}>
+      <div className={`${Everygrid.POPUP_CONTENT_CLASS} everygrid-popup-s`}>
         <div className="everygrid-popup-header">
           <h3>{I18n.t('grid.hiddenColumns').replace(' ({count})', '')}</h3>
           <span className={Everygrid.POPUP_CLOSE_CLASS} onClick={onClose}
                 dangerouslySetInnerHTML={{__html: Everygrid.POPUP_CLOSE_HTML}}></span>
         </div>
-        <div className="everygrid-popup-body p-4">
+        <div className="everygrid-popup-body flex-1">
           <div className="flex flex-col gap-1">
             {hiddenFields.map(field => (
               <div key={field}

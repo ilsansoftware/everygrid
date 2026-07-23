@@ -1,5 +1,5 @@
 import type {IEverygrid} from '../core/types';
-import {useEffect, useLayoutEffect, useState} from 'react';
+import {cloneElement, useEffect, useLayoutEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {EmptyGridPlaceholder} from './EmptyGridPlaceholderComponent.tsx';
 import {GridToolbarComponent} from './GridToolbarComponent';
@@ -479,7 +479,9 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           </div>
         )}
       </div>
-      {grid.activePopup && createPortal(grid.activePopup, document.body)}
+      {/* Clone so each render passes a fresh element reference; otherwise React's same-element
+          bailout skips re-rendering the stored popup and it never picks up locale/state changes. */}
+      {grid.activePopup && createPortal(cloneElement(grid.activePopup), document.body)}
       {/* Nested-table popup built here so it uses the CURRENT filterText (live highlighting). */}
       {grid.activePopupData && createPortal(
         <PopupComponent onClose={() => grid.closePopup()} title={grid.activePopupTitle || I18n.t('popup.detailTitle')} data={grid.activePopupData.data}>

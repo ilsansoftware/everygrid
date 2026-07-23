@@ -411,8 +411,12 @@ const collectPlain = (node: QNode, terms: string[], regexes: string[]): void => 
     case 'contains': terms.push(node.v); break;
     case 'regex': regexes.push(node.pattern); break;
     case 'in': node.items.forEach(i => terms.push(i)); break;
+    // Descend nested field scopes so a scalar leaf deep in a chain (`examResults(failed(english))`)
+    // still yields its term — object elements stay precise via the matched map; this only adds
+    // best-effort highlighting for the scalar array leaves that map can't key.
+    case 'field': collectPlain(node.inner, terms, regexes); break;
     case 'and': case 'or': node.items.forEach(n => collectPlain(n, terms, regexes)); break;
-    default: break; // field → correlation; cmp → handled by pred/correlation
+    default: break; // dot → correlation; cmp → handled by pred/correlation
   }
 };
 
@@ -429,7 +433,7 @@ export const makeElementGate = (rootData: unknown, query: string): (el: unknown)
   const top: QNode[] = [];
   const flatten = (n: QNode) => { if (n.t === 'and' || n.t === 'or' || n.t === 'dot') n.items.forEach(flatten); else top.push(n); };
   flatten(root);
-  for (const tok of top) collectPlain(tok.t === 'field' ? tok.inner : tok, terms, regexes);
+  for (const tok of top) collectPlain(tok, terms, regexes);
   const compiled = regexes.map(p => { try { return new RegExp(p); } catch { return null; } }).filter(Boolean) as RegExp[];
   return (el: unknown) => {
     const parts: string[] = [];
