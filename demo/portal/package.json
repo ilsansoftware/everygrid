@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@everygrid/grid": "https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-784cea5fe7d7.tgz",
+    "@everygrid/grid": "https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-e5f544ca7c28.tgz",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

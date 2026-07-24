@@ -102,6 +102,8 @@ export default defineConfig(({ command }) => ({
     strictPort: true,
   },
   build: {
-    chunkSizeWarningLimit: 3000,
+    // The demo copies in the self-contained standalone bundle (inlined WASM/worker/CSS), which is
+    // intentionally large and unsplittable — keep the limit above its size to avoid noise.
+    chunkSizeWarningLimit: 4000,
   },
 }));

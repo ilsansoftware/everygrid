@@ -281,6 +281,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           filterText={grid.filterText}
           onFilter={(text) => grid.setFilter(text, container)}
           searchKeys={searchKeys}
+          labelOf={(k) => grid.columnLabel(k, containerId)}
           wasmReady={grid.wasmReady}
         />
       </div>
@@ -368,6 +369,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             filterText={grid.filterText}
             onFilter={(text) => grid.setFilter(text, container)}
             searchKeys={searchKeys}
+          labelOf={(k) => grid.columnLabel(k, containerId)}
             wasmReady={grid.wasmReady}
             isIndexing={isBusy}
           />

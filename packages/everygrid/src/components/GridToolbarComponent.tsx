@@ -47,6 +47,9 @@ export interface GridToolbarProps {
   onFilter?: (text: string) => void;
   /** Searchable-key tree for the search-box autocomplete (sub-keys per scope). */
   searchKeys?: KeyTree;
+  /** Localized display name for a suggestion key — shown as `key(label)`; the inserted query keeps
+   *  the real key. Returns the key unchanged when no label is configured. */
+  labelOf?: (key: string) => string;
   wasmReady?: boolean;
   gridTitle?: string;
   isIndexing?: boolean;
@@ -76,6 +79,7 @@ export const GridToolbarComponent = ({
                                        filterText = '',
                                        onFilter,
                                        searchKeys = {},
+                                       labelOf,
                                        wasmReady = false,
                                        gridTitle,
                                        isIndexing = false,
@@ -166,14 +170,30 @@ export const GridToolbarComponent = ({
     return at(pos - 1) ?? at(pos);
   };
 
+  // Index just past the `)` that closes the scope the caret is inside, or `caret` when it isn't
+  // inside any unclosed `(`. Lets an operator jump out of a field's parens before it's inserted.
+  const closeOfEnclosingScope = (value: string, caret: number): number => {
+    let depth = 0;
+    for (let i = 0; i < caret; i++) { if (value[i] === '(') depth++; else if (value[i] === ')' && depth > 0) depth--; }
+    if (depth === 0) return caret;
+    let d = 0;
+    for (let i = caret; i < value.length; i++) {
+      if (value[i] === '(') d++;
+      else if (value[i] === ')') { if (d === 0) return i + 1; d--; }
+    }
+    return value.length;
+  };
+
   // The identifier word ending at the caret (may be empty right after `(`/`.`), and whether it sits
   // where a field key is expected (start, or right after `(`, `&`, `|`, `.`). Not a key position →
   // it's a value inside `(...)`.
-  const keyContext = (value: string, caret: number): {token: string; start: number} | null => {
+  const keyContext = (value: string, caret: number, lenient = false): {token: string; start: number} | null => {
     const before = value.slice(0, caret);
     const token = (before.match(/[\w]*$/) ?? [''])[0];
     const prev = before.slice(0, before.length - token.length).replace(/\s+$/, '').slice(-1);
-    if (prev !== '' && !'(&|.'.includes(prev)) return null;
+    // After a closed `)` a sibling key can still start, but only the explicit ↓ opens it there
+    // (`lenient`) — passive typing stays quiet since there's no operator yet.
+    if (prev !== '' && !'(&|.'.includes(prev) && !(lenient && prev === ')')) return null;
     return {token, start: before.length - token.length};
   };
 
@@ -201,14 +221,16 @@ export const GridToolbarComponent = ({
     return node;
   };
 
-  const refreshSuggestions = (value: string, caret: number) => {
-    const ctx = keyContext(value, caret);
+  const refreshSuggestions = (value: string, caret: number, lenient = false) => {
+    const ctx = keyContext(value, caret, lenient);
     if (!ctx) { setSuggestions([]); setSuggestEntered(false); return; }
     const node = navigate(searchKeys, scopePath(value.slice(0, ctx.start)));
-    // A leaf field (no sub-keys) means we're at a value position → no suggestions.
-    if (!node || Object.keys(node).length === 0) { setSuggestions([]); setSuggestEntered(false); return; }
     const tl = ctx.token.toLowerCase();
-    setSuggestions(Object.keys(node).filter(k => k.toLowerCase().includes(tl)).slice(0, 8));
+    // Sub-keys for the scope — none for a flat/leaf field or an unknown path. && / || are always
+    // offered at the front so a sibling condition can be chained even from a flat key (picking one
+    // inserts it after the enclosing scope closes — see applySuggestion).
+    const keys = node ? Object.keys(node).filter(k => k.toLowerCase().includes(tl)).slice(0, 8) : [];
+    setSuggestions(['&&', '||', ...keys]);
     setSuggestIndex(0);
     // Every new list starts "outside" it — the caret is back in the text, so ↓ must be pressed to
     // step in again. This is what makes ↓ re-enter the dropdown at each level.
@@ -221,14 +243,29 @@ export const GridToolbarComponent = ({
     refreshSuggestions(value, caret);
   };
 
-  // Replace the token being typed with `key(` (caret placed inside the parens).
-  const applySuggestion = (key: string) => {
+  // Apply a suggestion tag. An operator (`&&`/`||`) is inserted with spaces at the caret and the key
+  // list re-opens; a field key replaces the token being typed with `key()` (caret inside the parens).
+  const applySuggestion = (item: string) => {
     const el = filterRef.current;
     const caret = el?.selectionStart ?? inputValue.length;
-    const ctx = keyContext(inputValue, caret);
+    if (item === '&&' || item === '||') {
+      // If the caret is still inside a field's parens (typing its value), the operator belongs after
+      // that field closes: `name(john|)` + && → `name(john) && `.
+      const at = closeOfEnclosingScope(inputValue, caret);
+      const head = inputValue.slice(0, at).replace(/\s+$/, '');
+      const tail = inputValue.slice(at).replace(/^\s+/, '');
+      const next = head + ' ' + item + ' ' + tail;
+      const pos = head.length + item.length + 2; // after "<op> "
+      setInputValue(next);
+      setCaret(pos);
+      requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(pos, pos); });
+      refreshSuggestions(next, pos, true);
+      return;
+    }
+    const ctx = keyContext(inputValue, caret, true);
     const start = ctx ? ctx.start : caret;
-    const next = inputValue.slice(0, start) + key + '(' + ')' + inputValue.slice(caret);
-    const pos = start + key.length + 1;
+    const next = inputValue.slice(0, start) + item + '(' + ')' + inputValue.slice(caret);
+    const pos = start + item.length + 1;
     setInputValue(next);
     setCaret(pos);
     requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(pos, pos); });
@@ -269,7 +306,7 @@ export const GridToolbarComponent = ({
       e.preventDefault();
       const el = filterRef.current;
       const caret = el?.selectionStart ?? inputValue.length;
-      refreshSuggestions(inputValue, caret);
+      refreshSuggestions(inputValue, caret, true);
       setSuggestEntered(true);
       return;
     }
@@ -486,15 +523,26 @@ export const GridToolbarComponent = ({
           <div
               style={{position: 'fixed', top: dropRect.top, left: dropRect.left, minWidth: dropRect.width, zIndex: 1000}}
               className="flex flex-wrap gap-1 rounded-md border border-slate-200 bg-white p-1.5 shadow-lg max-w-[90vw]">
-            {suggestions.map((k, i) => (
-              <button
-                  key={k}
-                  type="button"
-                  // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
-                  onMouseDown={e => { e.preventDefault(); applySuggestion(k); }}
-                  className={`rounded px-2 py-0.5 text-[11px] font-medium ${suggestEntered && i === suggestIndex ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-              >{k}</button>
-            ))}
+            {suggestions.map((k, i) => {
+              const isOp = k === '&&' || k === '||';
+              const selected = suggestEntered && i === suggestIndex;
+              // Operators read as connectors, not fields — set apart by chip colour only.
+              const tone = selected
+                ? 'bg-indigo-100 text-indigo-700'
+                : isOp
+                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200';
+              const label = isOp ? null : labelOf?.(k);
+              return (
+                <button
+                    key={k}
+                    type="button"
+                    // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
+                    onMouseDown={e => { e.preventDefault(); applySuggestion(k); }}
+                    className={`rounded px-2 py-0.5 text-[11px] font-medium ${tone}`}
+                >{k}{label && label !== k ? <span className="ml-1 opacity-60">({label})</span> : null}</button>
+              );
+            })}
             {/* The key map isn't obvious (arrows navigate the scope, not the text), so spell it out. */}
             <div className="basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none">{I18n.t('toolbar.suggestNav')}</div>
           </div>,

@@ -120,7 +120,9 @@ export default defineConfig({
     },
   },
   build: {
-    chunkSizeWarningLimit: 3000,
+    // The standalone UMD deliberately inlines the WASM binary (base64), worker, and CSS into one
+    // self-contained file, so it can't be code-split — the limit just tracks that expected size.
+    chunkSizeWarningLimit: 4000,
     emptyOutDir: false,
     lib: {
       entry: resolve(__dirname, (isStandalone) ? 'src/standalone-entry.ts' : 'src/index.ts'),

@@ -1541,34 +1541,37 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   // Raw columns from the data source (config columns / first row / stream / WASM), before any
   // checkbox injection, whitelist, or hidden-field filtering.
+  /**
+   * Localized display name for a field: `columnI18n[locale][containerId][field]`, falling back to
+   * the `common` bucket and then the raw field key. Locale comes from the global `I18n`, so a
+   * `setLocale` + re-render is all it takes to relabel. Queries never use this — they stay in field
+   * keys — so nothing downstream (WASM/matcher/highlight) needs to know about labels.
+   */
+  public columnLabel(field: string, containerId: string): string {
+    const loc = this.options.columnI18n?.[I18n.getLocale()];
+    return loc?.[containerId]?.[field] ?? loc?.common?.[field] ?? field;
+  }
+
   private buildBaseColumns(containerId: string, items: T[]): GridColumn[] {
     if (this.options.columns) {
       return [...this.options.columns];
     }
+    const fromKeys = (keys: string[]): GridColumn[] =>
+      keys.map(key => ({headerName: this.columnLabel(key, containerId), field: key}));
     if (items.length > 0) {
-      const firstItem = items[0];
-      return Object.keys(firstItem).map(key => ({
-        headerName: key,
-        field: key
-      }));
+      return fromKeys(Object.keys(items[0]));
     }
     // Streaming mode: get column names from JS stream rows first row
     const streamRows = this._streamRows.get(containerId);
     if (streamRows && streamRows.length > 0) {
-      return Object.keys(streamRows[0]).map(key => ({
-        headerName: key,
-        field: key
-      }));
+      return fromKeys(Object.keys(streamRows[0]));
     }
     // Fallback: try WASM first row
     const engine = this._wasmEngines.get(containerId);
     if (engine && this._wasmEngineReady.get(containerId)) {
       const cached = this._wasmPageCache.get(containerId);
       if (cached && cached.rows.length > 0) {
-        return Object.keys(cached.rows[0] as Record<string, unknown>).map(key => ({
-          headerName: key,
-          field: key
-        }));
+        return fromKeys(Object.keys(cached.rows[0] as Record<string, unknown>));
       }
     }
     return [];

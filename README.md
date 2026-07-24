@@ -174,6 +174,7 @@ You can use Everygrid directly in the browser via CDN (no build step required).
 | `virtualScroll` | `GridVirtualScrollConfig[]` | Virtual scrolling settings per grid (replaces pagination for that grid) |
 | `dataLimit` | `GridDataLimitConfig[]` | Cap on rows loaded per grid — a safety net against out-of-memory tab crashes |
 | `colors` | `GridColorConfig[]` | Header/body color settings per grid |
+| `columnI18n` | `ColumnI18n` | Localized column display names — see [Column i18n](#column-i18n) |
 | `dataCache` | `RequestCache` | `cache` mode for URL data loads. Defaults to `'no-store'` (always re-fetch). Use `'default'` for large, rarely-changing datasets so a reload revalidates instead of re-downloading. |
 
 ### Lifecycle API
@@ -361,6 +362,30 @@ Notes:
 - The search box **autocompletes keys** for the current scope (top-level fields first, then the
   selected field's sub-keys), colours parenthesis pairs by depth, and highlights the bracket next to
   the caret. Enter runs the search; Shift+Enter inserts a newline.
+
+## Column i18n
+
+`columnI18n` gives columns localized display names without touching the data. It maps
+`locale → ('common' | gridId) → field → label`; a grid id's entry overrides `common`, and any field
+with no label falls back to its raw key. Locale is the global `I18n` locale, so `I18n.setLocale(l)`
+followed by `Everygrid.refreshAll()` relabels every grid.
+
+```json
+"columnI18n": {
+  "ko": {
+    "common": { "id": "아이디", "name": "이름", "age": "나이" },
+    "orders": { "name": "주문자" }
+  },
+  "en": {
+    "common": { "id": "ID", "name": "Name", "age": "Age" }
+  }
+}
+```
+
+Labels are **display-only**. The search box still uses real field keys (`name() && age()`) — the
+suggestion dropdown just annotates each key with its label, e.g. `name(이름)`, and inserts the key.
+So queries, WASM filtering, and highlighting are locale-independent, and switching language never
+invalidates a typed query.
 
 ## Excel export
 

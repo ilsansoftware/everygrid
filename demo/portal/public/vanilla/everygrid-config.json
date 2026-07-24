@@ -1,4 +1,23 @@
 {
+  "columnI18n": {
+    "ko": {
+      "common": {
+        "id": "아이디", "name": "이름", "age": "나이", "email": "이메일",
+        "active": "활성화", "category": "카테고리", "role": "역할",
+        "examResults": "성적", "tags": "태그", "bio": "바이오"
+      },
+      "demo-grid": {
+        "name": "성명", "active": "활동여부", "role": "담당", "examResults": "평가성적"
+      }
+    },
+    "en": {
+      "common": {
+        "id": "ID", "name": "Name", "age": "Age", "email": "Email",
+        "active": "Active", "category": "Category", "role": "Role",
+        "examResults": "Exam Results", "tags": "Tags", "bio": "Bio"
+      }
+    }
+  },
   "targets": [
     {
       "id": "demo-grid"

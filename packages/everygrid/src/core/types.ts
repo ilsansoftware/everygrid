@@ -10,6 +10,14 @@ export interface GridTargetConfig {
   links?: string[];
 }
 
+/**
+ * Localized column display names: `locale → ('common' | gridId) → field → label`.
+ * A grid id's entry overrides `common`; any field with no entry falls back to the raw field key.
+ * Only display and the search-suggestion label use this — queries stay in real field keys, so WASM,
+ * the JS matcher, and highlight are untouched and locale can switch with no query rewriting.
+ */
+export type ColumnI18n = Record<string, Record<string, Record<string, string>>>;
+
 export interface GridColumn {
   headerName: string;
   field: string;
@@ -185,6 +193,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   getDisplayItems(containerId: string, items: T[]): T[];
 
   getColumns(containerId: string, items: T[]): GridColumn[];
+  columnLabel(field: string, containerId: string): string;
 
   getDataFields(containerId: string): string[];
   getSearchKeys(containerId: string, fallbackSample?: unknown[]): KeyTree;
@@ -260,6 +269,7 @@ export interface GridOptions<T = Record<string, unknown>> {
   data?: T[];
   dataUrl?: string;
   columns?: GridColumn[];
+  columnI18n?: ColumnI18n;
   editableCols?: EditableColConfig[];
   rowCheckbox?: GridRowCheckboxConfig[];
   colors?: GridColorConfig[];

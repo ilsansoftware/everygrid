@@ -11,6 +11,7 @@ export {ChevronDownIcon} from './icons/ChevronDownIcon';
 export type {
   GridOptions,
   GridColumn,
+  ColumnI18n,
   GridTargetConfig,
   GridPaginationConfig,
   GridColorConfig,
