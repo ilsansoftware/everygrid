@@ -22,7 +22,7 @@
   const everygrid = window.Everygrid;
   // Apply locale pushed by the portal (this page is embedded in an iframe). One line — the library
   // owns the message handshake; the portal side calls everygrid's sendLocale(...).
-  everygrid.listenForLocale();
+  everygrid.listenForLocale({source: window.parent});
   // createGrid autoloads everygrid.config.json from this page's own directory (relative), so no
   // explicit config load is needed.
   everygrid.createGrid('demo-grid', function () {

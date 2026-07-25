@@ -57,8 +57,8 @@
     "dataLimitedStream": "이 기기 안전 한도로 상위 {shown}행만 불러왔습니다. 나머지는 로드하지 않았습니다."
   },
   "pagination": {
-    "showing": "전체 {total} 중 {start}-{end} 표시",
-    "showingFiltered": "전체 {total} 중 {filtered}건 필터됨 ({start}-{end} 표시)",
+    "showing": "{start}-{end} ({total})",
+    "showingFiltered": "{start}-{end} ({filtered} / {total})",
     "first": "첫 페이지",
     "prev": "이전 10페이지",
     "next": "다음 10페이지",

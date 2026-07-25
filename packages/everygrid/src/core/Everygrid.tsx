@@ -45,7 +45,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private static _targetRegistry: Map<string, {config: Record<string, unknown>; target: GridTargetConfig}> = new Map();
   // In-flight mounts, keyed by target id, so concurrent mount() calls for the same id share one
   // creation instead of each running createRoot on the container (React StrictMode double-invoke).
-  private static _mounting: Map<string, Promise<Everygrid<Record<string, unknown>> | null>> = new Map();
+  private static _mounting: Map<string, Promise<Everygrid | null>> = new Map();
   public static I18n = I18n;
   public static options: GridOptions = { targets: [] };
   readonly options: GridOptions<T>;
@@ -113,7 +113,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    *  Lets a tab bar or shell show a grid's load progress while that grid's own view is hidden —
    *  a keep-alive tab keeps streaming in the background, so its progress outlives its visibility. */
   public static getLoadProgress(id: string): GridLoadProgress | null {
-    const inst = Everygrid.instances.get(id) as Everygrid<Record<string, unknown>> | undefined;
+    const inst = Everygrid.instances.get(id) as Everygrid | undefined;
     return inst?.loadProgress(id) ?? null;
   }
   private _serverTotal: Map<string, number> = new Map();
@@ -262,7 +262,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * Absolute paths ('/…') get the base path prefix, so the library works under a sub-path deploy.
    */
   private static _resolveUrl(url: string): string {
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (/^https?:\/\//.test(url)) return url;
     if (url.startsWith('/')) {
       const base = new URL(document.baseURI);
       const prefix = base.pathname.endsWith('/') ? base.pathname.slice(0, -1) : base.pathname;
@@ -280,6 +280,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * `invalidateConfig()` / `{reload: true}`.
    *
    * @param entryConfigUrl Path to the static entry config file (default: /everygrid.config.json)
+   * @param opts Options.
    * @param opts.reload Bypass the cache and re-fetch
    * @returns The target ids that are now registered (across every config file listed)
    */
@@ -323,7 +324,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
     const configBase = resolvedEntry.substring(0, resolvedEntry.lastIndexOf('/') + 1);
     const configUrls: string[] = entryConfig.configs.map((u: string) => {
-      if (u.startsWith('http://') || u.startsWith('https://')) return u;
+      if (/^https?:\/\//.test(u)) return u;
       if (u.startsWith('/')) return Everygrid._resolveUrl(u);
       return configBase + u.replace(/^\.\//, '');
     });
@@ -367,6 +368,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * Idempotent: mounting an already-mounted target returns the live instance.
    *
    * @param targetId Element id; any id renders (a matching config target just customizes it)
+   * @param opts Mount options.
    * @param opts.fetcher Data source for this target — a URL (streamed) or an async function
    */
   public static async mount<D extends Record<string, unknown> = Record<string, unknown>>(
@@ -380,7 +382,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const inflight = Everygrid._mounting.get(targetId);
     if (inflight) return inflight as Promise<Everygrid<D> | null>;
     const p = Everygrid._doMount<D>(targetId, opts);
-    Everygrid._mounting.set(targetId, p as Promise<Everygrid<Record<string, unknown>> | null>);
+    Everygrid._mounting.set(targetId, p as Promise<Everygrid | null>);
     try {
       return await p;
     } finally {
@@ -421,7 +423,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const instance = new Everygrid({...config, targets: [target], data: []});
       instance._streamUrl.set(targetId, url);
       instance._dataSource.set(targetId, url);
-      instance._loadFromUrl(targetId, url);
+      void instance._loadFromUrl(targetId, url);
       return instance as unknown as Everygrid<D>;
     }
     if (fetcherOrUrl) {
@@ -450,11 +452,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * point at a non-root path (a sub-app), or to load several entries up front. Cached per URL.
    * Returns every registered target id. Also exported as a standalone `loadEverygridConfig`.
    */
-  public static loadEverygridConfig(
+  public static async loadEverygridConfig(
     entryConfigUrls: string | string[] = 'everygrid.config.json',
   ): Promise<string[]> {
     const urls = Array.isArray(entryConfigUrls) ? entryConfigUrls : [entryConfigUrls];
-    return Promise.all(urls.map(u => Everygrid.loadConfig(u))).then(lists => lists.flat());
+    const lists = await Promise.all(urls.map(u => Everygrid.loadConfig(u)));
+    return lists.flat();
   }
 
   /**
@@ -510,11 +513,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    *
    * Shared by autoInit's first load and by reloadData(), so both take the identical path.
    */
-  private _loadFromUrl(targetId: string, url: string): Promise<void> {
+  private async _loadFromUrl(targetId: string, url: string): Promise<void> {
     this._loading.add(targetId);
-    return fetch(url, { cache: this.options.dataCache ?? 'no-store' })
-      .then(async res => {
-        if (!res.ok || !res.body) return;
+    try {
+      const res = await fetch(url, { cache: this.options.dataCache ?? 'no-store' });
+      if (res.ok && res.body) {
         // Two different measures, deliberately:
         //  - the streaming decision needs a *lower bound* on size, and an encoded
         //    Content-Length is exactly that (compressed <= decoded), so a big compressed
@@ -542,15 +545,14 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
             console.warn('Everygrid: fetch/parse failed for', targetId, err);
           }
         }
-      })
-      .catch(err => {
-        console.warn('Everygrid: fetch failed for', targetId, err);
-      })
-      .finally(() => {
-        this._loading.delete(targetId);
-        const el = document.getElementById(targetId);
-        if (el) this.renderGrid(el);
-      });
+      }
+    } catch (err) {
+      console.warn('Everygrid: fetch failed for', targetId, err);
+    } finally {
+      this._loading.delete(targetId);
+      const el = document.getElementById(targetId);
+      if (el) this.renderGrid(el);
+    }
   }
 
   /** Installs freshly loaded rows as the target's data and hands them to its WASM engine. */
@@ -869,7 +871,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    */
   public static rerenderAll(): void {
     Everygrid.instances.forEach(grid => {
-      const g = grid as Everygrid<Record<string, unknown>>;
+      const g = grid as Everygrid;
       (g.options.targets ?? []).forEach(t => {
         const id = typeof t === 'string' ? t : t.id;
         const el = document.getElementById(id);
@@ -899,10 +901,15 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    *
    * @param opts.origin only accept messages from this origin (recommended for security). Omit to
    *   accept any origin.
+   * @param opts.source only accept messages sent from this window (e.g. `window.parent`). Use it
+   *   when several places could post a locale and only one is authoritative — messages from any
+   *   other window are ignored, so it settles the "which sender wins" ambiguity. Omit to accept
+   *   from any window.
    */
-  public static listenForLocale(opts: {origin?: string} = {}): () => void {
+  public static listenForLocale(opts: {origin?: string; source?: Window | null} = {}): () => void {
     const handler = (e: MessageEvent) => {
       if (opts.origin && e.origin !== opts.origin) return;
+      if (opts.source && e.source !== opts.source) return;
       const data = e.data as {type?: unknown; locale?: unknown} | null;
       if (data && data.type === Everygrid.LOCALE_MESSAGE && (data.locale === 'ko' || data.locale === 'en')) {
         Everygrid.setLocale(data.locale);
@@ -916,6 +923,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * Push the current locale to an embedded grid window (an iframe's `contentWindow`) whose page
    * called {@link listenForLocale}. The parent/host side of the same handshake.
    *
+   * @param target the embedded window to deliver to (e.g. an iframe's `contentWindow`).
+   * @param locale the locale to apply in the target — `'ko'` or `'en'`.
    * @param targetOrigin restrict delivery to this origin (recommended); defaults to any (`'*'`).
    */
   public static sendLocale(target: Window, locale: 'ko' | 'en', targetOrigin: string = '*'): void {

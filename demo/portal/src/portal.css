@@ -46,6 +46,15 @@ nav {
   padding: 4px;
   border-radius: 8px;
   margin-left: 7px; /* spacing between title and nav */
+  /* When the header is too narrow to hold every tab, scroll the nav instead of letting flexbox
+     shrink the buttons (which squeezed the icons down to nothing). min-width:0 lets the flex child
+     shrink below its content so the overflow can scroll; the scrollbar is hidden for a clean bar. */
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+nav::-webkit-scrollbar {
+  display: none; /* WebKit */
 }
 
 /* Minimal icon-only button centered */
@@ -60,6 +69,7 @@ nav button {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0; /* keep full size (icons stay 18px); the nav scrolls instead of squishing tabs */
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -80,6 +90,7 @@ nav button.active .tab-progress-badge {
 nav button img {
   width: 18px;
   height: 18px;
+  flex-shrink: 0; /* never let the icon shrink below 18px when space is tight */
   object-fit: contain;
   opacity: 0.5;
   filter: grayscale(100%);

@@ -48,8 +48,8 @@ importers:
   demo/portal:
     dependencies:
       '@everygrid/grid':
-        specifier: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-0bd07e28537e.tgz
-        version: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-0bd07e28537e.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-8583c8a8c677.tgz
+        version: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-8583c8a8c677.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       prism-react-renderer:
         specifier: ^2.4.1
         version: 2.4.1(react@19.2.7)
@@ -333,8 +333,8 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-0bd07e28537e.tgz':
-    resolution: {integrity: sha512-KfHF2sKDoeLgLDAJpOSl/B8eMODLl9MUNB0O56sLKe0dBPzAdBhRoL6+3lHQcHuJOmKrxNI8qXD2QtAi6q6x6A==, tarball: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-0bd07e28537e.tgz}
+  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-8583c8a8c677.tgz':
+    resolution: {integrity: sha512-O78eVInx2BAGnH5Tgy7Vl/0n02uKo4B8yPj7VPv/5aN7gQot1RQPVXcpSSykdqvFI/6iOSF4YF4moyHoh/F96A==, tarball: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-8583c8a8c677.tgz}
     version: 0.2.0
     peerDependencies:
       react: '>=18'
@@ -2676,7 +2676,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-0bd07e28537e.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.2.0-8583c8a8c677.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)

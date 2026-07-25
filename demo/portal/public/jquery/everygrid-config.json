@@ -4,13 +4,7 @@
       "id": "demo-grid"
     },
     {
-      "id": "demo-grid1"
-    },
-    {
       "id": "demo-grid2"
-    },
-    {
-      "id": "demo-grid3"
     }
   ],
   "rowCheckbox": [
@@ -19,15 +13,7 @@
       "active": true
     },
     {
-      "id": "demo-grid1",
-      "active": true
-    },
-    {
       "id": "demo-grid2",
-      "active": true
-    },
-    {
-      "id": "demo-grid3",
       "active": true
     }
   ],
@@ -37,15 +23,7 @@
       "mapping": "id"
     },
     {
-      "id": "demo-grid1",
-      "mapping": "id"
-    },
-    {
       "id": "demo-grid2",
-      "mapping": "id"
-    },
-    {
-      "id": "demo-grid3",
       "mapping": "id"
     }
   ],
@@ -57,24 +35,10 @@
       "position": "bottom"
     },
     {
-      "id": "demo-grid1",
-      "pageSize": 3,
-      "active": true,
-      "position": "bottom",
-      "rowCount": "inline"
-    },
-    {
       "id": "demo-grid2",
       "pageSize": 3,
       "active": true,
       "position": "bottom"
-    },
-    {
-      "id": "demo-grid3",
-      "pageSize": 10,
-      "active": true,
-      "position": "bottom",
-      "rowCount": "inline"
     }
   ],
   "editableCols": [
@@ -93,35 +57,7 @@
       ]
     },
     {
-      "id": "demo-grid1",
-      "cols": [
-        "name",
-        "age",
-        "email",
-        "active",
-        "category",
-        "role",
-        "examResults",
-        "tags",
-        "bio"
-      ]
-    },
-    {
       "id": "demo-grid2",
-      "cols": [
-        "name",
-        "age",
-        "email",
-        "active",
-        "category",
-        "role",
-        "examResults",
-        "tags",
-        "bio"
-      ]
-    },
-    {
-      "id": "demo-grid3",
       "cols": [
         "name",
         "age",
@@ -160,53 +96,7 @@
         "nationality": "국적",
         "language": "언어"
       },
-      "demo-grid1": {
-        "id": "아이디",
-        "name": "이름",
-        "age": "나이",
-        "joinedDate": "가입일",
-        "role": "역할",
-        "examResults": "성적",
-        "active": "활성화",
-        "category": "카테고리",
-        "tags": "태그",
-        "phoneNumber": "전화번호",
-        "email": "이메일",
-        "department": "부서",
-        "salary": "급여",
-        "location": "지역",
-        "experience": "경력",
-        "bio": "소개",
-        "github": "깃허브",
-        "blog": "블로그",
-        "hobby": "취미",
-        "nationality": "국적",
-        "language": "언어"
-      },
       "demo-grid2": {
-        "id": "아이디",
-        "name": "이름",
-        "age": "나이",
-        "joinedDate": "가입일",
-        "role": "역할",
-        "examResults": "성적",
-        "active": "활성화",
-        "category": "카테고리",
-        "tags": "태그",
-        "phoneNumber": "전화번호",
-        "email": "이메일",
-        "department": "부서",
-        "salary": "급여",
-        "location": "지역",
-        "experience": "경력",
-        "bio": "소개",
-        "github": "깃허브",
-        "blog": "블로그",
-        "hobby": "취미",
-        "nationality": "국적",
-        "language": "언어"
-      },
-      "demo-grid3": {
         "user_id": "사용자 ID",
         "profile": "프로필",
         "login_history": "로그인 기록",
@@ -237,53 +127,7 @@
         "nationality": "Nationality",
         "language": "Language"
       },
-      "demo-grid1": {
-        "id": "ID",
-        "name": "Name",
-        "age": "Age",
-        "joinedDate": "Joined",
-        "role": "Role",
-        "examResults": "Exam Results",
-        "active": "Active",
-        "category": "Category",
-        "tags": "Tags",
-        "phoneNumber": "Phone",
-        "email": "Email",
-        "department": "Department",
-        "salary": "Salary",
-        "location": "Location",
-        "experience": "Experience",
-        "bio": "Bio",
-        "github": "GitHub",
-        "blog": "Blog",
-        "hobby": "Hobby",
-        "nationality": "Nationality",
-        "language": "Language"
-      },
       "demo-grid2": {
-        "id": "ID",
-        "name": "Name",
-        "age": "Age",
-        "joinedDate": "Joined",
-        "role": "Role",
-        "examResults": "Exam Results",
-        "active": "Active",
-        "category": "Category",
-        "tags": "Tags",
-        "phoneNumber": "Phone",
-        "email": "Email",
-        "department": "Department",
-        "salary": "Salary",
-        "location": "Location",
-        "experience": "Experience",
-        "bio": "Bio",
-        "github": "GitHub",
-        "blog": "Blog",
-        "hobby": "Hobby",
-        "nationality": "Nationality",
-        "language": "Language"
-      },
-      "demo-grid3": {
         "user_id": "User ID",
         "profile": "Profile",
         "login_history": "Login History",

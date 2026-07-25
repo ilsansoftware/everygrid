@@ -54,11 +54,19 @@ function isTabId(v: string | null): v is TabId {
   return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual';
 }
 
+// Tabs dropped on a phone: the large-data demo streams 1.6M rows, too heavy to feature on mobile.
+const MOBILE_HIDDEN_TABS: TabId[] = ['large'];
+const NARROW_QUERY = '(max-width: 640px)';
+function isNarrowViewport(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia(NARROW_QUERY).matches;
+}
+
 function initialTab(): TabId {
   const hash = window.location.hash.replace('#', '');
-  if (isTabId(hash)) return hash;
   const saved = localStorage.getItem('eg-portal-tab');
-  return isTabId(saved) ? saved : 'react';
+  const resolved: TabId = isTabId(hash) ? hash : isTabId(saved) ? saved : 'react';
+  // Don't open a mobile-hidden tab (e.g. entering via #large on a phone) — its tab wouldn't show.
+  return isNarrowViewport() && MOBILE_HIDDEN_TABS.includes(resolved) ? 'react' : resolved;
 }
 
 function initialLocale(): Locale {
@@ -86,6 +94,18 @@ export default function App() {
   // hook's resetAutoInit) and recreated the iframe, so every tab switch re-fetched every
   // dataset and re-indexed the streaming grid into WASM from scratch.
   const [mounted, setMounted] = useState<Set<TabId>>(() => new Set([tab]));
+
+  // Narrow (phone) viewport → drop the mobile-hidden tabs. Redirect off one if the viewport shrank
+  // while it was active (entering on it is already prevented by initialTab).
+  const [isNarrow, setIsNarrow] = useState(isNarrowViewport);
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW_QUERY);
+    const onChange = () => setIsNarrow(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  if (isNarrow && MOBILE_HIDDEN_TABS.includes(tab)) setTab('react');
+
   // Synced during rendering rather than in an effect, to avoid a cascading render.
   if (!mounted.has(tab)) setMounted(new Set(mounted).add(tab));
 
@@ -216,10 +236,12 @@ export default function App() {
         <header>
           <h1>everygrid Demo</h1>
           <nav>
-            {TABS.map((t) => {
+            {TABS.filter((t) => !(isNarrow && MOBILE_HIDDEN_TABS.includes(t.id))).map((t) => {
               const gid = PROGRESS_GRID_OF_TAB[t.id];
               const prog = gid ? loadProgress[gid] : undefined;
-              const loading = !!prog?.active;
+              // Badge is a heads-up for a grid loading on a tab you've left — on the active tab the
+              // grid's own toolbar already shows its progress, so it's redundant there.
+              const loading = !!prog?.active && t.id !== tab;
               return (
                 <button
                     key={t.id}

@@ -18,9 +18,7 @@
 <div class='container'>
   <main>
     <div id='demo-grid'></div>
-    <div id='demo-grid1'></div>
     <div id='demo-grid2'></div>
-    <div id='demo-grid3'></div>
   </main>
 </div>
 
@@ -28,7 +26,7 @@
   (function ($, everygrid) {
     // Apply locale pushed by the portal (this page is embedded in an iframe). The library owns the
     // message handshake; the portal side calls everygrid's sendLocale(...).
-    everygrid.listenForLocale();
+    everygrid.listenForLocale({source: window.parent});
 
     // Fetch data, optionally filtered by userId
     function getData() {
@@ -45,19 +43,7 @@
     // createGrid autoloads everygrid.config.json from this page's own directory (relative), so
     // no explicit config load is needed.
     everygrid.createGrid('demo-grid', () => getData());
-    everygrid.createGrid('demo-grid1', () => getData()
-    .then(function (rows) {
-      return rows.filter(function (row) {
-        return row.id === 1;
-      });
-    }));
-    everygrid.createGrid('demo-grid2', () => getData()
-    .then(function (rows) {
-      return rows.filter(function (row) {
-        return row.id === 2;
-      });
-    }));
-    everygrid.createGrid('demo-grid3', () => getData2().then(json => json.results));
+    everygrid.createGrid('demo-grid2', () => getData2().then(json => json.results));
   }(window.jQuery, window.Everygrid));
 </script>
 </body>

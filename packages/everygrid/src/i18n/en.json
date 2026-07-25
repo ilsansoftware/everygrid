@@ -57,8 +57,8 @@
     "dataLimitedStream": "Showing the first {shown} rows — this device's safe limit; the rest was not loaded."
   },
   "pagination": {
-    "showing": "Showing {start}-{end} of {total}",
-    "showingFiltered": "Showing {start}-{end} of {filtered} (filtered from {total})",
+    "showing": "{start}-{end} ({total})",
+    "showingFiltered": "{start}-{end} ({filtered} / {total})",
     "first": "First Page",
     "prev": "Previous 10 Pages",
     "next": "Next 10 Pages",
