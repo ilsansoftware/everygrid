@@ -85,6 +85,75 @@
   word-break: break-word;
 }
 
+/* Mobile layout: fixed ≤3 columns + a detail button, sized for touch — taller rows, larger text,
+   roomier headers — and no per-column overflow (widths come from table-fixed w-full in the TSX). */
+/* Hard-fix the mobile table to the container width. Higher specificity than the base
+   `.everygrid-table { width:auto; min-width:100% }` and the th `min-width:50px`, so utility-class
+   ordering can't lose and no min-width can push the table past the viewport. The columns then take
+   the exact 1:1:1 (+ detail) widths set inline via table-layout:fixed. */
+.everygrid-table.everygrid-mobile {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.everygrid-table.everygrid-mobile thead th {
+  min-width: 0;
+}
+
+.everygrid-table.everygrid-mobile tbody td {
+  @apply px-3 text-sm;
+  min-height: 52px;
+}
+
+/* Clip every mobile cell (and its inner wrapper) to one line. Columns are fixed 1:1:1, so a long
+   value must be truncated rather than wrap-growing the row or spilling past the screen — the full
+   value is always available in the row detail. The detail-button cell is exempt. */
+.everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell),
+.everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell) > * {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+  max-width: 100%;
+}
+
+.everygrid-table.everygrid-mobile thead th {
+  @apply text-sm;
+}
+
+.everygrid-table.everygrid-mobile .everygrid-header-content {
+  @apply px-3 py-3;
+  overflow: hidden;
+}
+
+/* Device-fit: lock the mobile table to vertical scroll only. table-fixed w-full already sizes the
+   columns to the viewport; this stops any header-icon overflow from producing a horizontal scrollbar.
+   Higher specificity than the base .everygrid-table-container's overflow:auto, so it wins on the x. */
+.everygrid-table-container.everygrid-mobile-x,
+.everygrid-virtual-scroller.everygrid-mobile-x {
+  overflow-x: hidden;
+}
+
+.everygrid-detail-cell {
+  @apply text-center bg-slate-50/30 align-middle;
+}
+
+/* The detail column is narrow (52px) and holds a 40px button, so it can't afford the mobile cells'
+   px-3. Higher specificity than `.everygrid-table.everygrid-mobile tbody td`, so it wins. */
+.everygrid-table.everygrid-mobile tbody td.everygrid-detail-cell {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.everygrid-detail-btn {
+  @apply inline-flex items-center justify-center rounded-lg text-slate-500
+  bg-slate-100 hover:bg-slate-200 active:bg-slate-300 transition-colors;
+  width: 40px;
+  height: 40px;
+}
+
 /* Form Elements */
 .everygrid-input {
   @apply w-full h-full border-b border-slate-200 px-4 py-2 text-sm outline-none bg-transparent text-slate-600 min-w-max;

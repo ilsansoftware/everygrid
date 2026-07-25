@@ -9,6 +9,7 @@ import {CommaIcon} from '../icons/CommaIcon.tsx';
 import {SortDownIcon} from '../icons/SortDownIcon.tsx';
 import {HideIcon} from '../icons/HideIcon.tsx';
 import {SortUpIcon} from '../icons/SortUpIcon.tsx';
+import {MobileColumnsIcon} from '../icons/MobileColumnsIcon.tsx';
 
 export interface GridTableProps<T extends Record<string, unknown>> {
   grid: IEverygrid<T>;
@@ -24,6 +25,8 @@ export interface GridTableProps<T extends Record<string, unknown>> {
   filterText?: string;
   isIndexing?: boolean;
   isExporting?: boolean;
+  /** Narrow layout: columns fit the viewport (no horizontal scroll), resizing/pinning are off. */
+  isMobile?: boolean;
   /** Set when the target scrolls virtually: spacer heights standing in for the unrendered rows. */
   virtual?: {topPad: number; bottomPad: number; rowHeight: number};
 }
@@ -40,6 +43,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                                                                                    filterText = '',
                                                                                    isIndexing = false,
                                                                                    isExporting = false,
+                                                                                   isMobile = false,
                                                                                    virtual,
                                                                                  }: GridTableProps<T>) => {
   // "Select/check all" means "every row rendered right now". Under virtual scrolling that set is
@@ -147,10 +151,22 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
 
   const handleResizeStart = createResizeHandler(grid, containerId, container, true);
 
-  const gridColumns = columns
-    .filter((col) => !grid.pinnedColumns.has(col.field));
+  // Pinning is a desktop affordance; on mobile every picked column must stay visible.
+  const gridColumns = isMobile
+    ? columns
+    : columns.filter((col) => !grid.pinnedColumns.has(col.field));
+
+  // Mobile: the detail button takes a small fixed column; the rest split the remaining viewport
+  // width evenly (1:1:1), so sorting/long values can never resize a column or push the grid wider.
+  const MOBILE_DETAIL_W = 52;
+  const mobileDataCols = isMobile ? gridColumns.filter(c => c.type !== 'row_detail').length || 1 : 1;
 
   const getColumnStyle = (col: GridColumn) => {
+    if (isMobile) {
+      if (col.type === 'row_detail') return {width: `${MOBILE_DETAIL_W}px`};
+      const w = `calc((100% - ${MOBILE_DETAIL_W}px) / ${mobileDataCols})`;
+      return {width: w, maxWidth: w};
+    }
     const width = currentWidths.get(col.field) || col.width;
     if (width) {
       return {
@@ -162,9 +178,9 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
   };
 
   return (
-    <div className="everygrid-table-container overscroll-x-none flex-1 min-w-0 flex flex-col">
+    <div className={`everygrid-table-container overscroll-x-none flex-1 min-w-0 flex flex-col ${isMobile ? 'everygrid-mobile-x' : ''}`}>
       <table
-        className={`everygrid-table ${(currentWidths && currentWidths.size > 0) || gridColumns.some(c => c.width) ? 'table-fixed w-max min-w-full' : ''}`}>
+        className={`everygrid-table ${isMobile ? 'everygrid-mobile table-fixed w-full' : ((currentWidths && currentWidths.size > 0) || gridColumns.some(c => c.width) ? 'table-fixed w-max min-w-full' : '')}`}>
         <thead>
         <tr>
           {gridColumns.map((col) => (
@@ -173,7 +189,21 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
               <div
                 className="everygrid-header-content px-2 py-2"
               >
-                {col.type === 'row_checkbox' ? (
+                {col.type === 'row_detail' ? (
+                  <div className="flex w-full justify-center">
+                    <button
+                      type="button"
+                      className="flex items-center justify-center text-current transition-colors"
+                      aria-label={I18n.t('toolbar.mobileColumns')}
+                      title={I18n.t('toolbar.mobileColumns')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        grid.showMobileColumnSelector(grid.getDataFields(containerId), container);
+                      }}>
+                      <MobileColumnsIcon className="w-5 h-5"/>
+                    </button>
+                  </div>
+                ) : col.type === 'row_checkbox' ? (
                   <div className="flex justify-center w-full">
                     {!virtual && (
                       <input type="checkbox" className="cursor-pointer" checked={isAllSelected}
@@ -193,15 +223,19 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                   <>
                     <span className="truncate">{col.headerName || col.field}</span>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        className={`everygrid-icon-btn ${grid.pinnedColumns.has(col.field) ? 'is-active' : ''}`}
-                        disabled={isIndexing || isExporting}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePin(col.field);
-                        }}>
-                        <PinEmptyIcon/>
-                      </button>
+                      {/* Pinning is off on mobile (no horizontal scroll to pin against), so its icon
+                          is dropped along with hide to keep the narrow header uncluttered. */}
+                      {!isMobile && (
+                        <button
+                          className={`everygrid-icon-btn ${grid.pinnedColumns.has(col.field) ? 'is-active' : ''}`}
+                          disabled={isIndexing || isExporting}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePin(col.field);
+                          }}>
+                          <PinEmptyIcon/>
+                        </button>
+                      )}
                       {(col.field !== I18n.t('grid.index') && grid.isColumnNumeric(col.field)) && (
                         <button
                           className={`everygrid-icon-btn ${grid.commaSeparatedFields.has(col.field) ? 'is-active' : ''}`}
@@ -230,15 +264,17 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                           <EditIcon/>
                         </button>
                       )}
-                      <button
-                        className="everygrid-icon-btn"
-                        disabled={isIndexing || isExporting}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleHide(col.field);
-                        }}>
-                        <HideIcon/>
-                      </button>
+                      {!isMobile && (
+                        <button
+                          className="everygrid-icon-btn"
+                          disabled={isIndexing || isExporting}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleHide(col.field);
+                          }}>
+                          <HideIcon/>
+                        </button>
+                      )}
                       {(() => {
                         const isJsonCol = loadedItems.some(item => {
                           const v = item[col.field];
@@ -269,7 +305,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                     </div>
                     {/* Resizing while the data underneath is being replaced would measure the
                         old columns, so it goes inert with everything else. */}
-                    {!(isIndexing || isExporting) && (
+                    {!isMobile && !(isIndexing || isExporting) && (
                       <div className="everygrid-resizer" onMouseDown={(e) => handleResizeStart(e, col.field)} onTouchStart={(e) => handleResizeStart(e, col.field)}/>
                     )}
                   </>

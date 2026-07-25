@@ -5,6 +5,8 @@ import {isJsonString, parseIfJson} from './utils';
 import {ExcelView} from './ExcelView';
 import {runExcelExport} from '../wasm/ExcelExportClient';
 import {ColumnSelectorComponent} from '../components/ColumnSelectorComponent';
+import {MobileColumnSelectorComponent} from '../components/MobileColumnSelectorComponent';
+import {RowDetailComponent} from '../components/RowDetailComponent';
 import {HiddenColumnSelectorComponent} from '../components/HiddenColumnSelectorComponent';
 import {I18n} from '../i18n/I18n';
 import React from 'react';
@@ -45,6 +47,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   readonly options: GridOptions<T>;
   public hiddenFieldsMap: Map<string, Set<string>> = new Map(); // Manages hidden fields per targetId
   public displayColsMap: Map<string, Set<string>> = new Map(); // Column selector whitelist per targetId (empty = show all)
+  public mobileColsMap: Map<string, Set<string>> = new Map(); // Mobile column picks per targetId (≤3; overrides mobileColumns config)
   public exportState: Map<string, {done: number; total: number}> = new Map(); // Excel export progress (files done/total) per targetId
   private _exportControllers: Map<string, AbortController> = new Map(); // aborts in-flight exports (terminates the worker) on re-export or destroy
   public pinnedColumns: Set<string> = new Set(); // Manages pinned columns
@@ -327,13 +330,16 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   /**
-   * Mounts one registered target into the element with the same id. Requires `loadConfig()` first
-   * and requires the element to already be in the DOM — nothing is allocated for a target this
-   * screen doesn't show, so cost scales with grids rendered, not with configs that exist.
+   * Mounts a grid into the element with the same id. Self-sufficient: it loads the root config
+   * (`/everygrid.config.json`, cached — one fetch app-wide) on demand, so a screen can just call
+   * `mount('a-grid', { fetcher })` with no separate `loadConfig()` bootstrap. If the config carries
+   * a target for this id, its settings apply; if not, the grid renders with defaults — config is
+   * for customization, not a requirement. The element must be in the DOM (nothing is allocated for a
+   * target this screen doesn't show).
    *
    * Idempotent: mounting an already-mounted target returns the live instance.
    *
-   * @param targetId Element id, matching a target id from the loaded config
+   * @param targetId Element id; any id renders (a matching config target just customizes it)
    * @param opts.fetcher Data source for this target — a URL (streamed) or an async function
    */
   public static async mount<D extends Record<string, unknown> = Record<string, unknown>>(
@@ -348,13 +354,21 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       return null;
     }
 
-    const entry = Everygrid._targetRegistry.get(targetId);
+    let entry = Everygrid._targetRegistry.get(targetId);
     if (!entry) {
-      console.warn(`Everygrid.mount: target "${targetId}" is not registered — call loadConfig() first.`);
-      return null;
+      // Not registered yet — read the root config (cached, so at most one fetch app-wide) and look
+      // again. Awaiting opens a race for the same id, so re-check the live instance afterwards.
+      await Everygrid.loadConfig();
+      const raced = Everygrid.instances.get(targetId);
+      if (raced) return raced as Everygrid<D>;
+      entry = Everygrid._targetRegistry.get(targetId);
     }
 
-    const {config, target} = entry;
+    // An id with no config target still renders, with defaults.
+    const {config, target} = entry ?? {
+      config: {targets: [{id: targetId}]} as Record<string, unknown>,
+      target: {id: targetId} as GridTargetConfig,
+    };
     Everygrid._initializedTargets.add(targetId);
 
     const fetcherOrUrl = opts.fetcher;
@@ -385,6 +399,32 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     }
     const instance = new Everygrid({...config, targets: [target], data: target.data});
     return instance as unknown as Everygrid<D>;
+  }
+
+  /**
+   * Preload one or more entry config files (each an `everygrid.config.json` listing its `configs`).
+   * Usually unnecessary — `createEverygrid` / `mount` read the root config on demand — but call it to
+   * point at a non-root path (a sub-app), or to load several entries up front. Cached per URL.
+   * Returns every registered target id. Also exported as a standalone `loadEverygridConfig`.
+   */
+  public static loadEverygridConfig(
+    entryConfigUrls: string | string[] = '/everygrid.config.json',
+  ): Promise<string[]> {
+    const urls = Array.isArray(entryConfigUrls) ? entryConfigUrls : [entryConfigUrls];
+    return Promise.all(urls.map(u => Everygrid.loadConfig(u))).then(lists => lists.flat());
+  }
+
+  /**
+   * Create a grid in the element with `id` — the ergonomic form of `mount`. Loads the root config on
+   * demand, applies a matching config target or renders with defaults, and returns the instance
+   * (null if the element isn't in the DOM). `fetcher` is a URL (streamed) or a `() => Promise<rows>`.
+   * Also exported as a standalone `createEverygrid`.
+   */
+  public static createEverygrid<D extends Record<string, unknown> = Record<string, unknown>>(
+    id: string,
+    fetcher?: string | (() => Promise<Record<string, unknown>[]>),
+  ): Promise<Everygrid<D> | null> {
+    return Everygrid.mount<D>(id, {fetcher});
   }
 
   /**
@@ -1577,8 +1617,42 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return [];
   }
 
-  public getColumns(containerId: string, items: T[]): GridColumn[] {
+  /** Mobile column keys from config (`mobileColumns`), or undefined when none is set for this grid. */
+  public getMobileColumns(containerId: string): string[] | undefined {
+    const conf = this.options.mobileColumns?.find(c => c.id === containerId);
+    return conf?.cols;
+  }
+
+  /**
+   * The ≤3 field keys shown on a narrow (mobile) layout, in priority order: the user's in-session
+   * picks (`mobileColsMap`), then the `mobileColumns` config, then the first three data columns.
+   * Only fields that exist in `available` are kept, so a stale pick/config never yields a blank column.
+   */
+  public getMobileFields(containerId: string, available: GridColumn[]): string[] {
+    const has = (f: string) => available.some(c => c.field === f);
+    const picked = this.mobileColsMap.get(containerId);
+    if (picked && picked.size > 0) return Array.from(picked).filter(has).slice(0, 3);
+    const configured = this.getMobileColumns(containerId)?.filter(has);
+    if (configured && configured.length > 0) return configured.slice(0, 3);
+    return available.slice(0, 3).map(c => c.field);
+  }
+
+  public getColumns(containerId: string, items: T[], isMobile: boolean = false): GridColumn[] {
     let columns: GridColumn[] = this.buildBaseColumns(containerId, items);
+
+    // Mobile: a fixed set of ≤3 columns (no horizontal scroll) plus a per-row detail button that
+    // opens the full row in a modal. The desktop-only chrome below (pinning, the display whitelist,
+    // the checkbox column) is deliberately skipped so the row always fits the viewport width.
+    if (isMobile) {
+      const picked = this.getMobileFields(containerId, columns)
+        .map(field => columns.find(col => col.field === field))
+        .filter((col): col is GridColumn => !!col);
+      const hiddenFields = this.hiddenFieldsMap.get(containerId) || new Set();
+      return [
+        ...picked.filter(col => !hiddenFields.has(col.field)),
+        {headerName: '', field: '__detail__', type: 'row_detail'},
+      ];
+    }
 
     // Display whitelist: empty = show all; when the column selector has checked columns, show
     // only those, in the order they were checked (Set preserves insertion order). data_checkbox
@@ -1984,6 +2058,30 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public showColumnSelector(allFields: string[], container: HTMLElement) {
     this.activePopup = (
       <ColumnSelectorComponent
+        allFields={allFields}
+        container={container}
+        grid={this}
+        onClose={() => this.closePopup()}
+      />
+    );
+    this.renderGrid(container);
+  }
+
+  public showRowDetail(row: T, container: HTMLElement) {
+    this.activePopup = (
+      <RowDetailComponent
+        row={row}
+        container={container}
+        grid={this}
+        onClose={() => this.closePopup()}
+      />
+    );
+    this.renderGrid(container);
+  }
+
+  public showMobileColumnSelector(allFields: string[], container: HTMLElement) {
+    this.activePopup = (
+      <MobileColumnSelectorComponent
         allFields={allFields}
         container={container}
         grid={this}

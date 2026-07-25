@@ -12,6 +12,11 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    // Typecheck against the workspace source (mirrors the vite `serve` alias) so the demo tracks the
+    // current library API, not the pinned tarball.
+    "paths": {
+      "@everygrid/grid": ["../../packages/everygrid/src/index.ts"]
+    },
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,

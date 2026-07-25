@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import ReactDemo from './demos/ReactDemo';
+import ReactDemo, { type Locale } from './demos/ReactDemo';
 import reactSrc from './demos/ReactDemo.tsx?raw';
-import type { Locale } from './lib/everygrid';
 
 type TabId = 'react' | 'vanilla' | 'jquery';
 

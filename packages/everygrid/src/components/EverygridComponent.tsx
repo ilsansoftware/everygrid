@@ -40,6 +40,18 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   }, [grid]);
 
   const containerId = container.id;
+
+  // Narrow layout: same 720px threshold as the toolbar. Drives the mobile column set (fixed ≤3
+  // columns + a detail button, no horizontal scroll) via getColumns below.
+  const [isMobile, setIsMobile] = useState(() => container.getBoundingClientRect().width < 720);
+  useEffect(() => {
+    const obs = new ResizeObserver(entries => {
+      for (const entry of entries) setIsMobile(entry.contentRect.width < 720);
+    });
+    obs.observe(container);
+    return () => obs.disconnect();
+  }, [container]);
+
   const items = (grid.options.data || []) as T[];
   const streamTotal = grid.getFilteredTotal(containerId);
   // streamTotalRaw: unfiltered total for toolbar/pagination visibility.
@@ -139,7 +151,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   const isBusy = isLoading || isProcessing;
   const showEmpty = !isLoading && items.length === 0 && streamTotalRaw === 0;
   const searchKeys = grid.getSearchKeys(containerId, displayItems);
-  const columns = grid.getColumns(containerId, items);
+  const columns = grid.getColumns(containerId, items, isMobile);
   const dataFields = grid.getDataFields(containerId);
   const currentWidths = grid.getCurrentWidths(containerId);
   const editableFields = grid.getEditableFields(containerId);
@@ -329,6 +341,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
     filterText: grid.filterText,
     isIndexing: isBusy,
     isExporting,
+    isMobile,
     startIndex: vwin.start,
     virtual,
   };
@@ -424,7 +437,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             // the page — including popups, which portal to <body> and so lost to the grid's own
             // chrome. Isolated, the in-body band only orders against itself; see the stacking
             // scale at the top of Everygrid.css.
-            className={`relative w-full flex-1 min-h-0 flex flex-col overflow-hidden isolate ${grid.pinnedColumns.size > 0 ? 'has-pinned' : ''}`}
+            className={`relative w-full flex-1 min-h-0 flex flex-col overflow-hidden isolate ${!isMobile && grid.pinnedColumns.size > 0 ? 'has-pinned' : ''}`}
           >
             {/* inert takes the whole table out of the tab order and kills its events, so cell
                 inputs, links and edit buttons go dead with the rest instead of staying reachable
@@ -437,10 +450,10 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             <div
               ref={virtualConf ? scrollerRef : undefined}
               onScroll={virtualConf ? onScroll : undefined}
-              className={`flex w-full h-full ${virtualConf ? 'everygrid-virtual-scroller' : ''}`}
+              className={`flex w-full h-full ${virtualConf ? 'everygrid-virtual-scroller' : ''} ${isMobile ? 'everygrid-mobile-x' : ''}`}
               inert={isBusy}
             >
-              {grid.pinnedColumns.size > 0 && (
+              {!isMobile && grid.pinnedColumns.size > 0 && (
                 <PinnedTableComponent {...pinnedProps}/>
               )}
               <GridTableComponent {...mainProps}/>

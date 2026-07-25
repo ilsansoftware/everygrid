@@ -43,31 +43,27 @@
 
     function getData2() {
       return fetch('./data2.json')
-        .then(res => res.json());
+      .then(res => res.json());
     }
 
-    // Initialize grids — reads /everygrid.config.json automatically
-    EG.autoInit(
-      {
-        'demo-grid': () => getData()
-          .then(rows => rows),
-        'demo-grid1': () => getData()
-          .then(function (rows) {
-            return rows.filter(function (row) {
-              return row.id === 1;
-            });
-          }),
-        'demo-grid2': () => getData()
-          .then(function (rows) {
-            return rows.filter(function (row) {
-              return row.id === 2;
-            });
-          }),
-        'demo-grid3': () => getData2()
-          .then(json => json.results),
-      },
-      './everygrid.config.json'
-    ).then(() => {
+    const {loadEverygridConfig, createEverygrid} = EG;
+
+    // Sub-app config isn't at the site root — load it explicitly, then create each grid.
+    loadEverygridConfig(['./everygrid.config.json']).then(function () {
+      createEverygrid('demo-grid', () => getData());
+      createEverygrid('demo-grid1', () => getData()
+      .then(function (rows) {
+        return rows.filter(function (row) {
+          return row.id === 1;
+        });
+      }));
+      createEverygrid('demo-grid2', () => getData()
+      .then(function (rows) {
+        return rows.filter(function (row) {
+          return row.id === 2;
+        });
+      }));
+      createEverygrid('demo-grid3', () => getData2().then(json => json.results));
       // Notify portal that this demo is ready to receive locale
       window.parent.postMessage({type: 'ready'}, '*');
     });

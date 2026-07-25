@@ -32,6 +32,17 @@ export interface EditableColConfig {
   cols: string[];
 }
 
+/**
+ * Columns shown on a narrow (mobile) layout, where the grid drops to a no-horizontal-scroll view of
+ * a few fixed columns plus a per-row detail button. `cols` lists the field keys (first 3 used); with
+ * no entry the grid falls back to the first three data columns. A user can also pick up to 3 at
+ * runtime, which overrides this.
+ */
+export interface GridMobileColumnsConfig {
+  id: string;
+  cols: string[];
+}
+
 export interface GridColorConfig {
   id: string;
   font?: {
@@ -130,6 +141,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   activeEditFields: Map<string, Set<string>>;
   sortConfig: Map<string, { field: string; direction: 'asc' | 'desc' | null }>;
   hiddenFieldsMap: Map<string, Set<string>>;
+  mobileColsMap: Map<string, Set<string>>;
   exportState: Map<string, {done: number; total: number}>;
   commaSeparatedFields: Set<string>;
   linkFields: Set<string>;
@@ -192,8 +204,12 @@ export interface IEverygrid<T extends Record<string, unknown>> {
 
   getDisplayItems(containerId: string, items: T[]): T[];
 
-  getColumns(containerId: string, items: T[]): GridColumn[];
+  getColumns(containerId: string, items: T[], isMobile?: boolean): GridColumn[];
   columnLabel(field: string, containerId: string): string;
+  getMobileColumns(containerId: string): string[] | undefined;
+  getMobileFields(containerId: string, available: GridColumn[]): string[];
+  showMobileColumnSelector(allFields: string[], container: HTMLElement): void;
+  showRowDetail(row: T, container: HTMLElement): void;
 
   getDataFields(containerId: string): string[];
   getSearchKeys(containerId: string, fallbackSample?: unknown[]): KeyTree;
@@ -270,6 +286,7 @@ export interface GridOptions<T = Record<string, unknown>> {
   dataUrl?: string;
   columns?: GridColumn[];
   columnI18n?: ColumnI18n;
+  mobileColumns?: GridMobileColumnsConfig[];
   editableCols?: EditableColConfig[];
   rowCheckbox?: GridRowCheckboxConfig[];
   colors?: GridColorConfig[];

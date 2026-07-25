@@ -1,5 +1,5 @@
 import {I18n} from '../i18n/I18n';
-import type {KeyboardEvent, ReactElement} from 'react';
+import type {CSSProperties, KeyboardEvent, ReactElement} from 'react';
 import type {KeyTree} from '../core/types';
 import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
@@ -8,6 +8,7 @@ import {ColumnWidthIcon} from '../icons/ColumnWidthIcon';
 import {ColumnsIcon} from '../icons/ColumnsIcon';
 import {ExcelIcon} from '../icons/ExcelIcon';
 import {DownloadIcon} from '../icons/DownloadIcon';
+import {SearchIcon} from '../icons/SearchIcon';
 import {SortResetIcon} from '../icons/SortResetIcon';
 
 /** Hard cap on the search box: it grows to this many rows, and edits past it are rejected. */
@@ -140,6 +141,8 @@ export const GridToolbarComponent = ({
   }, [exportMenuOpen]);
 
   const filterRef = useRef<HTMLTextAreaElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
   // Last value that fit within the row cap, and the height it had — what an over-long edit reverts to.
   const acceptedRef = useRef('');
   const lastHeightRef = useRef(0);
@@ -153,7 +156,9 @@ export const GridToolbarComponent = ({
   const [caret, setCaret] = useState(0);
   const [focused, setFocused] = useState(false);
   // Screen position for the suggestion dropdown (portalled to <body>), measured after layout.
-  const [dropRect, setDropRect] = useState<{top: number; left: number; width: number} | null>(null);
+  // Full positioning style for the suggestion dropdown. Desktop floats it under the box; mobile pins
+  // it just above the keyboard (bottom of the visual viewport) so it never gets pushed off-screen.
+  const [dropStyle, setDropStyle] = useState<CSSProperties | null>(null);
 
   // Indices of the bracket pair adjacent to `pos` (checks the char before, then at, the caret).
   const matchingPair = (text: string, pos: number): [number, number] | null => {
@@ -223,7 +228,9 @@ export const GridToolbarComponent = ({
 
   const refreshSuggestions = (value: string, caret: number, lenient = false) => {
     const ctx = keyContext(value, caret, lenient);
-    if (!ctx) { setSuggestions([]); setSuggestEntered(false); return; }
+    // Even off a key position (mid-value), keep && / || available so the dropdown never empties out
+    // from under the user while they're still in the box.
+    if (!ctx) { setSuggestions(['&&', '||']); setSuggestEntered(false); return; }
     const node = navigate(searchKeys, scopePath(value.slice(0, ctx.start)));
     const tl = ctx.token.toLowerCase();
     // Sub-keys for the scope — none for a flat/leaf field or an unknown path. && / || are always
@@ -374,18 +381,46 @@ export const GridToolbarComponent = ({
   // Position the suggestion dropdown under the textarea (measured after layout, so no ref reads
   // during render — the portal uses this state).
   useLayoutEffect(() => {
-    if (suggestions.length === 0 || !filterRef.current) return;
-    const r = filterRef.current.getBoundingClientRect();
-    setDropRect({top: r.bottom + 4, left: r.left, width: r.width});
-    // Fixed positioning doesn't follow the page, so instead of chasing it, just dismiss on any
-    // scroll (capture: true, to catch scrolling containers too) or resize. Typing brings it back.
-    const dismiss = () => setSuggestions([]);
-    window.addEventListener('scroll', dismiss, true);
-    window.addEventListener('resize', dismiss);
-    return () => {
-      window.removeEventListener('scroll', dismiss, true);
-      window.removeEventListener('resize', dismiss);
+    if (suggestions.length === 0) return;
+    // Re-measure and pin the dropdown under the box. Repositioning (rather than dismissing) on
+    // scroll/resize matters on mobile: focusing the input opens the keyboard, which fires a resize
+    // before the list even paints — dismissing there meant the suggestions never showed. The
+    // visualViewport events track the keyboard/zoom so the fixed dropdown doesn't drift.
+    const place = () => {
+      const box = boxRef.current;
+      if (!box) return;
+      // Drop straight down from the search box at its exact width, so the input and the suggestion
+      // list read as one connected control — same on web and mobile (the box sits at the top of the
+      // toolbar, clear of the keyboard). Portalled to <body> to escape the grid's overflow/stacking.
+      const r = box.getBoundingClientRect();
+      setDropStyle({position: 'fixed', top: r.bottom, left: r.left, width: r.width, zIndex: 1000});
     };
+    place();
+    const vv = window.visualViewport;
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    vv?.addEventListener('resize', place);
+    vv?.addEventListener('scroll', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+      vv?.removeEventListener('resize', place);
+      vv?.removeEventListener('scroll', place);
+    };
+  }, [suggestions]);
+
+  // The dropdown stays up while the user works the search box; it closes only when a pointer press
+  // lands outside both the box and the dropdown itself. (Blur alone no longer closes it.)
+  useEffect(() => {
+    if (suggestions.length === 0) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (boxRef.current?.contains(t) || dropRef.current?.contains(t)) return;
+      setSuggestions([]);
+      setSuggestEntered(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
   }, [suggestions]);
 
   const handleFilterClear = () => {
@@ -469,7 +504,8 @@ export const GridToolbarComponent = ({
             lift out of the flow so a multi-line query wouldn't reflow anything, but the toolbar
             is the top of the grid's frame now — an overlay reads as the search box falling into
             the table instead of the frame growing to hold it. */}
-        <div className="relative overflow-hidden rounded border border-slate-200 bg-white focus-within:border-indigo-400">
+        <div ref={boxRef}
+             className={`relative overflow-hidden border border-slate-200 bg-white focus-within:border-indigo-400 ${!statusText && suggestions.length > 0 ? 'rounded-t rounded-b-none' : 'rounded'}`}>
           {statusText ? (
             <div className="relative flex items-center gap-2 px-2 py-1.5 text-xs">
               {progress >= 0
@@ -488,7 +524,7 @@ export const GridToolbarComponent = ({
             <>
               {/* Colour overlay behind the transparent textarea — same metrics so text lines up. */}
               <div aria-hidden
-                   className="absolute inset-0 pl-7 pr-6 py-1.5 text-xs leading-snug whitespace-pre-wrap break-words text-slate-700 overflow-hidden pointer-events-none">
+                   className={`absolute inset-0 pl-7 py-1.5 ${isMobile ? 'text-base pr-9' : 'text-xs pr-7'} leading-snug whitespace-pre-wrap break-words text-slate-700 overflow-hidden pointer-events-none`}>
                 {renderHighlighted(inputValue, new Set(focused ? (matchingPair(inputValue, caret) ?? []) : []))}{'\n'}
               </div>
               <textarea
@@ -499,30 +535,35 @@ export const GridToolbarComponent = ({
                   onKeyDown={handleFilterKeyDown}
                   onSelect={e => setCaret(e.currentTarget.selectionStart ?? 0)}
                   onFocus={e => { setFocused(true); setCaret(e.target.selectionStart ?? 0); refreshSuggestions(e.target.value, e.target.selectionStart ?? e.target.value.length); }}
-                  onBlur={() => { setFocused(false); setTimeout(() => setSuggestions([]), 120); }}
+                  // Losing focus no longer closes the list — it stays until a pointerdown lands
+                  // outside the box + dropdown (see the effect above), so moving the caret or the
+                  // pointer within the search control keeps it open.
+                  onBlur={() => setFocused(false)}
                   placeholder={I18n.t('toolbar.filterPlaceholder')}
-                  className="relative block w-full pl-7 pr-6 py-1.5 text-xs leading-snug bg-transparent text-transparent caret-slate-700 placeholder:text-slate-400 resize-none overflow-hidden focus:outline-none"
+                  // 16px on mobile (text-base) stops iOS from auto-zooming the page on focus; the
+                  // overlay above matches so the highlighted text stays aligned.
+                  className={`relative block w-full pl-7 py-1.5 ${isMobile ? 'text-base pr-9' : 'text-xs pr-7'} leading-snug bg-transparent text-transparent caret-slate-700 placeholder:text-slate-400 resize-none overflow-hidden focus:outline-none`}
               />
-              <svg className="absolute left-2 top-2 text-slate-400 pointer-events-none" width="12" height="12"
-                   viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
+              <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"/>
               {inputValue && (
                   <button
-                      className="absolute right-1.5 top-1.5 text-slate-400 hover:text-slate-600 text-xs"
+                      type="button"
+                      aria-label={I18n.t('toolbar.clearSearch')}
+                      className={`absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors leading-none ${isMobile ? 'w-7 h-7 text-lg' : 'w-5 h-5 text-sm'}`}
                       onClick={handleFilterClear}
                   >✕</button>
               )}
             </>
           )}
         </div>
-        {/* Portal to <body> with position:fixed so the dropdown floats above the grids instead of
-            being trapped behind them by an ancestor's stacking context / overflow. */}
-        {!statusText && suggestions.length > 0 && dropRect && createPortal(
+        {/* Portalled to <body> (position:fixed) to escape the grid's overflow/stacking, but placed
+            flush under the search box at its exact width — border-top dropped and only the bottom
+            corners rounded — so the two read as one connected control dropping down. */}
+        {!statusText && suggestions.length > 0 && dropStyle && createPortal(
           <div
-              style={{position: 'fixed', top: dropRect.top, left: dropRect.left, minWidth: dropRect.width, zIndex: 1000}}
-              className="flex flex-wrap gap-1 rounded-md border border-slate-200 bg-white p-1.5 shadow-lg max-w-[90vw]">
+              ref={dropRef}
+              style={dropStyle}
+              className="flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 shadow-lg">
             {suggestions.map((k, i) => {
               const isOp = k === '&&' || k === '||';
               const selected = suggestEntered && i === suggestIndex;
@@ -539,12 +580,15 @@ export const GridToolbarComponent = ({
                     type="button"
                     // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
                     onMouseDown={e => { e.preventDefault(); applySuggestion(k); }}
-                    className={`rounded px-2 py-0.5 text-[11px] font-medium ${tone}`}
+                    className={`shrink-0 rounded font-medium ${tone} ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-2 py-0.5 text-[11px]'}`}
                 >{k}{label && label !== k ? <span className="ml-1 opacity-60">({label})</span> : null}</button>
               );
             })}
-            {/* The key map isn't obvious (arrows navigate the scope, not the text), so spell it out. */}
-            <div className="basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none">{I18n.t('toolbar.suggestNav')}</div>
+            {/* Arrow-key hint only applies on desktop (touch just taps a chip); it also forces a wrap
+                that would break the mobile single-row strip. */}
+            {!isMobile && (
+              <div className="basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none">{I18n.t('toolbar.suggestNav')}</div>
+            )}
           </div>,
           document.body,
         )}

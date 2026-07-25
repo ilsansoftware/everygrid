@@ -2,6 +2,7 @@ import React, {type JSX, useEffect, useMemo, useState} from 'react';
 import type {GridColumn, IEverygrid} from '../core/types';
 import {I18n} from '../i18n/I18n';
 import {EditIcon} from '../icons/EditIcon';
+import {RowDetailIcon} from '../icons/RowDetailIcon';
 import {formatIsoTimestamp, getSummaryLabel, isJsonString, isXmlString} from '../core/utils';
 import {highlightText, objectContainsFilter} from '../core/highlightUtils';
 
@@ -44,6 +45,21 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       setEditValue(String(item[col.field] ?? ''));
     }
   }, [item, col.field, isFocused]);
+
+  if (col.type === 'row_detail') {
+    return (
+      <td className="everygrid-detail-cell text-center">
+        <button
+          type="button"
+          className="everygrid-detail-btn"
+          aria-label={I18n.t('grid.rowDetail')}
+          onClick={() => grid.showRowDetail(item, container)}
+        >
+          <RowDetailIcon className="w-5 h-5"/>
+        </button>
+      </td>
+    );
+  }
 
   if (col.type === 'data_checkbox') {
     const mappingField = col.mapping ?? col.field;

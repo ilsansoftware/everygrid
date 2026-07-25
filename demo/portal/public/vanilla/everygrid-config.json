@@ -18,6 +18,12 @@
       }
     }
   },
+  "mobileColumns": [
+    {
+      "id": "demo-grid",
+      "cols": ["name", "role", "age"]
+    }
+  ],
   "targets": [
     {
       "id": "demo-grid"

@@ -95,15 +95,17 @@ export default defineConfig({
 
 ### 6. Mount grids in your app
 
-Load the config once, then mount each grid after its container element exists — and unmount it
-when the screen goes away. Grid lifetime is yours to control; nothing is allocated for a target
-this screen doesn't render.
+Mount each grid after its container element exists — and unmount it when the screen goes away.
+`mount` reads the root config on demand (cached — one fetch app-wide), so there's no separate
+bootstrap: a matching config target customizes the grid, otherwise it renders with defaults. Grid
+lifetime is yours to control; nothing is allocated for a target this screen doesn't render.
 
 ```tsx
 import { Everygrid } from '@everygrid/core';
 import '@everygrid/core/css';
 
-await Everygrid.loadConfig();                       // cached per page — call it from every screen
+// No bootstrap — mount loads /everygrid.config.json itself (cached) and renders with defaults if the
+// id isn't in the config.
 await Everygrid.mount('user-grid', {
   fetcher: () => fetch('/api/users').then(r => r.json()),
 });
@@ -118,14 +120,35 @@ Add a container element with the matching `id` in your HTML:
 <div id="user-grid"></div>
 ```
 
-In React, tie it to the component that renders the container:
+In React, wrap the lifecycle in a hook and drop it into whatever component renders the container —
+each screen registers its own grid, no central wiring:
 
 ```tsx
-useEffect(() => {
-  void Everygrid.loadConfig().then(() => Everygrid.mount('user-grid', { fetcher }));
-  return () => { Everygrid.unmount('user-grid'); };
-}, []);
+// useEverygrid.ts
+import { useEffect } from 'react';
+import { Everygrid } from '@everygrid/core';
+
+type Fetcher = string | (() => Promise<Record<string, unknown>[]>);
+
+export function useEverygrid(id: string, fetcher?: Fetcher) {
+  useEffect(() => {
+    void Everygrid.mount(id, { fetcher });      // loads the config on demand; defaults if unlisted
+    return () => { Everygrid.unmount(id); };     // tear down when the screen unmounts
+    // Remount only when the id changes — a new fetcher shouldn't rebuild the grid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+}
 ```
+
+```tsx
+function UserGrid() {
+  useEverygrid('user-grid', () => fetch('/api/users').then(r => r.json()));
+  return <div id="user-grid" />;
+}
+```
+
+The config target for `user-grid` (if any) customizes it; otherwise it renders with defaults. Nothing
+else on the page needs to know the grid exists.
 
 ---
 
@@ -175,6 +198,7 @@ You can use Everygrid directly in the browser via CDN (no build step required).
 | `dataLimit` | `GridDataLimitConfig[]` | Cap on rows loaded per grid — a safety net against out-of-memory tab crashes |
 | `colors` | `GridColorConfig[]` | Header/body color settings per grid |
 | `columnI18n` | `ColumnI18n` | Localized column display names — see [Column i18n](#column-i18n) |
+| `mobileColumns` | `GridMobileColumnsConfig[]` | Which columns the narrow (mobile) layout shows — see [Mobile layout](#mobile-layout) |
 | `dataCache` | `RequestCache` | `cache` mode for URL data loads. Defaults to `'no-store'` (always re-fetch). Use `'default'` for large, rarely-changing datasets so a reload revalidates instead of re-downloading. |
 
 ### Lifecycle API
@@ -182,7 +206,9 @@ You can use Everygrid directly in the browser via CDN (no build step required).
 | Method | Description |
 |--------|-------------|
 | `loadConfig(entryConfigUrl?, opts?)` | Fetches the entry config and every file it lists, registering their targets. No DOM work, no engines, no data. Cached per URL (concurrent calls share one request); pass `{reload: true}` to bypass. Returns the registered target ids. |
-| `mount(targetId, opts?)` | Mounts one registered target into the element with the same id. `opts.fetcher` is a URL or a function returning rows. Requires the element to already be in the DOM — returns `null` with a warning otherwise. Idempotent. |
+| `createEverygrid(id, fetcher?)` | Ergonomic form of `mount` — also a standalone named export (`import { createEverygrid }`). Loads the root config on demand, applies a matching target or renders with defaults. |
+| `loadEverygridConfig(urls?)` | Preload one or more entry configs (default `/everygrid.config.json`; pass an array for sub-apps / several entries). Standalone export too. Usually unnecessary — `createEverygrid` loads on demand. |
+| `mount(targetId, opts?)` | Mounts a grid into the element with the same id. Self-sufficient — loads the root config (`/everygrid.config.json`, cached) on demand, so no `loadConfig()` bootstrap is needed; a matching config target customizes the grid, otherwise it renders with defaults. `opts.fetcher` is a URL or a function returning rows. Requires the element to be in the DOM — returns `null` with a warning otherwise. Idempotent. |
 | `unmount(targetId)` | Tears the grid down completely — React root, WASM engine, worker thread, timers — and makes the target mountable again. Returns whether a grid was there. |
 | `invalidateConfig(entryConfigUrl?)` | Drops cached config so the next `loadConfig` re-fetches. Mounted grids keep the config they were built with. |
 | `refreshAll()` | Re-renders mounted grids that are in the DOM (viewport-lazy). Use after a container changes size or visibility. |
@@ -386,6 +412,27 @@ Labels are **display-only**. The search box still uses real field keys (`name() 
 suggestion dropdown just annotates each key with its label, e.g. `name(이름)`, and inserts the key.
 So queries, WASM filtering, and highlighting are locale-independent, and switching language never
 invalidates a typed query.
+
+## Mobile layout
+
+Below 720px the grid drops to a touch-friendly layout that **doesn't scroll horizontally**: it shows
+a fixed set of up to 3 columns plus a per-row **detail button** that opens the whole row in a modal.
+Rows are taller and controls are larger for touch; pinning, resizing and the checkbox column are off.
+
+Which 3 columns show, in priority order:
+
+1. The user's in-session pick — the toolbar's **Mobile Columns** action (mobile only) lets them choose up to 3.
+2. `mobileColumns` config for the grid.
+3. The first three data columns (default).
+
+```json
+"mobileColumns": [
+  { "id": "orders", "cols": ["name", "status", "total"] }
+]
+```
+
+`cols` are field keys (first 3 used); any that don't exist are skipped. Column labels follow
+[Column i18n](#column-i18n) like everywhere else.
 
 ## Excel export
 
