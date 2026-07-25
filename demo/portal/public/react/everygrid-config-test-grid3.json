@@ -4,6 +4,37 @@
       "id": "test-grid3"
     }
   ],
-  "pagination": [
-  ]
+  "pagination": [],
+  "columnI18n": {
+    "ko": {
+      "test-grid3": {
+        "id": "아이디",
+        "name": "이름",
+        "age": "나이",
+        "salary": "급여",
+        "joinedDate": "가입일",
+        "role": "역할",
+        "active": "활성화",
+        "category": "카테고리",
+        "phoneNumber": "전화번호",
+        "email": "이메일",
+        "department": "부서"
+      }
+    },
+    "en": {
+      "test-grid3": {
+        "id": "ID",
+        "name": "Name",
+        "age": "Age",
+        "salary": "Salary",
+        "joinedDate": "Joined",
+        "role": "Role",
+        "active": "Active",
+        "category": "Category",
+        "phoneNumber": "Phone",
+        "email": "Email",
+        "department": "Department"
+      }
+    }
+  }
 }

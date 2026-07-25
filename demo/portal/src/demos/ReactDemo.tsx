@@ -3,12 +3,9 @@ import {Everygrid, I18n, loadEverygridConfig, createEverygrid} from '@everygrid/
 
 export type Locale = 'en' | 'ko';
 
-// The large-data grid streams the real 1.6M-row file. Its config sets `dataLimit: 'auto'`, so on a
-// phone the library stops the stream at a device-safe count (and shows a banner) instead of loading
-// the whole ~100MB and crashing the tab; a roomy desktop streams all of it.
-
-// React demo — grids driven directly by the Everygrid API from a React component.
-export default function ReactDemo({locale, active = true}: { locale: Locale; active?: boolean }) {
+// React demo — grids driven directly by the Everygrid API from a React component. (The two heavy
+// grids — large-data + virtual scroll — live on their own tabs; see LargeDataDemo / VirtualScrollDemo.)
+export default function ReactDemo({locale}: { locale: Locale }) {
   // Create the grids once, tear them down on unmount (so a tab switch doesn't leak the singleton).
   useEffect(() => {
     let cancelled = false;
@@ -23,28 +20,26 @@ export default function ReactDemo({locale, active = true}: { locale: Locale; act
       void createEverygrid('api-grid',
           () => fetch('https://jsonplaceholder.typicode.com/posts')
           .then(r => r.json()));
-      // URL string → streamed (device-safe) instead of buffering ~100MB.
-      void createEverygrid('large-data-grid', 'https://d3886c7yrxubj8.cloudfront.net/data/large_table_data.json');
+      // No fetcher → shows the empty-state grid from its config.
+      void createEverygrid('empty-grid');
       Everygrid.refreshAll();
     });
+    // Unmount only this demo's own grids (not a global resetAutoInit) so the other React tabs,
+    // which share the Everygrid singleton, keep theirs.
     return () => {
       cancelled = true;
-      Everygrid.resetAutoInit();
+      ['test-grid', 'test-grid2', 'test-grid3', 'api-grid', 'empty-grid'].forEach((id) => Everygrid.unmount(id));
     };
     // Mount/unmount only — locale and visibility are handled by the effects below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-apply the locale when it changes; re-measure when the tab becomes visible again (a hidden
-  // tab measures as zero-width, so column widths need recomputing on show). Both are no-ops until
-  // the grids exist.
+  // Re-apply the locale when it changes (no-op until the grids exist). Column widths recompute on
+  // show via the grid's own ResizeObserver, so no refresh-on-tab-change is needed here.
   useEffect(() => {
     I18n.setLocale(locale);
-    Everygrid.refreshAll();
+    Everygrid.rerenderAll();
   }, [locale]);
-  useEffect(() => {
-    if (active) Everygrid.refreshAll();
-  }, [active]);
 
   return (
       <div className="max-w-7xl mx-auto">
@@ -53,7 +48,6 @@ export default function ReactDemo({locale, active = true}: { locale: Locale; act
           <div id="test-grid2" className="w-full border-slate-200"/>
           <div id="test-grid3" className="w-full border-slate-200"/>
           <div id="api-grid" className="w-full border-slate-200"/>
-          <div id="large-data-grid" className="w-full border-slate-200"/>
           <div id="empty-grid" className="w-full border-slate-200"/>
         </main>
       </div>

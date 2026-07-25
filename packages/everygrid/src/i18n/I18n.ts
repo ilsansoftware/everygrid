@@ -5,10 +5,13 @@ type TranslationKeys = typeof ko;
 
 export class I18n {
   private static locale: 'ko' | 'en' = 'en';
+  // Set once the app calls setLocale, so browser auto-detection never overrides an explicit choice.
+  private static explicit = false;
   private static translations: Record<'ko' | 'en', TranslationKeys> = {ko, en};
 
   public static setLocale(locale: 'ko' | 'en') {
     this.locale = locale;
+    this.explicit = true;
   }
 
   public static getLocale(): 'ko' | 'en' {
@@ -50,12 +53,10 @@ export class I18n {
    * Initializes the locale based on the browser language settings.
    */
   public static initFromBrowser() {
+    // An explicit setLocale (e.g. from the host app) wins — don't clobber it with the browser locale
+    // every time a grid is constructed.
+    if (this.explicit) return;
     const lang = navigator.language.split('-')[0];
-    try {
-      this.setLocale(lang as 'ko' | 'en');
-    } catch (err) {
-      console.error(err);
-      this.setLocale('en'); // Default
-    }
+    this.locale = lang === 'ko' ? 'ko' : 'en';
   }
 }

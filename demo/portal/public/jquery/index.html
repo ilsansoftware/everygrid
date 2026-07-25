@@ -30,7 +30,7 @@
     window.addEventListener('message', function (e) {
       if (e.data && e.data.type === 'setLocale') {
         EG.I18n.setLocale(e.data.locale);
-        EG.refreshAll();
+        EG.rerenderAll();
       }
     });
 

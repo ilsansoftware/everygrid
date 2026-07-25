@@ -1,27 +1,102 @@
 {
   "columnI18n": {
     "ko": {
-      "common": {
-        "id": "아이디", "name": "이름", "age": "나이", "email": "이메일",
-        "active": "활성화", "category": "카테고리", "role": "역할",
-        "examResults": "성적", "tags": "태그", "bio": "바이오"
-      },
       "demo-grid": {
-        "name": "성명", "active": "활동여부", "role": "담당", "examResults": "평가성적"
+        "id": "아이디",
+        "name": "이름",
+        "age": "나이",
+        "joinedDate": "가입일",
+        "role": "역할",
+        "examResults": "성적",
+        "active": "활성화",
+        "category": "카테고리",
+        "tags": "태그",
+        "phoneNumber": "전화번호",
+        "email": "이메일",
+        "department": "부서",
+        "salary": "급여",
+        "location": "지역",
+        "experience": "경력",
+        "bio": "소개",
+        "github": "깃허브",
+        "blog": "블로그",
+        "hobby": "취미",
+        "nationality": "국적",
+        "language": "언어"
+      },
+      "users": {
+        "id": "아이디",
+        "name": "이름",
+        "username": "사용자명",
+        "email": "이메일",
+        "address": "주소",
+        "phone": "전화",
+        "website": "웹사이트",
+        "company": "회사"
+      },
+      "virtual-grid": {
+        "id": "아이디",
+        "name": "이름",
+        "team": "팀",
+        "city": "도시",
+        "score": "점수",
+        "joinedDate": "가입일",
+        "active": "활성화"
       }
     },
     "en": {
-      "common": {
-        "id": "ID", "name": "Name", "age": "Age", "email": "Email",
-        "active": "Active", "category": "Category", "role": "Role",
-        "examResults": "Exam Results", "tags": "Tags", "bio": "Bio"
+      "demo-grid": {
+        "id": "ID",
+        "name": "Name",
+        "age": "Age",
+        "joinedDate": "Joined",
+        "role": "Role",
+        "examResults": "Exam Results",
+        "active": "Active",
+        "category": "Category",
+        "tags": "Tags",
+        "phoneNumber": "Phone",
+        "email": "Email",
+        "department": "Department",
+        "salary": "Salary",
+        "location": "Location",
+        "experience": "Experience",
+        "bio": "Bio",
+        "github": "GitHub",
+        "blog": "Blog",
+        "hobby": "Hobby",
+        "nationality": "Nationality",
+        "language": "Language"
+      },
+      "users": {
+        "id": "ID",
+        "name": "Name",
+        "username": "Username",
+        "email": "Email",
+        "address": "Address",
+        "phone": "Phone",
+        "website": "Website",
+        "company": "Company"
+      },
+      "virtual-grid": {
+        "id": "ID",
+        "name": "Name",
+        "team": "Team",
+        "city": "City",
+        "score": "Score",
+        "joinedDate": "Joined",
+        "active": "Active"
       }
     }
   },
   "mobileColumns": [
     {
       "id": "demo-grid",
-      "cols": ["name", "role", "age"]
+      "cols": [
+        "name",
+        "role",
+        "age"
+      ]
     }
   ],
   "targets": [

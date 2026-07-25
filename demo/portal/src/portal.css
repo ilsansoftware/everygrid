@@ -78,6 +78,26 @@ nav button:hover img {
   filter: grayscale(0%);
 }
 
+/* Text labels for the React-only heavy demos (no favicon of their own). */
+nav button .tab-label {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #cbd5e1; /* slate-300 on the dark capsule */
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+nav button:hover .tab-label {
+  opacity: 0.9;
+}
+
+nav button.active .tab-label {
+  color: #1e293b; /* dark text on the white active block */
+  opacity: 1;
+}
+
 /* Active state: elevated white block effect */
 nav button.active {
   background: #ffffff;
@@ -93,10 +113,21 @@ nav button.active img {
    vanilla / jquery demos are embedded as full-size iframes. */
 .demo-panel {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #ffffff;
   color: #0f172a;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* The scroll area sits BELOW the heading so grids scroll (and their sticky headers pin) without
+   ever reaching the heading. */
+.demo-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .demo-frame {
@@ -104,6 +135,19 @@ nav button.active img {
   width: 100%;
   height: 100%;
   border: none;
+}
+
+/* Active-tab title above the React demos (the iframe tabs carry their own page chrome). Aligned to
+   the same 80rem content column, sitting just above the grid stack. */
+.demo-heading {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 80rem;
+  margin: 1.25rem auto 0.75rem;
+  padding: 0 1.5rem;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 /* Slim footer that bookends the dark header — same navy, muted text, flex-shrink:0 so it stays

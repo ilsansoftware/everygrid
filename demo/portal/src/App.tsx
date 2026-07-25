@@ -1,13 +1,23 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ReactDemo, { type Locale } from './demos/ReactDemo';
+import LargeDataDemo from './demos/LargeDataDemo';
+import VirtualScrollDemo from './demos/VirtualScrollDemo';
 import reactSrc from './demos/ReactDemo.tsx?raw';
+import largeSrc from './demos/LargeDataDemo.tsx?raw';
+import virtualSrc from './demos/VirtualScrollDemo.tsx?raw';
 
-type TabId = 'react' | 'vanilla' | 'jquery';
+type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual';
 
-const TABS: { id: TabId; title: string; icon: string }[] = [
+// React-based tabs (rendered inline) vs. iframe demos.
+const REACT_TABS: TabId[] = ['react', 'large', 'virtual'];
+
+// `icon` tabs show a favicon; `label` tabs (the React-only heavy demos) show text instead.
+const TABS: { id: TabId; title: string; icon?: string; label?: string }[] = [
   { id: 'react', title: 'React Demo', icon: '/react/favicon.ico' },
   { id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico' },
   { id: 'jquery', title: 'jQuery Demo', icon: '/jquery/favicon.ico' },
+  { id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large data' },
+  { id: 'virtual', title: 'Virtual Scroll — 100k rows', label: 'virtual scroll' },
 ];
 
 const LOCALES: { id: Locale; flag: string; title: string }[] = [
@@ -20,6 +30,8 @@ const CODE_META: Record<TabId, { hlLang: string; label: string }> = {
   react: { hlLang: 'typescript', label: 'tsx' },
   vanilla: { hlLang: 'xml', label: 'html' },
   jquery: { hlLang: 'xml', label: 'html' },
+  large: { hlLang: 'typescript', label: 'tsx' },
+  virtual: { hlLang: 'typescript', label: 'tsx' },
 };
 
 declare global {
@@ -29,7 +41,7 @@ declare global {
 }
 
 function isTabId(v: string | null): v is TabId {
-  return v === 'react' || v === 'vanilla' || v === 'jquery';
+  return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual';
 }
 
 function initialTab(): TabId {
@@ -123,18 +135,21 @@ export default function App() {
 
   // Broadcast locale changes to the active iframe demo (React demo reads it via props).
   useEffect(() => {
-    if (tab !== 'react') {
+    if (!REACT_TABS.includes(tab)) {
       frameRefs.current[tab]?.contentWindow?.postMessage({ type: 'setLocale', locale }, '*');
     }
   }, [locale, tab]);
 
   // The React demo's source is bundled at build time; the html demos are fetched once and
   // then reused, so the text to show is derived rather than mirrored into state.
-  const codeText = tab === 'react' ? reactSrc : (codeByTab[tab] ?? 'Loading...');
+  const codeText = tab === 'react' ? reactSrc
+    : tab === 'large' ? largeSrc
+    : tab === 'virtual' ? virtualSrc
+    : (codeByTab[tab] ?? 'Loading...');
 
-  // Fetch an html demo's source the first time its modal is opened.
+  // Fetch an html demo's source the first time its modal is opened (React tabs are bundled).
   useEffect(() => {
-    if (!modalOpen || tab === 'react' || codeByTab[tab]) return;
+    if (!modalOpen || REACT_TABS.includes(tab) || codeByTab[tab]) return;
     let cancelled = false;
     const store = (text: string) => {
       if (!cancelled) setCodeByTab((prev) => ({...prev, [tab]: text}));
@@ -171,7 +186,7 @@ export default function App() {
   return (
     <>
       <header>
-        <h1>Every Grid Demo</h1>
+        <h1>everygrid Demo</h1>
         <nav>
           {TABS.map((t) => (
             <button
@@ -181,7 +196,9 @@ export default function App() {
               title={t.title}
               onClick={() => setTab(t.id)}
             >
-              <img src={t.icon} width="100%" height="100%" alt={t.title} />
+              {t.label
+                ? <span className="tab-label">{t.label}</span>
+                : <img src={t.icon} width="100%" height="100%" alt={t.title} />}
             </button>
           ))}
         </nav>
@@ -219,27 +236,38 @@ export default function App() {
       </header>
 
       <div className="demo-panel">
-        {TABS.filter((t) => mounted.has(t.id)).map((t) =>
-          t.id === 'react' ? (
-            <div key={t.id} hidden={t.id !== tab}>
-              <ReactDemo locale={locale} active={t.id === tab} />
-            </div>
-          ) : (
-            <iframe
-              key={t.id}
-              ref={(el) => {
-                frameRefs.current[t.id] = el;
-              }}
-              className="demo-frame"
-              hidden={t.id !== tab}
-              // Use the explicit file path: the vite dev server does not serve a
-              // nested public/<demo>/index.html for the bare "/<demo>/" directory
-              // URL (it falls back to the SPA root, nesting the whole portal).
-              src={`/${t.id}/index.html`}
-              title={t.title}
-            />
-          ),
-        )}
+        {/* One heading for the active tab, OUTSIDE the scroll area — otherwise a grid's sticky
+            header pins to the panel top and covers it. */}
+        <h2 className="demo-heading">{TABS.find((t) => t.id === tab)?.title}</h2>
+        <div className="demo-scroll">
+          {TABS.filter((t) => mounted.has(t.id)).map((t) =>
+            REACT_TABS.includes(t.id) ? (
+              <div key={t.id} hidden={t.id !== tab}>
+                {t.id === 'react' ? (
+                  <ReactDemo locale={locale} />
+                ) : t.id === 'large' ? (
+                  <LargeDataDemo locale={locale} />
+                ) : (
+                  <VirtualScrollDemo locale={locale} />
+                )}
+              </div>
+            ) : (
+              <iframe
+                key={t.id}
+                ref={(el) => {
+                  frameRefs.current[t.id] = el;
+                }}
+                className="demo-frame"
+                hidden={t.id !== tab}
+                // Use the explicit file path: the vite dev server does not serve a
+                // nested public/<demo>/index.html for the bare "/<demo>/" directory
+                // URL (it falls back to the SPA root, nesting the whole portal).
+                src={`/${t.id}/index.html`}
+                title={t.title}
+              />
+            ),
+          )}
+        </div>
       </div>
 
       <footer className="portal-footer">

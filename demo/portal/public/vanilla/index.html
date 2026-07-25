@@ -10,16 +10,12 @@
        The src is substituted by vite.config.ts: the workspace build when served
        locally, the deployed CDN standalone when built. -->
   <script src="%EVERYGRID_STANDALONE%"></script>
-  <!-- Virtual-grid data generator, split out of the inline script below. -->
-  <script src="./virtual-grid-data.js"></script>
 </head>
 <body>
 <div class="container">
   <main>
     <div id="demo-grid"></div>
     <div id="users"></div>
-    <!-- Virtual scrolling needs a bounded height to scroll inside — see .virtual-host in index.css. -->
-    <div id="virtual-grid" class="virtual-host"></div>
   </main>
 </div>
 <script>
@@ -28,7 +24,7 @@
     if (e.data && e.data.type === 'setLocale') {
       const applyLocale = () => {
         Everygrid.I18n.setLocale(e.data.locale);
-        Everygrid.refreshAll();
+        Everygrid.rerenderAll();
       };
       applyLocale();
     }
@@ -36,7 +32,7 @@
   const {loadEverygridConfig, createEverygrid} = Everygrid;
 
   // This demo is a sub-app, so its config isn't at the site root — point at it explicitly, then
-  // create each grid (virtual-grid's generator lives in virtual-grid-data.js).
+  // create each grid.
   loadEverygridConfig(['./everygrid.config.json']).then(function () {
     createEverygrid('demo-grid', function () {
       return fetch('./data.json').then(function (r) {
@@ -48,8 +44,8 @@
         return r.json();
       });
     });
-    createEverygrid('virtual-grid', window.makeVirtualGridData);
-    // Notify portal that this demo is ready to receive locale
+    // Tell the portal we're ready — it replies with the current locale (this is what keeps the
+    // iframe in sync with the portal's locale on load / refresh / first tab open).
     window.parent.postMessage({type: 'ready'}, '*');
   });
 </script>

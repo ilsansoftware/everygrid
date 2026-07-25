@@ -20,5 +20,39 @@
       "id": "large-data-grid",
       "maxRows": "auto"
     }
-  ]
+  ],
+  "columnI18n": {
+    "ko": {
+      "large-data-grid": {
+        "id": "아이디",
+        "uuid": "UUID",
+        "index_code": "인덱스 코드",
+        "username": "사용자명",
+        "email": "이메일",
+        "amount": "금액",
+        "is_active": "활성 상태",
+        "created_at": "생성일시",
+        "department": "부서",
+        "role": "역할",
+        "examResults": "성적",
+        "remarks_log": "비고"
+      }
+    },
+    "en": {
+      "large-data-grid": {
+        "id": "ID",
+        "uuid": "UUID",
+        "index_code": "Index Code",
+        "username": "Username",
+        "email": "Email",
+        "amount": "Amount",
+        "is_active": "Active",
+        "created_at": "Created",
+        "department": "Department",
+        "role": "Role",
+        "examResults": "Exam Results",
+        "remarks_log": "Remarks"
+      }
+    }
+  }
 }

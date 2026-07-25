@@ -304,8 +304,6 @@ export const GridToolbarComponent = ({
         // which starts outside again — so ↓ re-enters it.
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); applySuggestion(suggestions[suggestIndex]); return; }
       }
-      // Tab completes the highlighted field from anywhere, as a shortcut.
-      if (e.key === 'Tab') { e.preventDefault(); applySuggestion(suggestions[suggestIndex]); return; }
       if (e.key === 'Escape') { e.preventDefault(); setSuggestions([]); setSuggestEntered(false); return; }
     } else if (e.key === 'ArrowDown') {
       // Dropdown was dismissed (↑-out or Esc): ↓ re-opens the key suggestions at the current

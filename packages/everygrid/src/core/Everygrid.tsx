@@ -819,6 +819,22 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     });
   }
 
+  /**
+   * Re-render every mounted grid immediately — no viewport gating and no data re-fetch. Use this
+   * for changes that only affect rendering, like a locale switch (headers, labels, toolbar strings):
+   * `refreshAll` would miss grids scrolled out of view and needlessly reload data.
+   */
+  public static rerenderAll(): void {
+    Everygrid.instances.forEach(grid => {
+      const g = grid as Everygrid<Record<string, unknown>>;
+      (g.options.targets ?? []).forEach(t => {
+        const id = typeof t === 'string' ? t : t.id;
+        const el = document.getElementById(id);
+        if (el) g.renderGrid(el);
+      });
+    });
+  }
+
   public closePopup() {
     this.activePopup = null;
     this.activePopupData = null;

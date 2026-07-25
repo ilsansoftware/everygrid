@@ -20,6 +20,8 @@ const _encoder = new TextEncoder();
 // ---- GridEngineWasm ------------------------------------------------------------
 
 export class GridEngineWasm {
+  // Healthcheck: log once, the first time an engine comes up, to confirm the WASM pipeline works.
+  private static healthLogged = false;
   private readonly engineId: string;
   private readonly worker: Worker;
   private seq = 0;
@@ -66,7 +68,10 @@ export class GridEngineWasm {
     const instance = new GridEngineWasm(engineId);
     if (onProgress) instance.progressCallback = onProgress;
     await instance.send({ id: engineId, cmd: 'init' });
-    console.log(`[WASM Worker] GridEngine created: ${engineId}`);
+    if (!GridEngineWasm.healthLogged) {
+      GridEngineWasm.healthLogged = true;
+      console.log('[everygrid] WASM engine ready...');
+    }
     return instance;
   }
 

@@ -5,6 +5,7 @@
     "./everygrid-config-test-grid3.json",
     "./everygrid-config-api-grid.json",
     "./everygrid-config-large-data-grid.json",
+    "./everygrid-config-virtual-grid.json",
     "./everygrid-config-empty-grid.json"
   ]
 }

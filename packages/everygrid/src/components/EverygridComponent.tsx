@@ -45,8 +45,22 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   // columns + a detail button, no horizontal scroll) via getColumns below.
   const [isMobile, setIsMobile] = useState(() => container.getBoundingClientRect().width < 720);
   useEffect(() => {
+    let lastWidth = container.getBoundingClientRect().width;
     const obs = new ResizeObserver(entries => {
-      for (const entry of entries) setIsMobile(entry.contentRect.width < 720);
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        // width 0 = hidden (display:none). Ignore it entirely: reacting would flip the grid to the
+        // mobile layout while off-screen and flash back on show. Keeping the last state means a
+        // hidden→shown tab at the same width doesn't re-render at all — no flicker.
+        if (w === 0) continue;
+        setIsMobile(w < 720);
+        // Re-render only on a genuine width change, so column widths / measured layout recompute
+        // against the new size. This is why the grid needs no external "refresh on show".
+        if (w !== lastWidth) {
+          lastWidth = w;
+          setTick(t => t + 1);
+        }
+      }
     });
     obs.observe(container);
     return () => obs.disconnect();

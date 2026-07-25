@@ -1,0 +1,40 @@
+{
+  "targets": [
+    {
+      "id": "virtual-grid",
+      "title": "Virtual scroll — 100,000 rows"
+    }
+  ],
+  "virtualScroll": [
+    {
+      "id": "virtual-grid",
+      "active": true,
+      "rowHeight": 34,
+      "overscan": 8
+    }
+  ],
+  "columnI18n": {
+    "ko": {
+      "virtual-grid": {
+        "id": "아이디",
+        "name": "이름",
+        "team": "팀",
+        "city": "도시",
+        "score": "점수",
+        "joinedDate": "가입일",
+        "active": "활성화"
+      }
+    },
+    "en": {
+      "virtual-grid": {
+        "id": "ID",
+        "name": "Name",
+        "team": "Team",
+        "city": "City",
+        "score": "Score",
+        "joinedDate": "Joined",
+        "active": "Active"
+      }
+    }
+  }
+}
