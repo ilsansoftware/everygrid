@@ -241,7 +241,7 @@ const highlightWithTerms = (text: string, terms: string[], regexPatterns: string
   let key = 0;
   for (const { start, end } of merged) {
     if (start > cursor) parts.push(<span key={key++}>{text.slice(cursor, start)}</span>);
-    parts.push(<mark key={key++} className="everygrid-highlight">{text.slice(start, end)}</mark>);
+    parts.push(<mark key={key++} className='everygrid-highlight'>{text.slice(start, end)}</mark>);
     cursor = end;
   }
   if (cursor < text.length) parts.push(<span key={key}>{text.slice(cursor)}</span>);
@@ -256,7 +256,7 @@ export const highlightText = (text: string, query: string, field?: string): Reac
   // known field, scope to that column; in a nested cell (field unknown) apply best-effort — it only
   // marks when the value actually satisfies the comparison.
   if (preds.some(p => (f === undefined || p.col === f) && scalarSatisfies(text, p.op, p.operand))) {
-    return <mark className="everygrid-highlight">{text}</mark>;
+    return <mark className='everygrid-highlight'>{text}</mark>;
   }
   const regexPatterns = [...new Set(regexes.filter(r => !r.col || f === undefined || r.col === f).map(r => r.pattern))];
   return highlightWithTerms(text, termsForField(terms, field), regexPatterns);

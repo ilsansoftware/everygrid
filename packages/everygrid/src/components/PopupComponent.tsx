@@ -21,13 +21,13 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
   const isXml = typeof data === 'string' && data.trim().startsWith('<') && data.trim().endsWith('>') && data.includes('</');
 
   return (
-    <div className="everygrid-popup-overlay">
+    <div className='everygrid-popup-overlay'>
       <div className={`everygrid-popup-content everygrid-popup-${size}`}>
-        <div className="everygrid-popup-header flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {title && <h3 className="m-0">{title}</h3>}
+        <div className='everygrid-popup-header flex items-center justify-between'>
+          <div className='flex items-center gap-4'>
+            {title && <h3 className='m-0'>{title}</h3>}
             {(data !== undefined && !isXml) && (
-              <div className="flex bg-slate-100 p-0.5 rounded text-[10px] font-bold">
+              <div className='flex bg-slate-100 p-0.5 rounded text-[10px] font-bold'>
                 <button
                   className={`px-3 py-1 rounded-sm transition-colors ${viewMode === 'table' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                   onClick={() => setViewMode('table')}
@@ -43,13 +43,13 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
               </div>
             )}
           </div>
-          <span className="everygrid-popup-close" onClick={onClose}>&times;</span>
+          <span className='everygrid-popup-close' onClick={onClose}>&times;</span>
         </div>
-        <div className="everygrid-popup-body overflow-auto flex-1">
+        <div className='everygrid-popup-body overflow-auto flex-1'>
           {viewMode === 'table' ? (
             isXml ? (
               <pre
-                className="m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full whitespace-pre-wrap break-all">
+                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full whitespace-pre-wrap break-all'>
                 {data as string}
               </pre>
             ) : (
@@ -57,7 +57,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
             )
           ) : (
             <pre
-              className="m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full">
+              className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full'>
               {JSON.stringify(data, null, 2)}
             </pre>
           )}

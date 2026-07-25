@@ -5,9 +5,13 @@ export {Everygrid} from './core/Everygrid';
 export {Everygrid as default} from './core/Everygrid';
 
 // Ergonomic functional API (thin wrappers over the static methods above). Import these directly, or
-// reach them as statics on the global (`Everygrid.createEverygrid`) in the standalone build.
+// reach them as statics on the global (`Everygrid.createGrid`) in the standalone build.
 export const loadEverygridConfig = Everygrid.loadEverygridConfig;
-export const createEverygrid = Everygrid.createEverygrid;
+export const createGrid = Everygrid.createGrid;
+
+// React bindings (React is a peerDependency). Also re-exported from the `./react` subpath.
+export {useGrid, EverygridGrid} from './react';
+export type {EverygridGridProps} from './react';
 export {GridEngineWasm} from './wasm/GridEngineWasm';
 export {I18n} from './i18n/I18n';
 export {ModalHost} from './modal/ModalHost';
@@ -26,6 +30,7 @@ export type {
   GridRowCheckboxConfig,
   GridLinkConfig,
   IEverygrid,
+  GridLoadProgress,
   ServerFetchParams,
   ServerFetchResult,
 } from './core/types';

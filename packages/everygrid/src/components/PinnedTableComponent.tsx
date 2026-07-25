@@ -90,22 +90,22 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
   };
 
   return (
-    <div className="z-40 everygrid-pinned-table-container flex flex-col">
+    <div className='z-40 everygrid-pinned-table-container flex flex-col'>
       <table
         className={`min-w-0 min-w-none w-auto everygrid-table ${(currentWidths && currentWidths.size > 0) || pinnedColumns.some(c => c.width) ? 'table-fixed' : 'table-auto'}`}>
         <thead>
         <tr>
           {pinnedColumns.map((col) => (
             <th key={col.field} style={getColumnStyle(col)}
-                className="text-left">
-              <div className="everygrid-header-content px-2 py-2">
-                <span className="truncate">{col.headerName || col.field}</span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button className="everygrid-icon-btn is-active" disabled={isIndexing || isExporting} onClick={(e) => {
+                className='text-left'>
+              <div className='everygrid-header-content px-2 py-2'>
+                <span className='truncate'>{col.headerName || col.field}</span>
+                <div className='flex items-center gap-1 shrink-0'>
+                  <button className='everygrid-icon-btn is-active' disabled={isIndexing || isExporting} onClick={(e) => {
                     e.stopPropagation();
                     handlePin(col);
                   }}><PinFilledIcon/></button>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className='flex items-center gap-1 shrink-0'>
                     {editableFields.includes(col.field) && (
                       <button
                         className={`everygrid-icon-btn ${instance.activeEditFields.get(containerId)?.has(col.field) ? 'is-active' : ''}`}
@@ -151,7 +151,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
                 </div>
               </div>
               {!(isIndexing || isExporting) && (
-                <div className="everygrid-resizer" onMouseDown={(e) => handleResizeStart(e, col.field)} onTouchStart={(e) => handleResizeStart(e, col.field)}/>
+                <div className='everygrid-resizer' onMouseDown={(e) => handleResizeStart(e, col.field)} onTouchStart={(e) => handleResizeStart(e, col.field)}/>
               )}
             </th>
           ))}
@@ -159,7 +159,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
         </thead>
         <tbody>
         {virtual && virtual.topPad > 0 && (
-          <tr className="everygrid-spacer-row" style={{height: `${virtual.topPad}px`}} aria-hidden="true">
+          <tr className='everygrid-spacer-row' style={{height: `${virtual.topPad}px`}} aria-hidden='true'>
             <td colSpan={pinnedColumns.length}/>
           </tr>
         )}
@@ -167,7 +167,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
           const rowIndex = startIndex + index;
           if (rowData === undefined) {
             return (
-              <tr key={rowIndex} className="everygrid-row-placeholder" style={{height: `${virtual?.rowHeight}px`}}>
+              <tr key={rowIndex} className='everygrid-row-placeholder' style={{height: `${virtual?.rowHeight}px`}}>
                 <td colSpan={pinnedColumns.length}><span/></td>
               </tr>
             );
@@ -194,7 +194,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
           );
         })}
         {virtual && virtual.bottomPad > 0 && (
-          <tr className="everygrid-spacer-row" style={{height: `${virtual.bottomPad}px`}} aria-hidden="true">
+          <tr className='everygrid-spacer-row' style={{height: `${virtual.bottomPad}px`}} aria-hidden='true'>
             <td colSpan={pinnedColumns.length}/>
           </tr>
         )}

@@ -15,6 +15,7 @@ import {TextEditorPopupComponent} from '../components/TextEditorPopupComponent';
 import {createRoot, type Root} from 'react-dom/client';
 import {
   type GridColumn,
+  type GridLoadProgress,
   type GridOptions,
   type GridPaginationConfig,
   type GridTargetConfig,
@@ -42,6 +43,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private static _configCache: Map<string, Promise<string[]>> = new Map();
   // Target id → the config it came from. Populated by loadConfig, consumed by mount.
   private static _targetRegistry: Map<string, {config: Record<string, unknown>; target: GridTargetConfig}> = new Map();
+  // In-flight mounts, keyed by target id, so concurrent mount() calls for the same id share one
+  // creation instead of each running createRoot on the container (React StrictMode double-invoke).
+  private static _mounting: Map<string, Promise<Everygrid<Record<string, unknown>> | null>> = new Map();
   public static I18n = I18n;
   public static options: GridOptions = { targets: [] };
   readonly options: GridOptions<T>;
@@ -89,6 +93,29 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // Cache: last getPage result per containerId (updated after each applyWasmFilter)
   public _wasmPageCache: Map<string, { rows: unknown[]; total: number }> = new Map();
   public get wasmReady(): boolean { return this._wasmEngines.size > 0 && [...this._wasmEngineReady.values()].some(v => v); }
+
+  /** Loading/indexing progress for one of this instance's targets. Mirrors the flags the toolbar
+   *  uses for its progress pill, but as plain data so a host (tab bar, shell) can render it too. */
+  public loadProgress(containerId: string): GridLoadProgress {
+    const streaming = this._wasStreaming.has(containerId);
+    const stage = this._indexingStage.get(containerId);
+    const hasReadyPage = this._wasmPageCache.has(containerId);
+    const indexing = streaming && (stage === 'indexing' || !hasReadyPage);
+    const active = indexing || this._loading.has(containerId);
+    const percent = this._indexingProgress.get(containerId) ?? -1;
+    const rowsLoaded = this._streamRows.get(containerId)?.length
+      ?? this._streamTotal.get(containerId)
+      ?? ((this.options.data as unknown[] | undefined)?.length ?? 0);
+    return { active, percent, rowsLoaded, stage };
+  }
+
+  /** Loading/indexing progress for a mounted target, or null if nothing is mounted under that id.
+   *  Lets a tab bar or shell show a grid's load progress while that grid's own view is hidden —
+   *  a keep-alive tab keeps streaming in the background, so its progress outlives its visibility. */
+  public static getLoadProgress(id: string): GridLoadProgress | null {
+    const inst = Everygrid.instances.get(id) as Everygrid<Record<string, unknown>> | undefined;
+    return inst?.loadProgress(id) ?? null;
+  }
   private _serverTotal: Map<string, number> = new Map();
   private _serverFetching: Map<string, boolean> = new Map();
   // Streaming mode: total row count
@@ -257,7 +284,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * @returns The target ids that are now registered (across every config file listed)
    */
   public static loadConfig(
-    entryConfigUrl: string = '/everygrid.config.json',
+    entryConfigUrl: string = 'everygrid.config.json',
     opts: {reload?: boolean} = {},
   ): Promise<string[]> {
     if (opts.reload) Everygrid._configCache.delete(entryConfigUrl);
@@ -348,7 +375,23 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   ): Promise<Everygrid<D> | null> {
     const existing = Everygrid.instances.get(targetId);
     if (existing) return existing as Everygrid<D>;
+    // Coalesce concurrent mounts of the same id (e.g. React StrictMode's mount→unmount→mount) so the
+    // container is never handed to createRoot twice.
+    const inflight = Everygrid._mounting.get(targetId);
+    if (inflight) return inflight as Promise<Everygrid<D> | null>;
+    const p = Everygrid._doMount<D>(targetId, opts);
+    Everygrid._mounting.set(targetId, p as Promise<Everygrid<Record<string, unknown>> | null>);
+    try {
+      return await p;
+    } finally {
+      Everygrid._mounting.delete(targetId);
+    }
+  }
 
+  private static async _doMount<D extends Record<string, unknown> = Record<string, unknown>>(
+    targetId: string,
+    opts: {fetcher?: string | (() => Promise<Record<string, unknown>[]>)},
+  ): Promise<Everygrid<D> | null> {
     if (!document.getElementById(targetId)) {
       console.warn(`Everygrid.mount: no element with id "${targetId}" — render it before mounting.`);
       return null;
@@ -403,12 +446,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /**
    * Preload one or more entry config files (each an `everygrid.config.json` listing its `configs`).
-   * Usually unnecessary — `createEverygrid` / `mount` read the root config on demand — but call it to
+   * Usually unnecessary — `createGrid` / `mount` read the root config on demand — but call it to
    * point at a non-root path (a sub-app), or to load several entries up front. Cached per URL.
    * Returns every registered target id. Also exported as a standalone `loadEverygridConfig`.
    */
   public static loadEverygridConfig(
-    entryConfigUrls: string | string[] = '/everygrid.config.json',
+    entryConfigUrls: string | string[] = 'everygrid.config.json',
   ): Promise<string[]> {
     const urls = Array.isArray(entryConfigUrls) ? entryConfigUrls : [entryConfigUrls];
     return Promise.all(urls.map(u => Everygrid.loadConfig(u))).then(lists => lists.flat());
@@ -418,9 +461,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * Create a grid in the element with `id` — the ergonomic form of `mount`. Loads the root config on
    * demand, applies a matching config target or renders with defaults, and returns the instance
    * (null if the element isn't in the DOM). `fetcher` is a URL (streamed) or a `() => Promise<rows>`.
-   * Also exported as a standalone `createEverygrid`.
+   * Also exported as a standalone `createGrid`.
    */
-  public static createEverygrid<D extends Record<string, unknown> = Record<string, unknown>>(
+  public static createGrid<D extends Record<string, unknown> = Record<string, unknown>>(
     id: string,
     fetcher?: string | (() => Promise<Record<string, unknown>[]>),
   ): Promise<Everygrid<D> | null> {
@@ -451,7 +494,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    */
   public static async autoInit(
     apiFetchers: Record<string, string | (() => Promise<Record<string, unknown>[]>)> = {},
-    entryConfigUrl: string = '/everygrid.config.json',
+    entryConfigUrl: string = 'everygrid.config.json',
   ): Promise<void> {
     const ids = await Everygrid.loadConfig(entryConfigUrl);
     // Mount sequentially: function-fetchers are awaited, and grids should appear in config order.
@@ -833,6 +876,50 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         if (el) g.renderGrid(el);
       });
     });
+  }
+
+  /**
+   * Switch the UI locale and refresh every mounted grid so headers, labels and toolbar strings
+   * update — the one call a host app needs on a language change. (Facade over `I18n.setLocale` +
+   * `rerenderAll`; use `I18n.setLocale` directly only if you want to set the locale without redraw.)
+   */
+  public static setLocale(locale: 'ko' | 'en'): void {
+    I18n.setLocale(locale);
+    Everygrid.rerenderAll();
+  }
+
+  // Message type for cross-window (iframe) locale sync — namespaced so it can't collide with the
+  // host app's own postMessage traffic.
+  private static readonly LOCALE_MESSAGE = 'everygrid:setLocale';
+
+  /**
+   * For grids embedded in an iframe / separate window, where the host app's global `setLocale`
+   * can't reach them: listen for a locale pushed by the parent (via {@link sendLocale}) and apply it.
+   * Call once inside the embedded page. Returns a function that removes the listener.
+   *
+   * @param opts.origin only accept messages from this origin (recommended for security). Omit to
+   *   accept any origin.
+   */
+  public static listenForLocale(opts: {origin?: string} = {}): () => void {
+    const handler = (e: MessageEvent) => {
+      if (opts.origin && e.origin !== opts.origin) return;
+      const data = e.data as {type?: unknown; locale?: unknown} | null;
+      if (data && data.type === Everygrid.LOCALE_MESSAGE && (data.locale === 'ko' || data.locale === 'en')) {
+        Everygrid.setLocale(data.locale);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }
+
+  /**
+   * Push the current locale to an embedded grid window (an iframe's `contentWindow`) whose page
+   * called {@link listenForLocale}. The parent/host side of the same handshake.
+   *
+   * @param targetOrigin restrict delivery to this origin (recommended); defaults to any (`'*'`).
+   */
+  public static sendLocale(target: Window, locale: 'ko' | 'en', targetOrigin: string = '*'): void {
+    target.postMessage({type: Everygrid.LOCALE_MESSAGE, locale}, targetOrigin);
   }
 
   public closePopup() {
@@ -1365,6 +1452,15 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this._blockCache.set(containerId, cache);
     }
 
+    // Bridge source for blocks that are still loading. In natural order (no filter/sort) the
+    // absolute row index maps straight to the in-memory data, so a missing block can borrow from
+    // it instead of rendering a blank. This kills the data→blank→data flash on the JS→WASM handoff:
+    // the moment the engine turns ready, getPage's block cache is empty, and without this fallback
+    // the whole window would blank out until the first block arrives. A filter/sort makes
+    // options.data (unfiltered) the wrong source, so we skip the bridge and let those blanks stand.
+    const naturalOrder = !this.filterText && !this.sortConfig.get(containerId)?.direction;
+    const jsData = naturalOrder ? ((this.options.data || []) as T[]) : undefined;
+
     const out: (T | undefined)[] = [];
     for (let b = Math.floor(start / blockSize); b <= Math.floor((end - 1) / blockSize); b++) {
       const block = cache.blocks.get(b);
@@ -1373,7 +1469,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const from = Math.max(start, blockStart);
       const to = Math.min(end, blockStart + blockSize);
       for (let i = from; i < to; i++) {
-        const row = block?.[i - blockStart] as T | undefined;
+        const row = (block?.[i - blockStart] as T | undefined) ?? jsData?.[i];
         // WASM hands back fresh copies; swap edited rows for their live reference so the
         // modification marker (reference-based isCellModified) and reset keep working.
         out.push(row && this._editedKeys.size > 0 ? (this._editedKeys.get(JSON.stringify(row)) ?? row) : row);
@@ -1803,7 +1899,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.activePopupRowKey = rowData ? JSON.stringify(rowData) : null;
     this.activePopup = (
       <PopupComponent onClose={() => this.closePopup()} title={title || I18n.t('popup.detailTitle')}>
-        <pre className="m-0 p-4 text-sm whitespace-pre-wrap wrap-break-word text-slate-700">{text}</pre>
+        <pre className='m-0 p-4 text-sm whitespace-pre-wrap wrap-break-word text-slate-700'>{text}</pre>
       </PopupComponent>
     );
     const {targets} = this.options;

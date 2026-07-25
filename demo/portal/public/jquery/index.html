@@ -1,38 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" type="image/x-icon" href="./favicon.ico"/>
-  <link rel="stylesheet" href="./index.css"/>
+  <meta charset='UTF-8'/>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
+  <link rel='icon' type='image/x-icon' href='./favicon.ico'/>
+  <link rel='stylesheet' href='./index.css'/>
   <title>Everygrid Explorer — jQuery Demo</title>
   <!-- jQuery -->
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src='https://code.jquery.com/jquery-3.7.1.min.js'></script>
   <!-- everygrid — usage in a plain HTML page with a single <script> tag (no bundler).
-       The src is substituted by vite.config.ts: the workspace build when served
+       The src is substituted by vite.config.ts: the workspace builds when served
        locally, the deployed CDN standalone when built. -->
-  <script src="%EVERYGRID_STANDALONE%"></script>
+  <script src='%EVERYGRID_STANDALONE%'></script>
 </head>
 <body>
 
-<div class="container">
+<div class='container'>
   <main>
-    <div id="demo-grid"></div>
-    <div id="demo-grid1"></div>
-    <div id="demo-grid2"></div>
-    <div id="demo-grid3"></div>
+    <div id='demo-grid'></div>
+    <div id='demo-grid1'></div>
+    <div id='demo-grid2'></div>
+    <div id='demo-grid3'></div>
   </main>
 </div>
 
 <script>
-  (function ($, EG) {
-    // Listen for locale change from portal
-    window.addEventListener('message', function (e) {
-      if (e.data && e.data.type === 'setLocale') {
-        EG.I18n.setLocale(e.data.locale);
-        EG.rerenderAll();
-      }
-    });
+  (function ($, everygrid) {
+    // Apply locale pushed by the portal (this page is embedded in an iframe). The library owns the
+    // message handshake; the portal side calls everygrid's sendLocale(...).
+    everygrid.listenForLocale();
 
     // Fetch data, optionally filtered by userId
     function getData() {
@@ -46,27 +42,22 @@
       .then(res => res.json());
     }
 
-    const {loadEverygridConfig, createEverygrid} = EG;
-
-    // Sub-app config isn't at the site root — load it explicitly, then create each grid.
-    loadEverygridConfig(['./everygrid.config.json']).then(function () {
-      createEverygrid('demo-grid', () => getData());
-      createEverygrid('demo-grid1', () => getData()
-      .then(function (rows) {
-        return rows.filter(function (row) {
-          return row.id === 1;
-        });
-      }));
-      createEverygrid('demo-grid2', () => getData()
-      .then(function (rows) {
-        return rows.filter(function (row) {
-          return row.id === 2;
-        });
-      }));
-      createEverygrid('demo-grid3', () => getData2().then(json => json.results));
-      // Notify portal that this demo is ready to receive locale
-      window.parent.postMessage({type: 'ready'}, '*');
-    });
+    // createGrid autoloads everygrid.config.json from this page's own directory (relative), so
+    // no explicit config load is needed.
+    everygrid.createGrid('demo-grid', () => getData());
+    everygrid.createGrid('demo-grid1', () => getData()
+    .then(function (rows) {
+      return rows.filter(function (row) {
+        return row.id === 1;
+      });
+    }));
+    everygrid.createGrid('demo-grid2', () => getData()
+    .then(function (rows) {
+      return rows.filter(function (row) {
+        return row.id === 2;
+      });
+    }));
+    everygrid.createGrid('demo-grid3', () => getData2().then(json => json.results));
   }(window.jQuery, window.Everygrid));
 </script>
 </body>

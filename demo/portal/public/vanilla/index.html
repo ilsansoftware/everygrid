@@ -1,52 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" type="image/x-icon" href="favicon.ico"/>
-  <link rel="stylesheet" href="./index.css"/>
+  <meta charset='UTF-8'/>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
+  <link rel='icon' type='image/x-icon' href='favicon.ico'/>
+  <link rel='stylesheet' href='./index.css'/>
   <title>Everygrid Explorer — Vanilla JS Demo</title>
   <!-- everygrid — usage in a plain HTML page with a single <script> tag (no bundler).
-       The src is substituted by vite.config.ts: the workspace build when served
+       The src is substituted by vite.config.ts: the workspace builds when served
        locally, the deployed CDN standalone when built. -->
-  <script src="%EVERYGRID_STANDALONE%"></script>
+  <script src='%EVERYGRID_STANDALONE%'></script>
 </head>
 <body>
-<div class="container">
+<div class='container'>
   <main>
-    <div id="demo-grid"></div>
-    <div id="users"></div>
+    <div id='demo-grid'></div>
+    <div id='users'></div>
   </main>
 </div>
 <script>
-  const Everygrid = window.Everygrid;
-  window.addEventListener('message', function (e) {
-    if (e.data && e.data.type === 'setLocale') {
-      const applyLocale = () => {
-        Everygrid.I18n.setLocale(e.data.locale);
-        Everygrid.rerenderAll();
-      };
-      applyLocale();
-    }
+  const everygrid = window.Everygrid;
+  // Apply locale pushed by the portal (this page is embedded in an iframe). One line — the library
+  // owns the message handshake; the portal side calls everygrid's sendLocale(...).
+  everygrid.listenForLocale();
+  // createGrid autoloads everygrid.config.json from this page's own directory (relative), so no
+  // explicit config load is needed.
+  everygrid.createGrid('demo-grid', function () {
+    return fetch('./data.json').then(function (r) {
+      return r.json();
+    });
   });
-  const {loadEverygridConfig, createEverygrid} = Everygrid;
-
-  // This demo is a sub-app, so its config isn't at the site root — point at it explicitly, then
-  // create each grid.
-  loadEverygridConfig(['./everygrid.config.json']).then(function () {
-    createEverygrid('demo-grid', function () {
-      return fetch('./data.json').then(function (r) {
-        return r.json();
-      });
+  everygrid.createGrid('users', function () {
+    return fetch('https://jsonplaceholder.typicode.com/users').then(function (r) {
+      return r.json();
     });
-    createEverygrid('users', function () {
-      return fetch('https://jsonplaceholder.typicode.com/users').then(function (r) {
-        return r.json();
-      });
-    });
-    // Tell the portal we're ready — it replies with the current locale (this is what keeps the
-    // iframe in sync with the portal's locale on load / refresh / first tab open).
-    window.parent.postMessage({type: 'ready'}, '*');
   });
 </script>
 </body>

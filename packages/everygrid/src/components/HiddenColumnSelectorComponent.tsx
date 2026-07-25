@@ -42,19 +42,19 @@ export const HiddenColumnSelectorComponent = <T extends Record<string, unknown>>
   return (
     <div className={Everygrid.POPUP_OVERLAY_CLASS}>
       <div className={`${Everygrid.POPUP_CONTENT_CLASS} everygrid-popup-s`}>
-        <div className="everygrid-popup-header">
+        <div className='everygrid-popup-header'>
           <h3>{I18n.t('grid.hiddenColumns').replace(' ({count})', '')}</h3>
           <span className={Everygrid.POPUP_CLOSE_CLASS} onClick={onClose}
                 dangerouslySetInnerHTML={{__html: Everygrid.POPUP_CLOSE_HTML}}></span>
         </div>
-        <div className="everygrid-popup-body flex-1">
-          <div className="flex flex-col gap-1">
+        <div className='everygrid-popup-body flex-1'>
+          <div className='flex flex-col gap-1'>
             {hiddenFields.map(field => (
               <div key={field}
-                   className="flex items-center justify-between p-2 hover:bg-slate-50 rounded border border-slate-100">
-                <span className="text-sm text-slate-700 font-medium">{field}</span>
+                   className='flex items-center justify-between p-2 hover:bg-slate-50 rounded border border-slate-100'>
+                <span className='text-sm text-slate-700 font-medium'>{field}</span>
                 <button
-                  className="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs font-semibold rounded hover:bg-indigo-100 transition-colors"
+                  className='px-2 py-1 bg-indigo-50 text-indigo-600 text-xs font-semibold rounded hover:bg-indigo-100 transition-colors'
                   onClick={() => handleRemove(field)}
                 >
                   {I18n.t('grid.unhide')}
@@ -63,15 +63,15 @@ export const HiddenColumnSelectorComponent = <T extends Record<string, unknown>>
             ))}
           </div>
         </div>
-        <div className="p-3 border-t border-slate-100 flex justify-between bg-white">
+        <div className='p-3 border-t border-slate-100 flex justify-between bg-white'>
           <button
-            className="text-xs text-indigo-600 hover:underline font-semibold"
+            className='text-xs text-indigo-600 hover:underline font-semibold'
             onClick={handleShowAll}
           >
             {I18n.t('grid.showAllColumns')}
           </button>
           <button
-            className="px-4 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded"
+            className='px-4 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded'
             onClick={onClose}
           >
             {I18n.t('popup.close')}

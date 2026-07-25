@@ -70,7 +70,7 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
     <div className={`everygrid-pagination @container ${rowCount ? 'has-row-count' : ''}`}>
       {rowCount && <RowCountComponent {...rowCount}/>}
       {totalPages > 1 && (
-        <div className="everygrid-pagination-controls">
+        <div className='everygrid-pagination-controls'>
           {renderBtn('&laquo;', I18n.t('pagination.first'), 1, currentPage === 1)}
           {renderBtn('&lsaquo;', I18n.t('pagination.prev'), Math.max(1, currentPage - 1), currentPage === 1)}
           {/* Numbered pages hide below 720px of bar width, leaving just the four arrows: the

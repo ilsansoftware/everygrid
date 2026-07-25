@@ -51,7 +51,6 @@ export interface GridToolbarProps {
   /** Localized display name for a suggestion key — shown as `key(label)`; the inserted query keeps
    *  the real key. Returns the key unchanged when no label is configured. */
   labelOf?: (key: string) => string;
-  wasmReady?: boolean;
   gridTitle?: string;
   isIndexing?: boolean;
 }
@@ -81,7 +80,6 @@ export const GridToolbarComponent = ({
                                        onFilter,
                                        searchKeys = {},
                                        labelOf,
-                                       wasmReady = false,
                                        gridTitle,
                                        isIndexing = false,
                                      }: GridToolbarProps) => {
@@ -466,7 +464,7 @@ export const GridToolbarComponent = ({
       >
         <Icon className={`w-5 h-5${opts?.spinning ? ' animate-spin' : ''}`}/>
         <span
-            className="text-center text-[8px] font-semibold leading-none tracking-tight">{label}</span>
+            className='text-center text-[8px] font-semibold leading-none tracking-tight'>{label}</span>
       </button>
   );
 
@@ -496,8 +494,12 @@ export const GridToolbarComponent = ({
 
   // The search box is always the same box; while indexing / processing / exporting it shows loading
   // progress INSIDE it (a fill bar + spinner + text + cancel) instead of the input.
-  const filterInput = (statusText || (wasmReady && onFilter)) ? (
-      <div className="relative flex-1 min-w-0 max-w-2xl">
+  // Render as soon as filtering is configured — not gated on wasmReady. A virtual grid now paints
+  // its rows before the engine finishes indexing (getRowsInRange bridges from JS), so gating the box
+  // on wasmReady made it pop in a beat after the rows. Typing before the engine is ready is safe:
+  // setFilter stores the text and applyWasmFilter re-runs once the engine can serve it.
+  const filterInput = (statusText || onFilter) ? (
+      <div className='relative flex-1 min-w-0 max-w-2xl'>
         {/* A grown box pushes the toolbar taller rather than floating over the grid. It used to
             lift out of the flow so a multi-line query wouldn't reflow anything, but the toolbar
             is the top of the grid's frame now — an overlay reads as the search box falling into
@@ -505,15 +507,15 @@ export const GridToolbarComponent = ({
         <div ref={boxRef}
              className={`relative overflow-hidden border border-slate-200 bg-white focus-within:border-indigo-400 ${!statusText && suggestions.length > 0 ? 'rounded-t rounded-b-none' : 'rounded'}`}>
           {statusText ? (
-            <div className="relative flex items-center gap-2 px-2 py-1.5 text-xs">
+            <div className='relative flex items-center gap-2 px-2 py-1.5 text-xs'>
               {progress >= 0
-                ? <div aria-hidden className="absolute inset-y-0 left-0 bg-indigo-100 transition-[width] duration-200" style={{width: `${progress}%`}}/>
-                : <div aria-hidden className="absolute inset-0 bg-indigo-50 animate-pulse"/>}
-              <div className="relative w-3.5 h-3.5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin shrink-0"/>
-              <span className="relative truncate text-slate-600">{statusText}</span>
+                ? <div aria-hidden className='absolute inset-y-0 left-0 bg-indigo-100 transition-[width] duration-200' style={{width: `${progress}%`}}/>
+                : <div aria-hidden className='absolute inset-0 bg-indigo-50 animate-pulse'/>}
+              <div className='relative w-3.5 h-3.5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin shrink-0'/>
+              <span className='relative truncate text-slate-600'>{statusText}</span>
               {onCancelExport && (
-                <button type="button" onClick={onCancelExport}
-                        className="relative ml-auto shrink-0 text-[11px] font-medium text-slate-400 hover:text-red-500">
+                <button type='button' onClick={onCancelExport}
+                        className='relative ml-auto shrink-0 text-[11px] font-medium text-slate-400 hover:text-red-500'>
                   {I18n.t('popup.cancel')}
                 </button>
               )}
@@ -542,10 +544,10 @@ export const GridToolbarComponent = ({
                   // overlay above matches so the highlighted text stays aligned.
                   className={`relative block w-full pl-7 py-1.5 ${isMobile ? 'text-base pr-9' : 'text-xs pr-7'} leading-snug bg-transparent text-transparent caret-slate-700 placeholder:text-slate-400 resize-none overflow-hidden focus:outline-none`}
               />
-              <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"/>
+              <SearchIcon className='absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none'/>
               {inputValue && (
                   <button
-                      type="button"
+                      type='button'
                       aria-label={I18n.t('toolbar.clearSearch')}
                       className={`absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors leading-none ${isMobile ? 'w-7 h-7 text-lg' : 'w-5 h-5 text-sm'}`}
                       onClick={handleFilterClear}
@@ -561,7 +563,7 @@ export const GridToolbarComponent = ({
           <div
               ref={dropRef}
               style={dropStyle}
-              className="flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 shadow-lg">
+              className='flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 shadow-lg'>
             {suggestions.map((k, i) => {
               const isOp = k === '&&' || k === '||';
               const selected = suggestEntered && i === suggestIndex;
@@ -575,17 +577,17 @@ export const GridToolbarComponent = ({
               return (
                 <button
                     key={k}
-                    type="button"
+                    type='button'
                     // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
                     onMouseDown={e => { e.preventDefault(); applySuggestion(k); }}
                     className={`shrink-0 rounded font-medium ${tone} ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-2 py-0.5 text-[11px]'}`}
-                >{k}{label && label !== k ? <span className="ml-1 opacity-60">({label})</span> : null}</button>
+                >{k}{label && label !== k ? <span className='ml-1 opacity-60'>({label})</span> : null}</button>
               );
             })}
             {/* Arrow-key hint only applies on desktop (touch just taps a chip); it also forces a wrap
                 that would break the mobile single-row strip. */}
             {!isMobile && (
-              <div className="basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none">{I18n.t('toolbar.suggestNav')}</div>
+              <div className='basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none'>{I18n.t('toolbar.suggestNav')}</div>
             )}
           </div>,
           document.body,
@@ -601,7 +603,7 @@ export const GridToolbarComponent = ({
   // active; the download/export segment is always shown (disabled while an export is running).
   const iconGroup = (
       <div
-          className="inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 divide-x divide-slate-200">
+          className='inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 divide-x divide-slate-200'>
         {onReloadData && segmentButton(ReloadIcon, 'reload', reloadBtnText, onReloadData, {
           disabled: isReloading || gridActionsDisabled || isExporting,
           spinning: isReloading
@@ -629,22 +631,22 @@ export const GridToolbarComponent = ({
   // A zero-row scope has nothing to write — offer it greyed out rather than producing an empty file.
   const scopeButton = (label: string, scope: 'filtered' | 'all', count?: number) => (
       <button
-          type="button"
+          type='button'
           disabled={count === 0}
-          className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-indigo-700 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          className='flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-indigo-700 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent'
           onClick={() => { onDownloadExcel(scope); setExportMenuOpen(false); }}
       >
-        <span className="text-[11px] font-semibold leading-none">{label}</span>
+        <span className='text-[11px] font-semibold leading-none'>{label}</span>
         {count != null && (
-            <span className="text-[9px] font-medium leading-none text-indigo-400">({count.toLocaleString()})</span>
+            <span className='text-[9px] font-medium leading-none text-indigo-400'>({count.toLocaleString()})</span>
         )}
       </button>
   );
   const iconGroupWithExport = (
-      <div className="inline-flex items-stretch gap-2" ref={exportMenuRef}>
+      <div className='inline-flex items-stretch gap-2' ref={exportMenuRef}>
         {iconGroup}
         {exportMenuOpen && (
-            <div className="inline-flex items-stretch self-center overflow-hidden rounded-md border border-indigo-200 divide-x divide-indigo-200">
+            <div className='inline-flex items-stretch self-center overflow-hidden rounded-md border border-indigo-200 divide-x divide-indigo-200'>
               {scopeButton(I18n.t('toolbar.exportFiltered'), 'filtered', filteredCount)}
               {scopeButton(I18n.t('toolbar.exportAll'), 'all', allCount)}
             </div>
@@ -654,23 +656,23 @@ export const GridToolbarComponent = ({
 
   if (isMobile) {
     return (
-        <div className="everygrid-toolbar" ref={toolbarRef}>
+        <div className='everygrid-toolbar' ref={toolbarRef}>
           {filterInput}
-          <div className="relative ml-auto" ref={menuRef}>
+          <div className='relative ml-auto' ref={menuRef}>
             <button
-                className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-slate-700 rounded"
+                className='flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-slate-700 rounded'
                 onClick={() => setMenuOpen(prev => !prev)}
                 aria-label={I18n.t('toolbar.moreActions')}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   strokeWidth="2.5">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'
+                   strokeWidth='2.5'>
+                <line x1='3' y1='6' x2='21' y2='6'/>
+                <line x1='3' y1='12' x2='21' y2='12'/>
+                <line x1='3' y1='18' x2='21' y2='18'/>
               </svg>
             </button>
             {menuOpen && (
-                <div className="everygrid-mobile-menu">
+                <div className='everygrid-mobile-menu'>
                   {createMenuButton(excelBtnText, 'bg-white text-slate-700 hover:bg-slate-50', onToggleExcelView)}
                   {onReloadData && createMenuButton(reloadBtnText, 'bg-white text-slate-700 hover:bg-slate-50', onReloadData)}
                   {createMenuButton(`${downloadExcelBtnText} · ${I18n.t('toolbar.exportFiltered')}`, 'bg-white text-slate-700 hover:bg-slate-50', () => onDownloadExcel('filtered'))}
@@ -691,13 +693,13 @@ export const GridToolbarComponent = ({
   }
 
   return (
-      <div className="everygrid-toolbar" ref={toolbarRef}>
+      <div className='everygrid-toolbar' ref={toolbarRef}>
         {filterInput}
         {iconGroupWithExport}
         {hiddenColsBtnText && createButton(hiddenColsBtnText, 'bg-red-50 text-red-600 border border-red-100 rounded hover:bg-red-100 transition-colors', onShowHiddenColumnSelector)}
         {resetBtnText && createButton(resetBtnText, 'bg-orange-100 text-orange-700', onReset)}
         {gridTitle && (
-            <span className="ml-auto text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className='ml-auto text-[11px] font-bold text-slate-500 uppercase tracking-wider'>
               {gridTitle}
             </span>
         )}

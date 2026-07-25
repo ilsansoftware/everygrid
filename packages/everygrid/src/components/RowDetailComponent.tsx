@@ -28,7 +28,7 @@ export const RowDetailComponent = <T extends Record<string, unknown>>({
       return <NestedTableComponent data={val} depth={0}/>;
     }
     if (val === null || val === undefined || val === '') {
-      return <span className="text-slate-300">—</span>;
+      return <span className='text-slate-300'>—</span>;
     }
     return <span>{String(val)}</span>;
   };
@@ -36,26 +36,26 @@ export const RowDetailComponent = <T extends Record<string, unknown>>({
   return (
     <div className={Everygrid.POPUP_OVERLAY_CLASS}>
       <div className={`${Everygrid.POPUP_CONTENT_CLASS} everygrid-popup-m`}>
-        <div className="everygrid-popup-header">
+        <div className='everygrid-popup-header'>
           <h3>{I18n.t('grid.rowDetail')}</h3>
           <span className={Everygrid.POPUP_CLOSE_CLASS} onClick={onClose}
                 dangerouslySetInnerHTML={{__html: Everygrid.POPUP_CLOSE_HTML}}></span>
         </div>
-        <div className="everygrid-popup-body flex-1">
-          <dl className="flex flex-col divide-y divide-slate-100">
+        <div className='everygrid-popup-body flex-1'>
+          <dl className='flex flex-col divide-y divide-slate-100'>
             {fields.map(field => (
-              <div key={field} className="py-3">
-                <dt className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <div key={field} className='py-3'>
+                <dt className='mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400'>
                   {grid.columnLabel(field, containerId)}
                 </dt>
-                <dd className="text-sm text-slate-700 break-words">{renderValue(field)}</dd>
+                <dd className='text-sm text-slate-700 break-words'>{renderValue(field)}</dd>
               </div>
             ))}
           </dl>
         </div>
-        <div className="flex justify-end border-t border-slate-100 p-3">
+        <div className='flex justify-end border-t border-slate-100 p-3'>
           <button
-            className="rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white"
+            className='rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white'
             onClick={onClose}
           >
             {I18n.t('popup.close')}

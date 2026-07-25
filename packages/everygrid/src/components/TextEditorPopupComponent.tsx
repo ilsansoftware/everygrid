@@ -58,9 +58,9 @@ export const TextEditorPopupComponent = ({
   };
 
   return (
-    <PopupComponent onClose={onClose} title={I18n.t('popup.textEditorTitle', {field})} size="auto">
-      <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
-        <div className="flex bg-slate-200 p-0.5 rounded text-[10px] font-bold">
+    <PopupComponent onClose={onClose} title={I18n.t('popup.textEditorTitle', {field})} size='auto'>
+      <div className='px-4 py-2 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50'>
+        <div className='flex bg-slate-200 p-0.5 rounded text-[10px] font-bold'>
           <button
             className={`px-3 py-1 rounded-sm transition-colors ${mode === 'text' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             onClick={() => {
@@ -132,19 +132,19 @@ export const TextEditorPopupComponent = ({
         placeholder=''
       />
       {error && (
-        <div className="px-4 py-1 text-xs text-red-500 bg-red-50 border-t border-red-100">
+        <div className='px-4 py-1 text-xs text-red-500 bg-red-50 border-t border-red-100'>
           {error}
         </div>
       )}
-      <div className="everygrid-popup-footer">
+      <div className='everygrid-popup-footer'>
         <button
-          className="px-3 py-1.5 font-medium text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors border border-slate-200 rounded"
+          className='px-3 py-1.5 font-medium text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors border border-slate-200 rounded'
           onClick={handleFormat}
         >
           {I18n.t('popup.format') || 'Format'}
         </button>
         <button
-          className="px-4 py-2 font-medium text-sm bg-slate-900 text-white hover:bg-slate-800 transition-colors rounded"
+          className='px-4 py-2 font-medium text-sm bg-slate-900 text-white hover:bg-slate-800 transition-colors rounded'
           onClick={handleSave}
         >
           {I18n.t('popup.apply')}

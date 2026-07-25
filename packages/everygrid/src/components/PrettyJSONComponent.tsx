@@ -6,7 +6,7 @@ interface PrettyJSONProps {
 
 const PrettyJSONComponent: React.FC<PrettyJSONProps> = ({data}) => {
   if (data === null) {
-    return <span className="json-null">null</span>;
+    return <span className='json-null'>null</span>;
   }
 
   if (Array.isArray(data)) {
@@ -14,10 +14,10 @@ const PrettyJSONComponent: React.FC<PrettyJSONProps> = ({data}) => {
     return (
       <>
         <span>[ </span>
-        <ul className="json-array">
+        <ul className='json-array'>
           {data.map((item, index) => (
             <li key={index}>
-              <span className="json-value">
+              <span className='json-value'>
                 <PrettyJSONComponent data={item}/>
               </span>
             </li>
@@ -35,11 +35,11 @@ const PrettyJSONComponent: React.FC<PrettyJSONProps> = ({data}) => {
     return (
       <>
         <span>{'{ '}</span>
-        <div className="json-object">
+        <div className='json-object'>
           {keys.map((key) => (
-            <div key={key} className="json-item">
-              <span className="json-key">{`"${key}": `}</span>
-              <span className="json-value">
+            <div key={key} className='json-item'>
+              <span className='json-key'>{`"${key}": `}</span>
+              <span className='json-value'>
                 <PrettyJSONComponent data={typedData[key]}/>
               </span>
             </div>

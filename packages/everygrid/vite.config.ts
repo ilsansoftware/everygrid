@@ -135,8 +135,13 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      // 💡 수많은 하위 컴포넌트 내부의 리액트 흔적들이 원격 빌드 시 섞이지 않도록 외부화(external) 처리
-      external: [],
+      // ES build (`.` / `./react` / `./core`) externalizes React so consumers use their own copy
+      // (React is a peerDependency) — one React, one Everygrid singleton. The standalone UMD bundles
+      // React so it stays self-contained for `<script>` / CDN use (vanilla / jquery pages have none).
+      external: isStandalone
+        ? []
+        : (id: string) => id === 'react' || id === 'react-dom'
+          || id.startsWith('react/') || id.startsWith('react-dom/'),
       output: {
         assetFileNames: isStandalone ? 'Everygrid.standalone.[ext]' : 'Everygrid.css',
         globals: {

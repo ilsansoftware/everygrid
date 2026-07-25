@@ -1,0 +1,11 @@
+{
+  "configs": [
+    "./react/everygrid-config-test-grid.json",
+    "./react/everygrid-config-test-grid2.json",
+    "./react/everygrid-config-test-grid3.json",
+    "./react/everygrid-config-api-grid.json",
+    "./react/everygrid-config-large-data-grid.json",
+    "./react/everygrid-config-virtual-grid.json",
+    "./react/everygrid-config-empty-grid.json"
+  ]
+}

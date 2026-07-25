@@ -10,12 +10,12 @@ export interface ConfirmModalProps {
 
 export const ConfirmModalComponent: React.FC<ConfirmModalProps> = ({message, onConfirm, onCancel, onClose}) => {
   return (
-    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/30">
-      <div className="bg-white p-6 rounded shadow-lg w-80">
-        <p className="mb-4 text-sm text-gray-700">{message}</p>
-        <div className="flex justify-end gap-2">
+    <div className='fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/30'>
+      <div className='bg-white p-6 rounded shadow-lg w-80'>
+        <p className='mb-4 text-sm text-gray-700'>{message}</p>
+        <div className='flex justify-end gap-2'>
           <button
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+            className='px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300'
             onClick={() => {
               onClose();
               onCancel();
@@ -24,7 +24,7 @@ export const ConfirmModalComponent: React.FC<ConfirmModalProps> = ({message, onC
             {I18n.t('popup.cancel')}
           </button>
           <button
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
             onClick={() => {
               onClose();
               onConfirm();

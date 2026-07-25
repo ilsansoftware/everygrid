@@ -63,6 +63,19 @@ nav button {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Load progress for a streaming/indexing grid, shown on its nav tab so it can be watched from any
+   tab (keep-alive keeps the grid loading in the background). Percent when known, else a row count. */
+.tab-progress-badge {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #818cf8; /* indigo-400 — reads against the dark capsule */
+  font-variant-numeric: tabular-nums;
+}
+nav button.active .tab-progress-badge {
+  color: #6366f1; /* indigo-500 on the white active block */
+}
+
 /* Inactive state: subtle grayscale and reduced opacity */
 nav button img {
   width: 18px;

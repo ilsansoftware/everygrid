@@ -22,6 +22,10 @@ export default defineConfig([
     },
     rules: {
       'quotes': ['error', 'single', { 'avoidEscape': true, 'allowTemplateLiterals': true }],
+      // Frontend convention: single quotes everywhere, JSX attributes included (this rule governs
+      // those; `quotes` above only covers JS string literals). 'prefer-single' still falls back to
+      // double when the value itself contains a single quote, so nothing needs escaping.
+      'jsx-quotes': ['error', 'prefer-single'],
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',

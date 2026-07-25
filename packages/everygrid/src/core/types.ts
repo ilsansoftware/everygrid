@@ -3,6 +3,19 @@ import React from 'react';
 // Recursive tree of searchable keys (child keys under each key) for search autocomplete.
 export interface KeyTree { [key: string]: KeyTree }
 
+/** Loading/indexing progress for a mounted target — returned by `Everygrid.getLoadProgress(id)`
+ *  so a host (tab bar, shell) can show a grid's progress even while that grid's view is hidden. */
+export interface GridLoadProgress {
+  /** True while the grid is still streaming/indexing its data. */
+  active: boolean;
+  /** Indexing percent 0–100, or -1 when indeterminate (streaming with an unknown total). */
+  percent: number;
+  /** Rows loaded/streamed so far. */
+  rowsLoaded: number;
+  /** Engine stage, when known. */
+  stage?: 'indexing' | 'ready';
+}
+
 export interface GridTargetConfig {
   id: string;
   title?: string;

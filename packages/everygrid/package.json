@@ -3,18 +3,16 @@
   "version": "0.2.0",
   "private": false,
   "type": "module",
-  "main": "./dist/index.standalone.js",
-  "module": "./dist/index.standalone.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
-      "import": "./dist/everygrid.standalone.js",
-      "require": "./dist/everygrid.standalone.js",
-      "default": "./dist/everygrid.standalone.js"
+      "import": "./dist/index.js"
     },
-    "./core": {
-      "types": "./dist/src/index.d.ts",
+    "./react": {
+      "types": "./dist/src/react/index.d.ts",
       "import": "./dist/index.js"
     },
     "./css": "./dist/Everygrid.css",

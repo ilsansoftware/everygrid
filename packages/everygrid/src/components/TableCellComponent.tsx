@@ -48,14 +48,14 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
 
   if (col.type === 'row_detail') {
     return (
-      <td className="everygrid-detail-cell text-center">
+      <td className='everygrid-detail-cell text-center'>
         <button
-          type="button"
-          className="everygrid-detail-btn"
+          type='button'
+          className='everygrid-detail-btn'
           aria-label={I18n.t('grid.rowDetail')}
           onClick={() => grid.showRowDetail(item, container)}
         >
-          <RowDetailIcon className="w-5 h-5"/>
+          <RowDetailIcon className='w-5 h-5'/>
         </button>
       </td>
     );
@@ -67,10 +67,10 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
     const checkedSet = grid.checkedValues?.get(containerId);
     const checked = checkedSet ? checkedSet.has(value) : false;
     return (
-      <td className="text-center bg-slate-50/30 w-10">
+      <td className='text-center bg-slate-50/30 w-10'>
         <input
-          type="checkbox"
-          className="cursor-pointer"
+          type='checkbox'
+          className='cursor-pointer'
           checked={checked}
           onChange={(e) => {
             if (!grid.checkedValues) return;
@@ -88,10 +88,10 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
   if (isRowCheckbox) {
     const isSelected = grid.getSelectedRows(containerId)?.has(item);
     return (
-      <td className="text-center bg-slate-50/30 w-10">
+      <td className='text-center bg-slate-50/30 w-10'>
         <input
-          type="checkbox"
-          className="cursor-pointer"
+          type='checkbox'
+          className='cursor-pointer'
           checked={isSelected}
           onChange={(e) => {
             const selected = grid.getSelectedRows(containerId) || new Set();
@@ -110,8 +110,8 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
 
   if (isIndexCol) {
     return (
-      <td className="bg-slate-50/50 font-medium text-center whitespace-pre overflow-hidden w-12.5 min-w-0">
-        <div className="px-2">{rowIndex + 1}</div>
+      <td className='bg-slate-50/50 font-medium text-center whitespace-pre overflow-hidden w-12.5 min-w-0'>
+        <div className='px-2'>{rowIndex + 1}</div>
       </td>
     );
   }
@@ -139,10 +139,10 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       if (isObjectColumn) {
         if (value !== null && typeof value === 'object') {
           return (
-            <div className="flex items-center justify-between gap-2 group/edit">
-              <div className="flex-1 overflow-hidden">
+            <div className='flex items-center justify-between gap-2 group/edit'>
+              <div className='flex-1 overflow-hidden'>
                 <button
-                  className="everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300"
+                  className='everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300'
                   onClick={(e) => {
                     e.stopPropagation();
                     grid.showPopup?.(value, item, col.headerName || col.field);
@@ -152,7 +152,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
                 </button>
               </div>
               <button
-                className="everygrid-cell-edit-btn w-5 h-5 shrink-0"
+                className='everygrid-cell-edit-btn w-5 h-5 shrink-0'
                 onClick={(e) => {
                   e.stopPropagation();
                   grid.showEditPopup(item, col.field, value);
@@ -166,12 +166,12 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
         } else {
           // value is primitive but isObjectColumn is true (because col.type is object or other rows have objects)
           return (
-            <div className="flex items-center justify-between gap-2 group/edit">
-              <div className="flex-1 overflow-hidden truncate">
+            <div className='flex items-center justify-between gap-2 group/edit'>
+              <div className='flex-1 overflow-hidden truncate'>
                 {value === null || value === undefined ? '' : String(value)}
               </div>
               <button
-                className="everygrid-cell-edit-btn w-5 h-5 shrink-0"
+                className='everygrid-cell-edit-btn w-5 h-5 shrink-0'
                 onClick={(e) => {
                   e.stopPropagation();
                   grid.showEditPopup(item, col.field, value);
@@ -191,7 +191,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
         return (
           <div className={`flex items-center ${alignRight ? 'justify-end' : ''}`}>
             <select
-              className="w-full px-1 py-0.5 text-sm border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+              className='w-full px-1 py-0.5 text-sm border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'
               value={String(value)}
               onChange={(e) => {
                 const val = e.target.value;
@@ -208,8 +208,8 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
               autoFocus
               onClick={(e) => e.stopPropagation()}
             >
-              <option value="true">true</option>
-              <option value="false">false</option>
+              <option value='true'>true</option>
+              <option value='false'>false</option>
             </select>
           </div>
         );
@@ -227,7 +227,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       return (
         <input
           type={inputType}
-          className="w-full px-1 py-0.5 text-sm border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className='w-full px-1 py-0.5 text-sm border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-400'
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           onFocus={() => setIsFocused(true)}
@@ -263,8 +263,8 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
     );
 
     const renderObjectButton = (obj: object) => (
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex-1 overflow-hidden">
+      <div className='flex items-center justify-between gap-2'>
+        <div className='flex-1 overflow-hidden'>
           <button
             className={`everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300${filterText && objectContainsFilter(obj, filterText, col.field) ? ' everygrid-highlight-btn' : ''}`}
             onClick={(e) => {
@@ -293,8 +293,8 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
         }
       } else if (isXmlString(value)) {
         return (
-          <div className="flex items-center justify-between gap-2">
-            <span className="truncate opacity-80" title={value}>{highlightText(value, filterText, col.field)}</span>
+          <div className='flex items-center justify-between gap-2'>
+            <span className='truncate opacity-80' title={value}>{highlightText(value, filterText, col.field)}</span>
           </div>
         );
       }
@@ -316,9 +316,9 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       return (
         <a
           href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="everygrid-link"
+          target='_blank'
+          rel='noopener noreferrer'
+          className='everygrid-link'
           onClick={(e) => e.stopPropagation()}
         >
           {highlightText(text, filterText, col.field)}
@@ -337,7 +337,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       return (
         <div className={`flex ${alignRight ? 'justify-end' : isCenter ? 'justify-center' : 'text-left'}`}>
           <button
-            className="everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300 truncate max-w-full"
+            className='everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300 truncate max-w-full'
             onClick={(e) => { e.stopPropagation(); grid.showTextPopup?.(displayValue, item, col.headerName || col.field); }}
             title={displayValue}
           >
@@ -349,7 +349,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
     return (
       <div
         className={`flex gap-2 ${alignRight ? 'justify-end' : isCenter ? 'justify-center' : 'text-left'}`}>
-        <span className="truncate">
+        <span className='truncate'>
           {isLinkActive && typeof value === 'string' && value.trim() !== '' ? renderLink(displayValue) : highlightText(displayValue, filterText, col.field)}
         </span>
       </div>
@@ -368,7 +368,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       {isModified && (
         <>
           <div
-            className="modified-marker"
+            className='modified-marker'
             onClick={(e) => {
               e.stopPropagation();
               setShowReset(!showReset);
@@ -377,7 +377,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
           />
           {showReset && (
             <button
-              className="everygrid-cell-reset-btn"
+              className='everygrid-cell-reset-btn'
               onClick={(e) => {
                 e.stopPropagation();
                 grid.resetCell(item, col.field, container);

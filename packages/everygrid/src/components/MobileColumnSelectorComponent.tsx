@@ -42,14 +42,14 @@ export const MobileColumnSelectorComponent = <T extends Record<string, unknown>>
   return (
     <div className={Everygrid.POPUP_OVERLAY_CLASS}>
       <div className={`${Everygrid.POPUP_CONTENT_CLASS} everygrid-popup-s`}>
-        <div className="everygrid-popup-header">
+        <div className='everygrid-popup-header'>
           <h3>{I18n.t('toolbar.mobileColumns')}</h3>
           <span className={Everygrid.POPUP_CLOSE_CLASS} onClick={onClose}
                 dangerouslySetInnerHTML={{__html: Everygrid.POPUP_CLOSE_HTML}}></span>
         </div>
-        <div className="everygrid-popup-body flex-1">
-          <p className="mb-3 text-sm text-slate-500">{I18n.t('grid.mobileColumnsHint', {max: String(MAX)})}</p>
-          <div className="flex flex-col gap-2">
+        <div className='everygrid-popup-body flex-1'>
+          <p className='mb-3 text-sm text-slate-500'>{I18n.t('grid.mobileColumnsHint', {max: String(MAX)})}</p>
+          <div className='flex flex-col gap-2'>
             {allFields.map(field => {
               const order = selected.indexOf(field);
               const isOn = order !== -1;
@@ -60,22 +60,22 @@ export const MobileColumnSelectorComponent = <T extends Record<string, unknown>>
                          isOn ? 'border-indigo-300 bg-indigo-50' : atCap ? 'border-slate-100 opacity-40' : 'border-slate-200 hover:bg-slate-50'
                        } ${atCap ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input
-                    type="checkbox"
-                    className="h-5 w-5"
+                    type='checkbox'
+                    className='h-5 w-5'
                     checked={isOn}
                     disabled={atCap}
                     onChange={() => handleToggle(field)}
                   />
-                  <span className="flex-1 text-slate-700">{grid.columnLabel(field, containerId)}</span>
-                  {isOn && <span className="text-xs font-bold text-indigo-600">{order + 1}</span>}
+                  <span className='flex-1 text-slate-700'>{grid.columnLabel(field, containerId)}</span>
+                  {isOn && <span className='text-xs font-bold text-indigo-600'>{order + 1}</span>}
                 </label>
               );
             })}
           </div>
         </div>
-        <div className="flex justify-end border-t border-slate-100 p-3">
+        <div className='flex justify-end border-t border-slate-100 p-3'>
           <button
-            className="rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white"
+            className='rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white'
             onClick={onClose}
           >
             {I18n.t('popup.close')}

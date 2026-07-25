@@ -187,42 +187,42 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
             <th key={col.field} data-field={col.field} style={getColumnStyle(col)}
                 className={`${col.type === 'row_checkbox' || col.type === 'data_checkbox' ? 'w-10' : ''} text-left`}>
               <div
-                className="everygrid-header-content px-2 py-2"
+                className='everygrid-header-content px-2 py-2'
               >
                 {col.type === 'row_detail' ? (
-                  <div className="flex w-full justify-center">
+                  <div className='flex w-full justify-center'>
                     <button
-                      type="button"
-                      className="flex items-center justify-center text-current transition-colors"
+                      type='button'
+                      className='flex items-center justify-center text-current transition-colors'
                       aria-label={I18n.t('toolbar.mobileColumns')}
                       title={I18n.t('toolbar.mobileColumns')}
                       onClick={(e) => {
                         e.stopPropagation();
                         grid.showMobileColumnSelector(grid.getDataFields(containerId), container);
                       }}>
-                      <MobileColumnsIcon className="w-5 h-5"/>
+                      <MobileColumnsIcon className='w-5 h-5'/>
                     </button>
                   </div>
                 ) : col.type === 'row_checkbox' ? (
-                  <div className="flex justify-center w-full">
+                  <div className='flex justify-center w-full'>
                     {!virtual && (
-                      <input type="checkbox" className="cursor-pointer" checked={isAllSelected}
+                      <input type='checkbox' className='cursor-pointer' checked={isAllSelected}
                              disabled={isIndexing || isExporting}
                              onChange={(e) => handleSelectAll(e.target.checked)}/>
                     )}
                   </div>
                 ) : col.type === 'data_checkbox' ? (
-                  <div className="flex justify-center w-full">
+                  <div className='flex justify-center w-full'>
                     {!virtual && (
-                      <input type="checkbox" className="cursor-pointer" checked={isAllChecked}
+                      <input type='checkbox' className='cursor-pointer' checked={isAllChecked}
                              disabled={isIndexing || isExporting}
                              onChange={(e) => handleCheckAll(e.target.checked)}/>
                     )}
                   </div>
                 ) : (
                   <>
-                    <span className="truncate">{col.headerName || col.field}</span>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <span className='truncate'>{col.headerName || col.field}</span>
+                    <div className='flex items-center gap-1 shrink-0'>
                       {/* Pinning is off on mobile (no horizontal scroll to pin against), so its icon
                           is dropped along with hide to keep the narrow header uncluttered. */}
                       {!isMobile && (
@@ -266,7 +266,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                       )}
                       {!isMobile && (
                         <button
-                          className="everygrid-icon-btn"
+                          className='everygrid-icon-btn'
                           disabled={isIndexing || isExporting}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -306,7 +306,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                     {/* Resizing while the data underneath is being replaced would measure the
                         old columns, so it goes inert with everything else. */}
                     {!isMobile && !(isIndexing || isExporting) && (
-                      <div className="everygrid-resizer" onMouseDown={(e) => handleResizeStart(e, col.field)} onTouchStart={(e) => handleResizeStart(e, col.field)}/>
+                      <div className='everygrid-resizer' onMouseDown={(e) => handleResizeStart(e, col.field)} onTouchStart={(e) => handleResizeStart(e, col.field)}/>
                     )}
                   </>
                 )}
@@ -320,7 +320,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
             real <tr>s so table-fixed layout, column widths and the sticky header all keep
             working — a transform/absolute body would break every one of them. */}
         {virtual && virtual.topPad > 0 && (
-          <tr className="everygrid-spacer-row" style={{height: `${virtual.topPad}px`}} aria-hidden="true">
+          <tr className='everygrid-spacer-row' style={{height: `${virtual.topPad}px`}} aria-hidden='true'>
             <td colSpan={gridColumns.length}/>
           </tr>
         )}
@@ -329,7 +329,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
           if (item === undefined) {
             // Block still in flight: hold the row's space so the scrollbar doesn't jump.
             return (
-              <tr key={rowIndex} className="everygrid-row-placeholder" style={{height: `${virtual?.rowHeight}px`}}>
+              <tr key={rowIndex} className='everygrid-row-placeholder' style={{height: `${virtual?.rowHeight}px`}}>
                 <td colSpan={gridColumns.length}><span/></td>
               </tr>
             );
@@ -356,7 +356,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
           );
         })}
         {virtual && virtual.bottomPad > 0 && (
-          <tr className="everygrid-spacer-row" style={{height: `${virtual.bottomPad}px`}} aria-hidden="true">
+          <tr className='everygrid-spacer-row' style={{height: `${virtual.bottomPad}px`}} aria-hidden='true'>
             <td colSpan={gridColumns.length}/>
           </tr>
         )}

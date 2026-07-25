@@ -19,8 +19,8 @@
     "filterPlaceholder": "검색...",
     "clearSearch": "검색어 지우기",
     "moreActions": "더 보기",
-    "indexingPercent": "인덱싱 중... {percent}%",
-    "indexingRows": "인덱싱 중... {count}행",
+    "indexingPercent": "인덱스 생성 중... {percent}%",
+    "indexingRows": "인덱스 생성 중... {count}행",
     "suggestNav": "↓ 진입 · ← → 선택 · Enter 적용 · ↑ 탈출"
   },
   "grid": {

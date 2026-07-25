@@ -104,8 +104,9 @@ lifetime is yours to control; nothing is allocated for a target this screen does
 import { Everygrid } from '@everygrid/core';
 import '@everygrid/core/css';
 
-// No bootstrap — mount loads /everygrid.config.json itself (cached) and renders with defaults if the
-// id isn't in the config.
+// No bootstrap — mount loads `everygrid.config.json` from the app root itself (cached; resolved
+// relative to the document, so a sub-app at /vanilla/ auto-loads /vanilla/everygrid.config.json) and
+// renders with defaults if the id isn't in the config.
 await Everygrid.mount('user-grid', {
   fetcher: () => fetch('/api/users').then(r => r.json()),
 });
@@ -120,35 +121,27 @@ Add a container element with the matching `id` in your HTML:
 <div id="user-grid"></div>
 ```
 
-In React, wrap the lifecycle in a hook and drop it into whatever component renders the container —
-each screen registers its own grid, no central wiring:
+In React, the library ships the lifecycle as a hook (`useGrid`) and a component
+(`EverygridGrid`) — React is a `peerDependency`. Each screen registers its own grid, no central
+wiring:
 
 ```tsx
-// useEverygrid.ts
-import { useEffect } from 'react';
-import { Everygrid } from '@everygrid/core';
+import { useGrid, EverygridGrid } from '@everygrid/grid'; // or '@everygrid/grid/react'
 
-type Fetcher = string | (() => Promise<Record<string, unknown>[]>);
-
-export function useEverygrid(id: string, fetcher?: Fetcher) {
-  useEffect(() => {
-    void Everygrid.mount(id, { fetcher });      // loads the config on demand; defaults if unlisted
-    return () => { Everygrid.unmount(id); };     // tear down when the screen unmounts
-    // Remount only when the id changes — a new fetcher shouldn't rebuild the grid.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-}
-```
-
-```tsx
+// hook — you render the container:
 function UserGrid() {
-  useEverygrid('user-grid', () => fetch('/api/users').then(r => r.json()));
+  useGrid('user-grid', () => fetch('/api/users').then(r => r.json()));
   return <div id="user-grid" />;
 }
+
+// or the component, which renders the container for you:
+<EverygridGrid id="user-grid" fetcher={() => fetch('/api/users').then(r => r.json())} />
 ```
 
-The config target for `user-grid` (if any) customizes it; otherwise it renders with defaults. Nothing
-else on the page needs to know the grid exists.
+The hook creates the grid on mount and tears it down on unmount; it coalesces concurrent creates and
+defers teardown, so React StrictMode's double-invoke is safe. The config target for `user-grid` (if
+any) customizes it; otherwise it renders with defaults. Nothing else on the page needs to know the
+grid exists.
 
 ---
 
@@ -162,13 +155,13 @@ You can use Everygrid directly in the browser via CDN (no build step required).
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
 <!-- Everygrid -->
-<link rel="stylesheet" href="https://unpkg.com/@everygrid/core/dist/Everygrid.css" />
+<link rel="stylesheet" href="https://unpkg.com/@everygrid/core/dist/Everygrid.css"/>
 <script src="https://unpkg.com/@everygrid/core/dist/index.umd.js"></script>
 
 <div id="user-grid"></div>
 
 <script>
-  Everygrid.autoInit({
+  everygrid.autoInit({
     'user-grid': () => fetch('/api/users').then(r => r.json()),
   });
 </script>
@@ -206,8 +199,8 @@ You can use Everygrid directly in the browser via CDN (no build step required).
 | Method | Description |
 |--------|-------------|
 | `loadConfig(entryConfigUrl?, opts?)` | Fetches the entry config and every file it lists, registering their targets. No DOM work, no engines, no data. Cached per URL (concurrent calls share one request); pass `{reload: true}` to bypass. Returns the registered target ids. |
-| `createEverygrid(id, fetcher?)` | Ergonomic form of `mount` — also a standalone named export (`import { createEverygrid }`). Loads the root config on demand, applies a matching target or renders with defaults. |
-| `loadEverygridConfig(urls?)` | Preload one or more entry configs (default `/everygrid.config.json`; pass an array for sub-apps / several entries). Standalone export too. Usually unnecessary — `createEverygrid` loads on demand. |
+| `createGrid(id, fetcher?)` | Ergonomic form of `mount` — also a standalone named export (`import { createGrid }`). Loads the root config on demand, applies a matching target or renders with defaults. |
+| `loadEverygridConfig(urls?)` | Preload one or more entry configs (default `/everygrid.config.json`; pass an array for sub-apps / several entries). Standalone export too. Usually unnecessary — `createGrid` loads on demand. |
 | `mount(targetId, opts?)` | Mounts a grid into the element with the same id. Self-sufficient — loads the root config (`/everygrid.config.json`, cached) on demand, so no `loadConfig()` bootstrap is needed; a matching config target customizes the grid, otherwise it renders with defaults. `opts.fetcher` is a URL or a function returning rows. Requires the element to be in the DOM — returns `null` with a warning otherwise. Idempotent. |
 | `unmount(targetId)` | Tears the grid down completely — React root, WASM engine, worker thread, timers — and makes the target mountable again. Returns whether a grid was there. |
 | `invalidateConfig(entryConfigUrl?)` | Drops cached config so the next `loadConfig` re-fetches. Mounted grids keep the config they were built with. |

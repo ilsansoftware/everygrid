@@ -45,7 +45,10 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   // columns + a detail button, no horizontal scroll) via getColumns below.
   const [isMobile, setIsMobile] = useState(() => container.getBoundingClientRect().width < 720);
   useEffect(() => {
-    let lastWidth = container.getBoundingClientRect().width;
+    // -1 = not yet measured. The observer's first callback fires immediately on observe; that one
+    // just establishes the baseline (no re-render), so the initial mount never gets a spurious extra
+    // render from a border-box (getBoundingClientRect) vs content-box (contentRect) mismatch.
+    let lastWidth = -1;
     const obs = new ResizeObserver(entries => {
       for (const entry of entries) {
         const w = entry.contentRect.width;
@@ -54,6 +57,10 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
         // hidden→shown tab at the same width doesn't re-render at all — no flicker.
         if (w === 0) continue;
         setIsMobile(w < 720);
+        if (lastWidth === -1) {
+          lastWidth = w; // baseline only
+          continue;
+        }
         // Re-render only on a genuine width change, so column widths / measured layout recompute
         // against the new size. This is why the grid needs no external "refresh on show".
         if (w !== lastWidth) {
@@ -162,7 +169,15 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   //    goes inert together — overlay, toolbar icons, sort icons, pagination.
   //  - showEmpty: settled with no data at all. No toolbar either; there is nothing to act on.
   const showSkeleton = isLoading && displayItems.length === 0;
-  const isBusy = isLoading || isProcessing;
+  // A virtual grid bridges its rows from the in-memory data during the JS→WASM handoff (see
+  // getRowsInRange), so it already shows correct rows while the engine finishes indexing. Greying
+  // it out under a busy overlay in that window is pointless — the data is right there, and a
+  // filter/sort typed early is safely deferred (applyWasmFilter bails until the engine is ready,
+  // then re-runs). Streaming grids keep their overlay: isIndexing (not this buffered _loading) drives
+  // their meaningful 'indexing X%' progress, so they are unaffected.
+  const bridgedVirtual = !!virtualConf && !isIndexing && displayItems.length > 0
+    && (grid._loading?.has(containerId) ?? false);
+  const isBusy = (isLoading || isProcessing) && !bridgedVirtual;
   const showEmpty = !isLoading && items.length === 0 && streamTotalRaw === 0;
   const searchKeys = grid.getSearchKeys(containerId, displayItems);
   const columns = grid.getColumns(containerId, items, isMobile);
@@ -282,7 +297,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
       );
     };
     const toolbar = (
-      <div className="everygrid-toolbar-container px-2 shrink-0 everygrid-panel everygrid-panel-top everygrid-panel-above-body">
+      <div className='everygrid-toolbar-container px-2 shrink-0 everygrid-panel everygrid-panel-top everygrid-panel-above-body'>
         <GridToolbarComponent
           isExcelViewMode={grid.isExcelViewMode}
           isExporting={isExporting}
@@ -308,15 +323,14 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           onFilter={(text) => grid.setFilter(text, container)}
           searchKeys={searchKeys}
           labelOf={(k) => grid.columnLabel(k, containerId)}
-          wasmReady={grid.wasmReady}
         />
       </div>
     );
     return (
       // Same shell as the normal view, so toggling the preview swaps content inside the grid's
       // existing box instead of producing a differently shaped block in its place.
-      <div className="everygrid-wrapper relative bg-white overflow-hidden flex flex-col pb-2">
-        <div className="flex-1 flex flex-col min-h-0">
+      <div className='everygrid-wrapper relative bg-white overflow-hidden flex flex-col pb-2'>
+        <div className='flex-1 flex flex-col min-h-0'>
           <ExcelViewWrapperComponent
             data={excelItems}
             toolbar={toolbar}
@@ -364,8 +378,8 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
 
   // Normal View
   return (
-    <div className="everygrid-wrapper relative bg-white overflow-hidden flex flex-col pb-2">
-      <div className="flex-1 flex flex-col min-h-0 pt-0">
+    <div className='everygrid-wrapper relative bg-white overflow-hidden flex flex-col pb-2'>
+      <div className='flex-1 flex flex-col min-h-0 pt-0'>
         {/* The toolbar stays up while loading — it hosts the search box, title and the progress
             pill. A settled empty grid gets none of it: search, sort reset, column selection and
             export all act on rows that don't exist. */}
@@ -397,7 +411,6 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             onFilter={(text) => grid.setFilter(text, container)}
             searchKeys={searchKeys}
           labelOf={(k) => grid.columnLabel(k, containerId)}
-            wasmReady={grid.wasmReady}
             isIndexing={isBusy}
           />
         </div>}
@@ -407,7 +420,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             suggestions have a band to open into before they reach the column headers — without it
             the dropdown lands straight on top of the columns. */}
         {!showEmpty && (
-          <div className="everygrid-pagination-top shrink-0 everygrid-panel everygrid-panel-above-body everygrid-panel-strip">
+          <div className='everygrid-pagination-top shrink-0 everygrid-panel everygrid-panel-above-body everygrid-panel-strip'>
             {!topInlineCount && <RowCountComponent {...rowCountData}/>}
             {hasTopPagination && <PaginationComponent
               grid={grid}
@@ -424,7 +437,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             silently showing a partial dataset. Persistent — it is a standing fact about the data,
             not a transient status. */}
         {!showSkeleton && dataLimited && (
-          <div className="everygrid-data-limit-banner shrink-0">
+          <div className='everygrid-data-limit-banner shrink-0'>
             <InfoIcon/>
             <span>{dataLimited.total != null
               ? I18n.t('grid.dataLimited', {shown: dataLimited.shown.toLocaleString(), total: dataLimited.total.toLocaleString()})
@@ -437,11 +450,11 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             or a second load) stay up and the progress lives in the toolbar pill — the body never
             collapses out from under data that is still valid. */}
         {showSkeleton ? (
-          <div className="relative w-full flex-1 min-h-0 overflow-hidden">
+          <div className='relative w-full flex-1 min-h-0 overflow-hidden'>
             <EmptyGridPlaceholder targetId={containerId} indexing/>
           </div>
         ) : showEmpty ? (
-          <div className="relative w-full flex-1 min-h-0 overflow-hidden">
+          <div className='relative w-full flex-1 min-h-0 overflow-hidden'>
             <EmptyGridPlaceholder targetId={containerId}/>
           </div>
         ) : (
@@ -478,13 +491,13 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
                 the overlay has to clear both headers, or sort/resize/pin stay live over frozen
                 data. */}
             {isBusy && (
-              <div className="absolute inset-0 z-60 bg-white/60 cursor-progress" aria-hidden="true"/>
+              <div className='absolute inset-0 z-60 bg-white/60 cursor-progress' aria-hidden='true'/>
             )}
             {/* Columns exist but no rows to show — an empty result (filtered out) or an empty
                 dataset. Overlaid on the body so the header stays visible. */}
             {displayItems.length === 0 && !isProcessing && (
-              <div className="absolute inset-0 top-8 flex flex-col items-center justify-center gap-1 text-slate-400 pointer-events-none bg-slate-50/30">
-                <span className="text-sm font-medium italic">
+              <div className='absolute inset-0 top-8 flex flex-col items-center justify-center gap-1 text-slate-400 pointer-events-none bg-slate-50/30'>
+                <span className='text-sm font-medium italic'>
                   {grid.filterText ? I18n.t('grid.noResults') : I18n.t('grid.noRows')}
                 </span>
               </div>
@@ -495,7 +508,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
         {/* Always here, like the strip above: the row count is a property of the data, not of the
             pagination, so a grid without pagination still states what it is showing at both ends. */}
         {!showEmpty && (
-          <div className="everygrid-pagination-bottom shrink-0 everygrid-panel everygrid-panel-below-body everygrid-panel-bottom">
+          <div className='everygrid-pagination-bottom shrink-0 everygrid-panel everygrid-panel-below-body everygrid-panel-bottom'>
             {!bottomInlineCount && <RowCountComponent {...rowCountData}/>}
             {hasBottomPagination && <PaginationComponent
               grid={grid}

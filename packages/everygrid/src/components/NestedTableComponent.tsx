@@ -19,7 +19,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
 
     return (
       <button
-        className="everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300"
+        className='everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300'
         onClick={(e) => {
           e.stopPropagation();
           onShowPopup();
@@ -31,7 +31,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
   }
 
   if (depth > 2 && onShowPopup) {
-    return <button className="everygrid-popup-btn" onClick={onShowPopup}>View Details</button>;
+    return <button className='everygrid-popup-btn' onClick={onShowPopup}>View Details</button>;
   }
 
   // Element-scoped highlight: each element is highlighted with the sub-query that matched IT, so a
@@ -52,7 +52,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
 
       if (isAllSameKey) {
         return (
-          <table className="everygrid-nested-table">
+          <table className='everygrid-nested-table'>
             <thead>
             <tr>
               <th>{highlightText(firstKey, filterText)}</th>
@@ -70,7 +70,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
                       <NestedTableComponent data={cellVal} depth={depth + 1} filterText={ef} elementGate={elementGate}/>
                     ) : (
                       isXmlString(cellVal) ? (
-                        <span className="opacity-80"
+                        <span className='opacity-80'
                               title={String(cellVal)}>{highlightText(String(cellVal), ef)}</span>
                       ) : (
                         highlightText(String(cellVal ?? ''), ef)
@@ -89,7 +89,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
     if (data.length > 0 && data.every(item => Array.isArray(item))) {
       // Array of arrays
       return (
-        <table className="everygrid-nested-table">
+        <table className='everygrid-nested-table'>
           <tbody>
           {data.map((rowItems, rowIndex) => {
             const ef = elFilter(rowItems);
@@ -101,7 +101,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
                     <NestedTableComponent data={val} depth={depth + 1} filterText={ef} elementGate={elementGate}/>
                   ) : (
                     isXmlString(val) ? (
-                      <span className="opacity-80" title={String(val)}>{highlightText(String(val), ef)}</span>
+                      <span className='opacity-80' title={String(val)}>{highlightText(String(val), ef)}</span>
                     ) : (
                       highlightText(String(val ?? ''), ef)
                     )
@@ -125,13 +125,13 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
     if (isMixed) {
       // Render each item separated by a divider line
       return (
-        <table className="everygrid-nested-table w-full">
+        <table className='everygrid-nested-table w-full'>
           <tbody>
           {data.map((item, i) => {
             const ef = elFilter(item);
             return (
             <tr key={i}>
-              <td className="p-0">
+              <td className='p-0'>
                 {typeof item === 'object' && item !== null ? (
                   <NestedTableComponent data={item} depth={depth + 1} onShowPopup={onShowPopup} filterText={ef} elementGate={elementGate}/>
                 ) : (
@@ -157,7 +157,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
 
     if (keys.length === 0) {
       return (
-        <div className="whitespace-pre-wrap">
+        <div className='whitespace-pre-wrap'>
           {data.map((item, i) => (
             <div key={i}>{highlightText(String(item ?? ''), filterText)}</div>
           ))}
@@ -166,7 +166,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
     }
 
     return (
-      <table className="everygrid-nested-table">
+      <table className='everygrid-nested-table'>
         {keys.length > 0 && (
           <thead>
           <tr>
@@ -192,7 +192,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
                         <NestedTableComponent data={cellVal} depth={depth + 1} filterText={ef} elementGate={elementGate}/>
                       ) : (
                         isXmlString(cellVal) ? (
-                          <span className="opacity-80"
+                          <span className='opacity-80'
                                 title={String(cellVal)}>{highlightText(String(cellVal), ef)}</span>
                         ) : (
                           highlightText(String(cellVal ?? ''), ef)
@@ -225,7 +225,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
       const rows = Array.from({length: maxRows});
 
       return (
-        <table className="everygrid-nested-table">
+        <table className='everygrid-nested-table'>
           <thead>
           <tr>
             {columnKeys.map(key => <th key={key}>{highlightText(key, filterText)}</th>)}
@@ -244,7 +244,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
                         <NestedTableComponent data={cellData} depth={depth + 1} filterText={ef} elementGate={elementGate}/>
                       ) : (
                         isXmlString(cellData) ? (
-                          <span className="opacity-80" title={String(cellData)}>{highlightText(String(cellData), ef)}</span>
+                          <span className='opacity-80' title={String(cellData)}>{highlightText(String(cellData), ef)}</span>
                         ) : (
                           highlightText(String(cellData ?? ''), ef)
                         )
@@ -261,7 +261,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
     }
 
     return (
-      <table className="everygrid-nested-table">
+      <table className='everygrid-nested-table'>
         <tbody>
         {Object.entries(data).map(([key, value]) => (
           <tr key={key}>
@@ -271,7 +271,7 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
                 <NestedTableComponent data={value} depth={depth + 1} filterText={filterText} elementGate={elementGate}/>
               ) : (
                 isXmlString(value) ? (
-                  <span className="opacity-80" title={String(value)}>{highlightText(String(value), filterText)}</span>
+                  <span className='opacity-80' title={String(value)}>{highlightText(String(value), filterText)}</span>
                 ) : (
                   highlightText(String(value ?? ''), filterText)
                 )
