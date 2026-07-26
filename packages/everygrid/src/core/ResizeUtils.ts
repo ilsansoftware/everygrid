@@ -85,9 +85,9 @@ export const createResizeHandler = <T extends Record<string, unknown>>(
   };
 
   return (e: React.MouseEvent | React.TouchEvent, field: string) => {
-    // 경고를 유발하는 e.preventDefault(); 코드를 과감히 지웁니다.
+    // No e.preventDefault() here — it warns on passive touch listeners.
 
-    // 순수 터치 이벤트의 pageX 값을 안전하게 가져옵니다.
+    // Safely read pageX whether this is a touch or a mouse event.
     const startX = 'touches' in e && e.touches.length > 0
       ? e.touches[0].pageX : (e as unknown as MouseEvent).pageX;
 

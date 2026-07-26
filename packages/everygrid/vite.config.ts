@@ -6,17 +6,20 @@ import { readFileSync, writeFileSync } from 'fs';
 import dts from 'vite-plugin-dts';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import tailwindcss from '@tailwindcss/vite';
-import wasm from 'vite-plugin-wasm';
 
 const isStandalone = process.env.BUILD_FORMAT === 'standalone';
 
-// Plugin to inline WASM binary as base64 for standalone builds (no import.meta.url)
+// Inline the WASM binary (base64) and the Web Workers into a single self-contained module — for
+// BOTH builds. The standalone UMD needs it to be one `<script>`-able file; the ES build needs it so
+// a bundler consumer (React app) doesn't inherit a bare `new Worker("/assets/GridEngineWorker-*.js")`
+// string that only resolves from the deployed CDN root (it 404s under any other origin/sub-path).
+// Inlining makes the worker a blob, so the wasm must be inlined too (a blob worker can't resolve a
+// sibling .wasm via import.meta.url).
 const wasmInlinePlugin = {
   name: 'wasm-inline-base64',
   enforce: 'pre' as const,
   load(id: string) {
     if (!id.endsWith('.wasm')) return null;
-    if (!isStandalone) return null;
     const wasmBuffer = readFileSync(id);
     const base64 = wasmBuffer.toString('base64');
     return `
@@ -26,8 +29,9 @@ export default binary.buffer;
 `;
   },
   transform(code: string, id: string) {
-    if (!isStandalone) return null;
-    if (id.includes('everygrid_wasm.js')) {
+    // Only the UMD build trips the import.meta.url warning; the ES build keeps it (unused anyway,
+    // since init() below receives the inlined binary via module_or_path).
+    if (isStandalone && id.includes('everygrid_wasm.js')) {
       // Remove import.meta.url usage to avoid UMD build warnings
       return code.replace(
         /if \(module_or_path === undefined\) \{[\s\S]*?module_or_path = new URL\('everygrid_wasm_bg\.wasm', import\.meta\.url\);[\s\S]*?}/,
@@ -65,24 +69,30 @@ const inlineCssPlugin = {
   apply: 'build' as const,
   enforce: 'post' as const,
   generateBundle(_options: NormalizedOutputOptions, bundle: OutputBundle) {
-    if (!isStandalone) return;
     let cssContent = '';
+    let cssFileName = '';
     for (const [fileName, chunk] of Object.entries(bundle)) {
       if (fileName.endsWith('.css') && chunk.type === 'asset') {
         cssContent = typeof chunk.source === 'string' ? chunk.source : Buffer.from(chunk.source).toString();
-        delete bundle[fileName];
+        cssFileName = fileName;
       }
     }
-    if (cssContent) {
-      const normalizedCss = cssContent.replace(/@layer\s+properties\s*\{([\s\S]*?)}\s*}/g, '$1}');
-      const cssInject = `;(function(){var s=document.createElement('style');s.textContent=${JSON.stringify(normalizedCss)};document.head.appendChild(s);})();`;
-      const chromePolyfill = ';(function(){if(typeof process==="undefined"){window.process={env:{},versions:{},emit:function(){}}}})();';
-      for (const chunk of Object.values(bundle)) {
-        if (chunk.type === 'chunk' && chunk.fileName.includes('standalone')) {
-          chunk.code = cssInject + chromePolyfill + chunk.code;
-        }
+    if (!cssContent) return;
+    const normalizedCss = cssContent.replace(/@layer\s+properties\s*\{([\s\S]*?)}\s*}/g, '$1}');
+    // Inject the stylesheet at import time so `import '@everygrid/grid'` (or the <script>) styles the
+    // grid with no separate CSS import. The ES build extracts its CSS to a sibling Everygrid.css that
+    // a bundler consumer would otherwise never load — which left the deployed React demo unstyled.
+    const cssInject = `;(function(){var s=document.createElement('style');s.textContent=${JSON.stringify(normalizedCss)};document.head.appendChild(s);})();`;
+    // UMD may run where `process` is undefined; the ES build never needs this shim.
+    const chromePolyfill = ';(function(){if(typeof process==="undefined"){window.process={env:{},versions:{},emit:function(){}}}})();';
+    for (const chunk of Object.values(bundle)) {
+      if (chunk.type === 'chunk' && chunk.isEntry) {
+        chunk.code = cssInject + (isStandalone ? chromePolyfill : '') + chunk.code;
       }
     }
+    // Standalone ships one self-contained file → drop the now-inlined CSS asset. The ES build keeps
+    // it so `@everygrid/grid/css` still resolves for consumers who want the raw stylesheet.
+    if (isStandalone && cssFileName) delete bundle[cssFileName];
   },
 };
 
@@ -97,12 +107,11 @@ export default defineConfig({
     exclude: ['everygrid-wasm'],
   },
   plugins: [
-    // 💡 패키지용 빌드(isUmd)일 때는 리액트 컴파일러 플러그인이 가상 돔 큐를 오염시키지 않도록 배제
     react(),
     tailwindcss(),
-    ...(!isStandalone ? [wasm()] : []),
-    ...(isStandalone ? [nodePolyfills(), wasmInlinePlugin] : []),
-    // 💡 [오타 교정 완료] 괄호 위치를 정밀하게 수선하여 TS1005, TS1109, TS1005 문법 오류를 완벽 박멸했습니다.
+    // Inline worker + wasm for both formats (see wasmInlinePlugin); nodePolyfills is UMD-only.
+    wasmInlinePlugin,
+    ...(isStandalone ? [nodePolyfills()] : []),
     dts({
       include: ['src'],
       insertTypesEntry: true,
@@ -112,7 +121,7 @@ export default defineConfig({
         writeFileSync(resolve(__dirname, 'dist/index.d.ts'), 'export * from "./src/index";\nexport { default } from "./src/index";\n');
       },
     }),
-    ...(isStandalone ? [inlineCssPlugin] : []),
+    inlineCssPlugin,
   ],
   resolve: {
     alias: {

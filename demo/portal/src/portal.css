@@ -372,14 +372,23 @@ nav button.active img {
 .code-modal-body {
   flex: 1;
   overflow: auto;
-  padding: 20px;
+  /* Padding lives on the <pre> below, not here: as an inner box it stays part of the scrolled
+     content, so the right/left breathing room survives a horizontal scroll (a scroll container's
+     own padding-right does not). */
+  padding: 0;
 }
 
 .code-modal-body pre {
   margin: 0;
+  padding: 20px 24px;
   font-size: 0.8rem;
   line-height: 1.6;
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  /* Prism renders each line as a block <div>, so the <pre> stays body-width and long lines were
+     clipped with no scroll. Grow it to the widest line (still filling short code) so the body's
+     overflow:auto can scroll horizontally instead of cutting the code off. */
+  width: max-content;
+  min-width: 100%;
 }
 
 .code-modal-body code {

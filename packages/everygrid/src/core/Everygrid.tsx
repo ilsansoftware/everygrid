@@ -8,6 +8,7 @@ import {ColumnSelectorComponent} from '../components/ColumnSelectorComponent';
 import {MobileColumnSelectorComponent} from '../components/MobileColumnSelectorComponent';
 import {RowDetailComponent} from '../components/RowDetailComponent';
 import {HiddenColumnSelectorComponent} from '../components/HiddenColumnSelectorComponent';
+import {highlightText} from './highlightUtils';
 import {I18n} from '../i18n/I18n';
 import React from 'react';
 import {PopupComponent} from '../components/PopupComponent';
@@ -1319,6 +1320,20 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   /** Parse filter text supporting && (AND) and || (OR) operators */
+  /**
+   * Lower-cased searchable text for a cell value, mirroring the WASM engine: nested objects/arrays
+   * are matched by their JSON serialization (lib.rs FieldVal::Json), not "[object Object]". Keeping
+   * this in sync is what makes the JS re-filter (used for the 'filtered' Excel export) select the
+   * same rows the visible WASM-filtered grid shows.
+   */
+  private static _searchText(v: unknown): string {
+    if (v == null) return '';
+    if (typeof v === 'object') {
+      try { return JSON.stringify(v).toLowerCase(); } catch { return ''; }
+    }
+    return String(v).toLowerCase();
+  }
+
   private _parseFilterExpr(text: string): (row: Record<string, unknown>) => boolean {
     const trimmed = text.trim();
     if (!trimmed) return () => true;
@@ -1328,7 +1343,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const andParts = orPart.split('&&').map(p => p.trim()).filter(p => p.length > 0);
       return (row: Record<string, unknown>) =>
         andParts.every(term =>
-          Object.values(row).some(v => String(v ?? '').toLowerCase().includes(term.toLowerCase()))
+          Object.values(row).some(v => Everygrid._searchText(v).includes(term.toLowerCase()))
         );
     });
     return (row: Record<string, unknown>) => orMatchers.some(m => m(row));
@@ -1610,13 +1625,27 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // JS-resident rows (normal grids / JS stream rows), if any. For scope 'filtered' the
     // current filter+sort is applied here; 'all' takes the raw set. Large WASM-only grids
     // have no JS copy — they fall to the engine branch below.
-    const inMemory = ((): unknown[] | null => {
+    const inMemory = await (async (): Promise<unknown[] | null> => {
       const data = this.options.data as Record<string, unknown>[] | undefined;
       const rawData = (data && data.length > 0)
         ? data
         : (this._streamRows.get(containerId) ?? null);
       if (!rawData || rawData.length === 0) return null;
-      return scope === 'filtered' ? this._applyStreamFilter(containerId, rawData) : rawData;
+      if (scope !== 'filtered') return rawData;
+      // Filtered scope: the WASM engine already holds the correct result for the active query —
+      // including column-group syntax like `age(>40)` that the lightweight JS matcher can't parse.
+      // Pull the filtered rows straight from it (nested objects/arrays survive the JSON round-trip),
+      // so the export matches the visible grid exactly. Large results (> SMALL_MAX) return null and
+      // stream through the engine branch below; the JS matcher is only the fallback for pure-JS
+      // stream grids that have no engine.
+      const engine = this._wasmEngines.get(containerId);
+      if (engine && this._wasmEngineReady.get(containerId)) {
+        const count = await engine.getTotalCount();
+        if (count === 0) return [];
+        if (count > SMALL_MAX) return null;
+        return (await engine.getPage(0, count)).rows;
+      }
+      return this._applyStreamFilter(containerId, rawData);
     })();
 
     const baseName = `everygrid_${gridId}_${new Date().getTime()}`;
@@ -1908,7 +1937,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.activePopupRowKey = rowData ? JSON.stringify(rowData) : null;
     this.activePopup = (
       <PopupComponent onClose={() => this.closePopup()} title={title || I18n.t('popup.detailTitle')}>
-        <pre className='m-0 p-4 text-sm whitespace-pre-wrap wrap-break-word text-slate-700'>{text}</pre>
+        <pre className='m-0 p-4 text-sm whitespace-pre-wrap wrap-break-word text-slate-700'>{highlightText(text, this.filterText)}</pre>
       </PopupComponent>
     );
     const {targets} = this.options;
@@ -2167,7 +2196,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const serverTotal = this._serverTotal.get(containerId);
       if (serverTotal !== undefined) return Math.ceil(serverTotal / pageSize);
     }
-    // filter 반영 총 행 수
+    // Total rows with the filter applied.
     const filteredTotal = this.getFilteredTotal(containerId);
     if (filteredTotal !== undefined) {
       return Math.ceil(filteredTotal / pageSize);

@@ -42,17 +42,22 @@ pkg.name='@everygrid/grid';
 // The workspace's runtime deps must NOT survive into the tarball. They carried
 // 'everygrid-wasm': 'link:../../everygrid-wasm/pkg' — a workspace path that exists on no
 // consumer's disk, so \`npm install <tarball>\` died with EUNSUPPORTEDPROTOCOL before it
-// unpacked anything. They also dragged vite/rollup in as runtime deps. Nothing is needed:
-// the standalone build that exports points at inlines the WASM, the worker, and the CSS.
+// unpacked anything. They also dragged vite/rollup in as runtime deps. Nothing is needed at
+// runtime — the WASM, worker and CSS ship as built assets under dist/.
 pkg.dependencies={};
-// peerDependencies stay as the source declares them (react/react-dom): the emitted
-// dist/src/*.d.ts reference 'react', so wiping them left consumers' types unresolvable.
+// peerDependencies stay as the source declares them (react/react-dom): the ES build externalizes
+// React and the emitted dist/src/*.d.ts reference 'react', so wiping them breaks consumers.
 delete pkg.devDependencies;
-pkg.main='./dist/everygrid.standalone.js';
-pkg.module='./dist/everygrid.standalone.js';
+// Mirror the source package.json: '.' is the ES build (named exports + the useGrid React binding),
+// './standalone' the self-contained UMD for <script> use. Forcing '.' to the standalone here (its
+// default-only entry) is what left consumers' \`import { Everygrid, useGrid }\` undefined.
+pkg.main='./dist/index.js';
+pkg.module='./dist/index.js';
 pkg.exports={
-  '.': { types: './dist/index.d.ts', import: './dist/everygrid.standalone.js', default: './dist/everygrid.standalone.js' },
-  './css': './dist/Everygrid.css'
+  '.': { types: './dist/src/index.d.ts', import: './dist/index.js' },
+  './react': { types: './dist/src/react/index.d.ts', import: './dist/index.js' },
+  './css': './dist/Everygrid.css',
+  './standalone': './dist/everygrid.standalone.js'
 };
 fs.writeFileSync('$GRID_STAGE/package/package.json', JSON.stringify(pkg, null, 2));
 "

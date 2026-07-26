@@ -147,6 +147,19 @@
   padding-right: 2px;
 }
 
+/* Mobile: a value rendered as a button/link (e.g. the "N items" popup tag) must keep its full box.
+   The base popup button is inline-flex + nowrap and content-sized, so in a narrow fixed-width cell
+   its wrapper's overflow:hidden sliced the button — border and all — down the middle. Cap it to the
+   cell and ellipsis the label inside instead; inline-block (not inline-flex) lets text-overflow work. */
+.everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell) .everygrid-popup-btn,
+.everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell) .everygrid-link {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .everygrid-detail-btn {
   @apply inline-flex items-center justify-center rounded-lg text-slate-500
   bg-slate-100 hover:bg-slate-200 active:bg-slate-300 transition-colors;

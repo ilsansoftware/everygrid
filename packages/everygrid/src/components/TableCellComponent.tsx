@@ -1,4 +1,4 @@
-import React, {type JSX, useEffect, useMemo, useState} from 'react';
+import React, {type JSX, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import type {GridColumn, IEverygrid} from '../core/types';
 import {I18n} from '../i18n/I18n';
 import {EditIcon} from '../icons/EditIcon';
@@ -16,7 +16,50 @@ export interface TableCellProps<T extends Record<string, unknown>> {
   container: HTMLElement;
   editableFields?: string[];
   filterText?: string;
+  /** Mobile only: the data fields shown as visible columns, so the detail button can flag a match
+   *  that lives in one of the hidden (detail-only) fields. */
+  visibleFields?: string[];
+  /** Narrow layout: cells truncate, so a match hidden past the ellipsis needs a whole-cell flag. */
+  isMobile?: boolean;
 }
+
+// Mobile plain-text cell: renders as a truncating span until it detects the text overflows the cell,
+// then swaps to a button that opens the full text in a popup — so text lost to the '…' stays
+// reachable with one tap. The button turns yellow when `matches`, flagging a hit hidden in the tail.
+const MobileTruncatableText: React.FC<{
+  text: string;
+  align: 'start' | 'center' | 'end';
+  matches: boolean;
+  renderText: () => ReactNode;
+  onOpen: () => void;
+}> = ({text, align, matches, renderText, onOpen}) => {
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  useLayoutEffect(() => {
+    const el = spanRef.current;
+    // +1 absorbs sub-pixel rounding so a perfectly-fitting cell isn't flagged as overflowing.
+    if (el) setOverflowing(el.scrollWidth > el.clientWidth + 1);
+  }, [text]);
+  const justify = align === 'end' ? 'justify-end' : align === 'center' ? 'justify-center' : 'text-left';
+  if (overflowing) {
+    return (
+      <div className={`flex ${justify}`}>
+        <button
+          className={`everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300 truncate max-w-full${matches ? ' everygrid-highlight-btn' : ''}`}
+          onClick={(e) => { e.stopPropagation(); onOpen(); }}
+          title={text}
+        >
+          {renderText()}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className={`flex gap-2 ${justify}`}>
+      <span ref={spanRef} className='truncate'>{renderText()}</span>
+    </div>
+  );
+};
 
 export const TableCellComponent = React.memo(<T extends Record<string, unknown>>(
   {
@@ -28,6 +71,8 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
     container,
     editableFields = [],
     filterText = '',
+    visibleFields = [],
+    isMobile = false,
   }: TableCellProps<T>) => {
   const isRowCheckbox = col.type === 'row_checkbox';
   const isIndexCol = col.field === I18n.t('grid.index');
@@ -47,11 +92,16 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
   }, [item, col.field, isFocused]);
 
   if (col.type === 'row_detail') {
+    // Flag the button when the search matches a field that isn't one of the visible mobile columns —
+    // the match is otherwise invisible until the detail popup is opened.
+    const hiddenMatch = !!filterText && grid.getDataFields(containerId).some(
+      f => !visibleFields.includes(f) && objectContainsFilter(item[f], filterText, f),
+    );
     return (
       <td className='everygrid-detail-cell text-center'>
         <button
           type='button'
-          className='everygrid-detail-btn'
+          className={`everygrid-detail-btn${hiddenMatch ? ' everygrid-highlight-btn' : ''}`}
           aria-label={I18n.t('grid.rowDetail')}
           onClick={() => grid.showRowDetail(item, container)}
         >
@@ -334,16 +384,35 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
     if (isLongText) {
       const firstLine = displayValue.split(/[\r\n\u2028\u2029]/)[0];
       const prefix = firstLine.length > 60 ? `${firstLine.slice(0, 60)}\u2026` : (displayValue.length > firstLine.length ? `${firstLine}\u2026` : firstLine);
+      // Flag the button when the match is in the truncated tail (the '\u2026'), where highlightText can't
+      // show it on the prefix.
+      const tailMatch = !!filterText && objectContainsFilter(displayValue, filterText, col.field);
       return (
         <div className={`flex ${alignRight ? 'justify-end' : isCenter ? 'justify-center' : 'text-left'}`}>
           <button
-            className='everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300 truncate max-w-full'
+            className={`everygrid-popup-btn text-[10px] py-0.5 px-1 bg-slate-100 hover:bg-slate-200 border-slate-300 truncate max-w-full${tailMatch ? ' everygrid-highlight-btn' : ''}`}
             onClick={(e) => { e.stopPropagation(); grid.showTextPopup?.(displayValue, item, col.headerName || col.field); }}
             title={displayValue}
           >
             {highlightText(prefix, filterText, col.field)}
           </button>
         </div>
+      );
+    }
+    // On mobile the cell truncates, so a match past the ellipsis would be clipped and invisible.
+    // When the text actually overflows its cell, render it as a button (opening the full text in a
+    // popup) — highlighted yellow if the value matches, so a match hidden in the '…' is still flagged
+    // and one tap reveals it.
+    if (isMobile && !isLinkActive) {
+      const textMatches = !!filterText && objectContainsFilter(displayValue, filterText, col.field);
+      return (
+        <MobileTruncatableText
+          text={displayValue}
+          align={alignRight ? 'end' : isCenter ? 'center' : 'start'}
+          matches={textMatches}
+          renderText={() => highlightText(displayValue, filterText, col.field)}
+          onOpen={() => grid.showTextPopup?.(displayValue, item, col.headerName || col.field)}
+        />
       );
     }
     return (

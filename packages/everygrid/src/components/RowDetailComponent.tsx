@@ -1,6 +1,7 @@
 import {I18n} from '../i18n/I18n';
 import {Everygrid} from '../core/Everygrid';
 import {isJsonString, parseIfJson} from '../core/utils';
+import {highlightText, makeElementGate} from '../core/highlightUtils';
 import {NestedTableComponent} from './NestedTableComponent';
 
 export interface RowDetailProps<T extends Record<string, unknown>> {
@@ -20,17 +21,21 @@ export const RowDetailComponent = <T extends Record<string, unknown>>({
                                                                       }: RowDetailProps<T>) => {
   const containerId = container.id;
   const fields = grid.getDataFields(containerId);
+  // Live search text, so a match hidden behind the detail button is highlighted here too. The gate
+  // is built over the whole row so column-scoped/correlated conditions resolve correctly per element.
+  const filterText = grid.filterText || '';
+  const elementGate = makeElementGate(row, filterText);
 
   const renderValue = (field: string) => {
     const raw = row[field];
     const val = isJsonString(raw) ? parseIfJson(raw) : raw;
     if (val !== null && typeof val === 'object') {
-      return <NestedTableComponent data={val} depth={0}/>;
+      return <NestedTableComponent data={val} depth={0} filterText={filterText} elementGate={elementGate}/>;
     }
     if (val === null || val === undefined || val === '') {
       return <span className='text-slate-300'>—</span>;
     }
-    return <span>{String(val)}</span>;
+    return <span>{highlightText(String(val), filterText, field)}</span>;
   };
 
   return (

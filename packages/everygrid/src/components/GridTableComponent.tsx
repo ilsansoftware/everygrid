@@ -160,6 +160,12 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
   // width evenly (1:1:1), so sorting/long values can never resize a column or push the grid wider.
   const MOBILE_DETAIL_W = 52;
   const mobileDataCols = isMobile ? gridColumns.filter(c => c.type !== 'row_detail').length || 1 : 1;
+  // Fields shown as visible mobile columns — the detail button uses this to flag matches that live
+  // only in the hidden (detail-only) fields.
+  const visibleFields = useMemo(
+    () => isMobile ? gridColumns.filter(c => c.type !== 'row_detail').map(c => c.field) : [],
+    [isMobile, gridColumns],
+  );
 
   const getColumnStyle = (col: GridColumn) => {
     if (isMobile) {
@@ -350,6 +356,8 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                   container={container}
                   editableFields={editableFields}
                   filterText={filterText}
+                  visibleFields={visibleFields}
+                  isMobile={isMobile}
                 />
               ))}
             </tr>

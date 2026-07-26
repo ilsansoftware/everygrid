@@ -673,12 +673,9 @@ export const GridToolbarComponent = ({
             </button>
             {menuOpen && (
                 <div className='everygrid-mobile-menu'>
-                  {createMenuButton(excelBtnText, 'bg-white text-slate-700 hover:bg-slate-50', onToggleExcelView)}
                   {onReloadData && createMenuButton(reloadBtnText, 'bg-white text-slate-700 hover:bg-slate-50', onReloadData)}
-                  {createMenuButton(`${downloadExcelBtnText} · ${I18n.t('toolbar.exportFiltered')}`, 'bg-white text-slate-700 hover:bg-slate-50', () => onDownloadExcel('filtered'))}
-                  {createMenuButton(`${downloadExcelBtnText} · ${I18n.t('toolbar.exportAll')}`, 'bg-white text-slate-700 hover:bg-slate-50', () => onDownloadExcel('all'))}
-                  {createMenuButton(resetWidthBtnText, 'bg-white text-slate-700 hover:bg-slate-50', onResetWidths)}
-                  {createMenuButton(selectColsBtnText, 'bg-white text-slate-700 hover:bg-slate-50', onShowColumnSelector)}
+                  {filteredCount !== allCount && (filteredCount ?? 0) > 0 && createMenuButton(`${downloadExcelBtnText} · ${I18n.t('toolbar.exportFiltered')}`, 'bg-white text-slate-700 hover:bg-slate-50', () => onDownloadExcel('filtered'))}
+                  {(allCount ?? 0) > 0 && createMenuButton(`${downloadExcelBtnText} · ${I18n.t('toolbar.exportAll')}`, 'bg-white text-slate-700 hover:bg-slate-50', () => onDownloadExcel('all'))}
                   {hiddenColsBtnText && createMenuButton(hiddenColsBtnText, 'text-red-600 hover:bg-red-50', onShowHiddenColumnSelector)}
                   {resetBtnText && createMenuButton(resetBtnText, 'text-orange-700 hover:bg-orange-50', onReset)}
                   {resetSortBtnText && createMenuButton(resetSortBtnText, 'text-indigo-700 hover:bg-indigo-50', onResetSort)}
