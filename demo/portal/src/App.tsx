@@ -32,8 +32,8 @@ const TABS: { id: TabId; title: string; icon?: string; label?: string }[] = [
   {id: 'react', title: 'React Demo', icon: '/react/favicon.ico'},
   {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico'},
   {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/favicon.ico'},
-  {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large data'},
-  {id: 'virtual', title: 'Virtual Scroll — 100k rows', label: 'virtual scroll'},
+  {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large\ndata'},
+  {id: 'virtual', title: 'Virtual Scroll — 100k rows', label: 'virtual\nscroll'},
 ];
 
 const LOCALES: { id: Locale; flag: string; title: string }[] = [
@@ -299,9 +299,9 @@ export default function App() {
         </header>
 
         <div className='demo-panel'>
-          {/* One heading for the active tab, OUTSIDE the scroll area — otherwise a grid's sticky
-            header pins to the panel top and covers it. */}
-          <h2 className='demo-heading'>{TABS.find((t) => t.id === tab)?.title}</h2>
+          {/* Heading sits OUTSIDE the scroll area (fixed above), otherwise a grid's sticky header
+            would pin to the panel top and cover it. Dropped entirely on mobile to save space. */}
+          {!isNarrow && <h2 className='demo-heading'>{TABS.find((t) => t.id === tab)?.title}</h2>}
           <div className='demo-scroll'>
             {TABS.filter((t) => mounted.has(t.id)).map((t) =>
                 REACT_TABS.includes(t.id) ? (

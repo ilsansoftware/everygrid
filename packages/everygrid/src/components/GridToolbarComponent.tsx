@@ -13,8 +13,6 @@ import {SortResetIcon} from '../icons/SortResetIcon';
 
 /** Hard cap on the search box: it grows to this many rows, and edits past it are rejected. */
 const MAX_FILTER_ROWS = 10;
-/** Narrow layouts get a lower cap: the box floats over the grid, and ten rows there would bury it. */
-const MAX_FILTER_ROWS_MOBILE = 3;
 
 export interface GridToolbarProps {
   isExcelViewMode: boolean;
@@ -173,20 +171,6 @@ export const GridToolbarComponent = ({
     return at(pos - 1) ?? at(pos);
   };
 
-  // Index just past the `)` that closes the scope the caret is inside, or `caret` when it isn't
-  // inside any unclosed `(`. Lets an operator jump out of a field's parens before it's inserted.
-  const closeOfEnclosingScope = (value: string, caret: number): number => {
-    let depth = 0;
-    for (let i = 0; i < caret; i++) { if (value[i] === '(') depth++; else if (value[i] === ')' && depth > 0) depth--; }
-    if (depth === 0) return caret;
-    let d = 0;
-    for (let i = caret; i < value.length; i++) {
-      if (value[i] === '(') d++;
-      else if (value[i] === ')') { if (d === 0) return i + 1; d--; }
-    }
-    return value.length;
-  };
-
   // The identifier word ending at the caret (may be empty right after `(`/`.`), and whether it sits
   // where a field key is expected (start, or right after `(`, `&`, `|`, `.`). Not a key position →
   // it's a value inside `(...)`.
@@ -232,8 +216,8 @@ export const GridToolbarComponent = ({
     const node = navigate(searchKeys, scopePath(value.slice(0, ctx.start)));
     const tl = ctx.token.toLowerCase();
     // Sub-keys for the scope — none for a flat/leaf field or an unknown path. && / || are always
-    // offered at the front so a sibling condition can be chained even from a flat key (picking one
-    // inserts it after the enclosing scope closes — see applySuggestion).
+    // offered at the front so a sibling condition can be chained anywhere (picking one inserts it at
+    // the caret, i.e. inside the current parens — see applySuggestion).
     const keys = node ? Object.keys(node).filter(k => k.toLowerCase().includes(tl)).slice(0, 8) : [];
     setSuggestions(['&&', '||', ...keys]);
     setSuggestIndex(0);
@@ -254,13 +238,15 @@ export const GridToolbarComponent = ({
     const el = filterRef.current;
     const caret = el?.selectionStart ?? inputValue.length;
     if (item === '&&' || item === '||') {
-      // If the caret is still inside a field's parens (typing its value), the operator belongs after
-      // that field closes: `name(john|)` + && → `name(john) && `.
-      const at = closeOfEnclosingScope(inputValue, caret);
-      const head = inputValue.slice(0, at).replace(/\s+$/, '');
-      const tail = inputValue.slice(at).replace(/^\s+/, '');
-      const next = head + ' ' + item + ' ' + tail;
-      const pos = head.length + item.length + 2; // after "<op> "
+      // Inserted at the caret, so an operator picked from inside a field's parens stays in that scope:
+      // `name(john|)` + && → `name(john && )`. It used to jump out past the closing `)`, which made a
+      // condition nested inside a field impossible to build from the dropdown.
+      const head = inputValue.slice(0, caret).replace(/\s+$/, '');
+      const tail = inputValue.slice(caret).replace(/^\s+/, '');
+      // No leading space at the start of a scope (empty box, or right after `(`) — `name( && )` reads wrong.
+      const lead = head === '' || head.endsWith('(') ? '' : ' ';
+      const next = head + lead + item + ' ' + tail;
+      const pos = head.length + lead.length + item.length + 1; // after "<op> "
       setInputValue(next);
       setCaret(pos);
       requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(pos, pos); });
@@ -355,7 +341,9 @@ export const GridToolbarComponent = ({
     // Row metrics derived rather than hard-coded, so they track the CSS.
     const line = parseFloat(cs.lineHeight) || 16;
     const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-    const maxHeight = line * (isMobile ? MAX_FILTER_ROWS_MOBILE : MAX_FILTER_ROWS) + padY;
+    // Same row cap on mobile as on web: the box grows the toolbar rather than floating over the grid,
+    // so a long query pushes the table down instead of burying it.
+    const maxHeight = line * MAX_FILTER_ROWS + padY;
     el.style.height = 'auto';
     // Hard cap: rather than scrolling the overflow out of sight, reject the edit that crossed the
     // limit and put the previous text back. Measuring is the only way to count WRAPPED rows, so the
@@ -378,10 +366,10 @@ export const GridToolbarComponent = ({
   // during render — the portal uses this state).
   useLayoutEffect(() => {
     if (suggestions.length === 0) return;
-    // Re-measure and pin the dropdown under the box. Repositioning (rather than dismissing) on
-    // scroll/resize matters on mobile: focusing the input opens the keyboard, which fires a resize
-    // before the list even paints — dismissing there meant the suggestions never showed. The
-    // visualViewport events track the keyboard/zoom so the fixed dropdown doesn't drift.
+    // Desktop only: the dropdown is portalled and floats under the box, so it needs measured
+    // coordinates. On mobile it renders inline (grouped with the box in the flow), so there's nothing
+    // to measure — and measuring against a keyboard-resized viewport is exactly what made it drift.
+    if (isMobile) return;
     const place = () => {
       const box = boxRef.current;
       if (!box) return;
@@ -389,7 +377,13 @@ export const GridToolbarComponent = ({
       // list read as one connected control — same on web and mobile (the box sits at the top of the
       // toolbar, clear of the keyboard). Portalled to <body> to escape the grid's overflow/stacking.
       const r = box.getBoundingClientRect();
-      setDropStyle({position: 'fixed', top: r.bottom, left: r.left, width: r.width, zIndex: 1000});
+      // position:fixed escapes the grid's overflow, but it also escapes the host page's clipping and
+      // stacking: scrolling the search box under the host's sticky chrome (a nav bar, a heading) left
+      // the list sliding OVER it. So hit-test the box's own bottom edge — if the topmost element there
+      // isn't part of the box, something is covering the anchor and the list must hide with it.
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.bottom - 2);
+      const covered = r.bottom < 0 || r.top > window.innerHeight || !(hit && box.contains(hit));
+      setDropStyle({position: 'fixed', top: r.bottom, left: r.left, width: r.width, zIndex: 1000, visibility: covered ? 'hidden' : 'visible'});
     };
     place();
     const vv = window.visualViewport;
@@ -403,20 +397,37 @@ export const GridToolbarComponent = ({
       vv?.removeEventListener('resize', place);
       vv?.removeEventListener('scroll', place);
     };
-  }, [suggestions]);
+  }, [suggestions, isMobile]);
+
 
   // The dropdown stays up while the user works the search box; it closes only when a pointer press
   // lands outside both the box and the dropdown itself. (Blur alone no longer closes it.)
   useEffect(() => {
     if (suggestions.length === 0) return;
-    const onDown = (e: PointerEvent) => {
+    const outside = (e: Event) => {
       const t = e.target as Node;
-      if (boxRef.current?.contains(t) || dropRef.current?.contains(t)) return;
+      return !(boxRef.current?.contains(t) || dropRef.current?.contains(t));
+    };
+    const dismiss = () => {
       setSuggestions([]);
       setSuggestEntered(false);
     };
+    const onDown = (e: PointerEvent) => {
+      // Touch is handled on click instead: a scroll gesture also starts with a pointerdown outside the
+      // box, so dismissing here made the list vanish the moment the user dragged the page. A drag never
+      // produces a click, so click fires for real taps only.
+      if (e.pointerType === 'touch') return;
+      if (outside(e)) dismiss();
+    };
+    const onClick = (e: MouseEvent) => {
+      if (outside(e)) dismiss();
+    };
     document.addEventListener('pointerdown', onDown, true);
-    return () => document.removeEventListener('pointerdown', onDown, true);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('click', onClick, true);
+    };
   }, [suggestions]);
 
   const handleFilterClear = () => {
@@ -534,7 +545,11 @@ export const GridToolbarComponent = ({
                   onChange={e => handleFilterChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
                   onKeyDown={handleFilterKeyDown}
                   onSelect={e => setCaret(e.currentTarget.selectionStart ?? 0)}
-                  onFocus={e => { setFocused(true); setCaret(e.target.selectionStart ?? 0); refreshSuggestions(e.target.value, e.target.selectionStart ?? e.target.value.length); }}
+                  onFocus={e => {
+                    setFocused(true);
+                    setCaret(e.target.selectionStart ?? 0);
+                    refreshSuggestions(e.target.value, e.target.selectionStart ?? e.target.value.length);
+                  }}
                   // Losing focus no longer closes the list — it stays until a pointerdown lands
                   // outside the box + dropdown (see the effect above), so moving the caret or the
                   // pointer within the search control keeps it open.
@@ -556,42 +571,46 @@ export const GridToolbarComponent = ({
             </>
           )}
         </div>
-        {/* Portalled to <body> (position:fixed) to escape the grid's overflow/stacking, but placed
-            flush under the search box at its exact width — border-top dropped and only the bottom
-            corners rounded — so the two read as one connected control dropping down. */}
-        {!statusText && suggestions.length > 0 && dropStyle && createPortal(
-          <div
-              ref={dropRef}
-              style={dropStyle}
-              className='flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 shadow-lg'>
-            {suggestions.map((k, i) => {
-              const isOp = k === '&&' || k === '||';
-              const selected = suggestEntered && i === suggestIndex;
-              // Operators read as connectors, not fields — set apart by chip colour only.
-              const tone = selected
-                ? 'bg-indigo-100 text-indigo-700'
-                : isOp
-                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200';
-              const label = isOp ? null : labelOf?.(k);
-              return (
-                <button
-                    key={k}
-                    type='button'
-                    // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
-                    onMouseDown={e => { e.preventDefault(); applySuggestion(k); }}
-                    className={`shrink-0 rounded font-medium ${tone} ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-2 py-0.5 text-[11px]'}`}
-                >{k}{label && label !== k ? <span className='ml-1 opacity-60'>({label})</span> : null}</button>
-              );
-            })}
-            {/* Arrow-key hint only applies on desktop (touch just taps a chip); it also forces a wrap
-                that would break the mobile single-row strip. */}
-            {!isMobile && (
-              <div className='basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none'>{I18n.t('toolbar.suggestNav')}</div>
-            )}
-          </div>,
-          document.body,
-        )}
+        {/* Desktop: portalled to <body> (position:fixed) to escape the grid's overflow/stacking,
+            placed flush under the box at its exact width so the two read as one control. Mobile:
+            rendered INLINE right under the box (same flow), so the keyboard can't drift the two apart
+            — they grow the toolbar together as one grouped control. */}
+        {!statusText && suggestions.length > 0 && (() => {
+          const list = (
+            <div
+                ref={dropRef}
+                style={isMobile ? undefined : (dropStyle ?? undefined)}
+                className={`flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 ${isMobile ? '' : 'shadow-lg'}`}>
+              {suggestions.map((k, i) => {
+                const isOp = k === '&&' || k === '||';
+                const selected = suggestEntered && i === suggestIndex;
+                // Operators read as connectors, not fields — set apart by chip colour only.
+                const tone = selected
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : isOp
+                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200';
+                const label = isOp ? null : labelOf?.(k);
+                return (
+                  <button
+                      key={k}
+                      type='button'
+                      // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
+                      onMouseDown={e => { e.preventDefault(); applySuggestion(k); }}
+                      className={`shrink-0 rounded font-medium ${tone} ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-2 py-0.5 text-[11px]'}`}
+                  >{k}{label && label !== k ? <span className='ml-1 opacity-60'>({label})</span> : null}</button>
+                );
+              })}
+              {/* Arrow-key hint only applies on desktop (touch just taps a chip); it also forces a wrap
+                  that would break the mobile single-row strip. */}
+              {!isMobile && (
+                <div className='basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none'>{I18n.t('toolbar.suggestNav')}</div>
+              )}
+            </div>
+          );
+          if (isMobile) return list;
+          return dropStyle ? createPortal(list, document.body) : null;
+        })()}
       </div>
   ) : null;
 
@@ -658,13 +677,15 @@ export const GridToolbarComponent = ({
     return (
         <div className='everygrid-toolbar' ref={toolbarRef}>
           {filterInput}
-          <div className='relative ml-auto' ref={menuRef}>
+          {/* self-start keeps the menu button pinned to the top — i.e. beside the search BOX — so it
+              doesn't drift to the vertical centre when the inline suggestions grow the input group. */}
+          <div className='relative ml-auto self-start' ref={menuRef}>
             <button
-                className='flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-slate-700 rounded'
+                className='flex items-center justify-center p-2 text-slate-700 rounded hover:bg-slate-100'
                 onClick={() => setMenuOpen(prev => !prev)}
                 aria-label={I18n.t('toolbar.moreActions')}
             >
-              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'
+              <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor'
                    strokeWidth='2.5'>
                 <line x1='3' y1='6' x2='21' y2='6'/>
                 <line x1='3' y1='12' x2='21' y2='12'/>

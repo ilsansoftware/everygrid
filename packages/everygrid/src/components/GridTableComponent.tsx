@@ -11,6 +11,18 @@ import {HideIcon} from '../icons/HideIcon.tsx';
 import {SortUpIcon} from '../icons/SortUpIcon.tsx';
 import {MobileColumnsIcon} from '../icons/MobileColumnsIcon.tsx';
 
+// Measure rendered text width for sizing mobile columns to their header label. One reused canvas —
+// measureText is allocation-free and needs no layout, so it's cheap to call per column per render.
+let _measureCanvas: HTMLCanvasElement | null = null;
+const measureTextWidth = (text: string, font: string): number => {
+  if (typeof document === 'undefined') return 0;
+  if (!_measureCanvas) _measureCanvas = document.createElement('canvas');
+  const ctx = _measureCanvas.getContext('2d');
+  if (!ctx) return 0;
+  ctx.font = font;
+  return ctx.measureText(text).width;
+};
+
 export interface GridTableProps<T extends Record<string, unknown>> {
   grid: IEverygrid<T>;
   columns: GridColumn[];
@@ -156,10 +168,45 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
     ? columns
     : columns.filter((col) => !grid.pinnedColumns.has(col.field));
 
-  // Mobile: the detail button takes a small fixed column; the rest split the remaining viewport
-  // width evenly (1:1:1), so sorting/long values can never resize a column or push the grid wider.
+  // Mobile: each data column is a fixed 1/3 of the viewport width (1:1:1, detail column excluded),
+  // and the row scrolls horizontally within that band. The detail button is pinned to the right
+  // (sticky) so it stays reachable while the columns scroll. Fixed widths keep sort/long values from
+  // ever resizing a column.
   const MOBILE_DETAIL_W = 52;
   const mobileDataCols = isMobile ? gridColumns.filter(c => c.type !== 'row_detail').length || 1 : 1;
+  // Base 1:1:1 width: three data columns PLUS the pinned detail column fill the viewport (the detail
+  // width is subtracted before dividing, so the 3rd column isn't hidden behind it). Measured from the
+  // container (the ResizeObserver in EverygridComponent re-renders on width change, so it stays
+  // current). Selecting more than three columns overflows and scrolls; with fewer, the divisor drops
+  // so they still fill the width.
+  const mobileColsPerView = Math.min(3, mobileDataCols);
+  const mobileBaseColW = isMobile
+    ? Math.max(96, Math.floor((Math.round(container.getBoundingClientRect().width) - MOBILE_DETAIL_W) / mobileColsPerView))
+    : 0;
+  // A column grows past the base only when its header LABEL needs more room, so the column name is
+  // never truncated to "blah…". Short-named columns keep the 1:1:1 base; wide ones grow and scroll.
+  // (Data cells still truncate — only the header name is guaranteed to fit.) Extra accounts for the
+  // th px-1 (8) + header px-3 (24) + gap (4) + sort-icon area (~16), plus slack so an off-by-a-pixel
+  // measurement can't clip the last glyph.
+  const MOBILE_HEADER_EXTRA = 60;
+  const headerFont = isMobile
+    ? `600 14px ${(typeof getComputedStyle !== 'undefined' ? getComputedStyle(container).fontFamily : '') || 'sans-serif'}`
+    : '';
+  const mobileDataColWidths = isMobile
+    ? gridColumns
+      .filter(c => c.type !== 'row_detail')
+      .map(c => {
+        const label = c.headerName || c.field;
+        // Canvas measure; if it comes back empty (no 2d context) estimate from length so a long
+        // label still widens its column instead of silently truncating.
+        const measured = measureTextWidth(label, headerFont);
+        const textW = measured > 0 ? measured : label.length * 8.5;
+        const w = Math.max(mobileBaseColW, Math.ceil(textW) + MOBILE_HEADER_EXTRA);
+        return {field: c.field, w};
+      })
+    : [];
+  const mobileWidthByField = new Map(mobileDataColWidths.map(({field, w}) => [field, w]));
+  const mobileTableWidth = mobileDataColWidths.reduce((sum, {w}) => sum + w, 0) + MOBILE_DETAIL_W;
   // Fields shown as visible mobile columns — the detail button uses this to flag matches that live
   // only in the hidden (detail-only) fields.
   const visibleFields = useMemo(
@@ -169,9 +216,9 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
 
   const getColumnStyle = (col: GridColumn) => {
     if (isMobile) {
-      if (col.type === 'row_detail') return {width: `${MOBILE_DETAIL_W}px`};
-      const w = `calc((100% - ${MOBILE_DETAIL_W}px) / ${mobileDataCols})`;
-      return {width: w, maxWidth: w};
+      if (col.type === 'row_detail') return {width: `${MOBILE_DETAIL_W}px`, minWidth: `${MOBILE_DETAIL_W}px`};
+      const w = `${mobileWidthByField.get(col.field) ?? mobileBaseColW}px`;
+      return {width: w, minWidth: w, maxWidth: w};
     }
     const width = currentWidths.get(col.field) || col.width;
     if (width) {
@@ -186,12 +233,13 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
   return (
     <div className={`everygrid-table-container overscroll-x-none flex-1 min-w-0 flex flex-col ${isMobile ? 'everygrid-mobile-x' : ''}`}>
       <table
-        className={`everygrid-table ${isMobile ? 'everygrid-mobile table-fixed w-full' : ((currentWidths && currentWidths.size > 0) || gridColumns.some(c => c.width) ? 'table-fixed w-max min-w-full' : '')}`}>
+        className={`everygrid-table ${isMobile ? 'everygrid-mobile table-fixed' : ((currentWidths && currentWidths.size > 0) || gridColumns.some(c => c.width) ? 'table-fixed w-max min-w-full' : '')}`}
+        style={isMobile ? {width: `${mobileTableWidth}px`} : undefined}>
         <thead>
         <tr>
           {gridColumns.map((col) => (
             <th key={col.field} data-field={col.field} style={getColumnStyle(col)}
-                className={`${col.type === 'row_checkbox' || col.type === 'data_checkbox' ? 'w-10' : ''} text-left`}>
+                className={`${col.type === 'row_detail' ? 'everygrid-detail-cell ' : ''}${col.type === 'row_checkbox' || col.type === 'data_checkbox' ? 'w-10' : ''} text-left`}>
               <div
                 className='everygrid-header-content px-2 py-2'
               >
@@ -229,8 +277,8 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                   <>
                     <span className='truncate'>{col.headerName || col.field}</span>
                     <div className='flex items-center gap-1 shrink-0'>
-                      {/* Pinning is off on mobile (no horizontal scroll to pin against), so its icon
-                          is dropped along with hide to keep the narrow header uncluttered. */}
+                      {/* Mobile keeps the narrow header to just the label + sort: pinning, hide, and
+                          the column-modify icons (thousands-comma, inline-edit) are all dropped. */}
                       {!isMobile && (
                         <button
                           className={`everygrid-icon-btn ${grid.pinnedColumns.has(col.field) ? 'is-active' : ''}`}
@@ -242,7 +290,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                           <PinEmptyIcon/>
                         </button>
                       )}
-                      {(col.field !== I18n.t('grid.index') && grid.isColumnNumeric(col.field)) && (
+                      {!isMobile && (col.field !== I18n.t('grid.index') && grid.isColumnNumeric(col.field)) && (
                         <button
                           className={`everygrid-icon-btn ${grid.commaSeparatedFields.has(col.field) ? 'is-active' : ''}`}
                           disabled={isIndexing || isExporting}
@@ -251,7 +299,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                             handleToggleColumn(col.field);
                           }}><CommaIcon/></button>
                       )}
-                      {editableFields.includes(col.field) && (
+                      {!isMobile && editableFields.includes(col.field) && (
                         <button
                           className={`everygrid-icon-btn ${grid.activeEditFields.get(containerId)?.has(col.field) ? 'is-active' : ''}`}
                           disabled={isIndexing || isExporting}

@@ -107,7 +107,11 @@ nav button .tab-label {
   padding: 0 4px;
   font-size: 12px;
   font-weight: 600;
-  white-space: nowrap;
+  /* Two-word labels (e.g. "virtual scroll") carry a newline and break onto two lines, keeping the
+     tab compact instead of one long horizontal strip. */
+  white-space: pre-line;
+  text-align: center;
+  line-height: 1.1;
   color: #cbd5e1; /* slate-300 on the dark capsule */
   opacity: 0.6;
   transition: all 0.2s;
@@ -395,7 +399,9 @@ nav button.active img {
   font-family: inherit;
 }
 
-@media (max-width: 640px) {
+/* Full-screen the code modal on a narrow OR short viewport (e.g. a phone in landscape): the fixed
+   85vh / 900px box leaves awkward margins when there isn't much height, so fit it to the screen. */
+@media (max-width: 640px), (max-height: 640px) {
   .code-modal-overlay {
     padding: 0;
   }
@@ -434,12 +440,19 @@ nav button.active img {
 
   nav {
     margin-left: 0;
-    padding: 3px;
+    padding: 4px;
   }
 
+  /* Nav tabs, locale buttons and the code button share one height on mobile so the whole bar reads
+     as one row of equally-sized touch targets. */
   nav button {
-    height: 28px;
-    padding: 6px 8px;
+    height: 34px;
+    padding: 6px 10px;
+  }
+
+  nav button img {
+    width: 20px;
+    height: 20px;
   }
 
   .header-right {
@@ -448,14 +461,23 @@ nav button.active img {
   }
 
   .locale-btn {
-    width: 28px;
-    height: 26px;
-    font-size: 1rem;
+    width: 34px;
+    height: 34px;
+    font-size: 1.1rem;
   }
 
+  /* Match the locale/nav button GROUPS' outer height (34px button + 4px×2 group padding = 42px),
+     since the code button has no group wrapper of its own — so all three line up. */
   .show-code-btn {
-    height: 32px;
-    padding: 4px 10px;
+    width: 42px;
+    height: 42px;
+    padding: 6px;
+    justify-content: center;
+  }
+
+  .show-code-btn svg {
+    width: 22px;
+    height: 22px;
   }
 
   .portal-footer {

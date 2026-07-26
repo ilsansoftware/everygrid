@@ -28,6 +28,10 @@
    ------------------------------------------------------------------------------------------ */
 
 :root {
+  /* One default font for everything Everygrid renders — the grid AND the modals (which portal to
+     <body>, so they'd otherwise inherit the host page's font and look different). Override this
+     single variable to re-skin the whole component; it's the seam a future theming API can drive. */
+  --everygrid-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
   --everygrid-header-color: #475569;
   --everygrid-header-bg: #f8fafc;
   --everygrid-body-color: #475569;
@@ -37,6 +41,7 @@
 /* Base Grid Styles */
 .everygrid-wrapper {
   @apply w-full;
+  font-family: var(--everygrid-font);
 }
 
 .everygrid-table {
@@ -93,9 +98,9 @@
    the exact 1:1:1 (+ detail) widths set inline via table-layout:fixed. */
 .everygrid-table.everygrid-mobile {
   table-layout: fixed;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
+  /* Width is set inline (3 × 1/3-viewport data columns + the pinned detail column), so the row can
+     be wider than the viewport and scroll horizontally. min-width keeps it filling a narrow one. */
+  min-width: 100%;
 }
 
 .everygrid-table.everygrid-mobile thead th {
@@ -128,12 +133,11 @@
   overflow: hidden;
 }
 
-/* Device-fit: lock the mobile table to vertical scroll only. table-fixed w-full already sizes the
-   columns to the viewport; this stops any header-icon overflow from producing a horizontal scrollbar.
-   Higher specificity than the base .everygrid-table-container's overflow:auto, so it wins on the x. */
+/* The mobile row is wider than the viewport (fixed 1/3-width columns + pinned detail), so allow
+   horizontal scrolling within it. */
 .everygrid-table-container.everygrid-mobile-x,
 .everygrid-virtual-scroller.everygrid-mobile-x {
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .everygrid-detail-cell {
@@ -141,10 +145,26 @@
 }
 
 /* The detail column is narrow (52px) and holds a 40px button, so it can't afford the mobile cells'
-   px-3. Higher specificity than `.everygrid-table.everygrid-mobile tbody td`, so it wins. */
+   px-3. Higher specificity than `.everygrid-table.everygrid-mobile tbody td`, so it wins.
+   It is also pinned to the right (sticky) so it stays reachable while the data columns scroll; an
+   opaque background + left border keep the scrolled cells from showing through it. */
 .everygrid-table.everygrid-mobile tbody td.everygrid-detail-cell {
   padding-left: 2px;
   padding-right: 2px;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background-color: #fff;
+  border-left: 1px solid #e2e8f0;
+}
+
+/* The detail column header, pinned both to the top (like every header) and the right. */
+.everygrid-table.everygrid-mobile thead th.everygrid-detail-cell {
+  position: sticky;
+  right: 0;
+  z-index: 31; /* above the sibling headers (z-30) as they scroll under it */
+  border-left: 1px solid #e2e8f0;
+  background-color: var(--everygrid-header-bg, #f8fafc) !important;
 }
 
 /* Mobile: a value rendered as a button/link (e.g. the "N items" popup tag) must keep its full box.
@@ -273,6 +293,9 @@
 /* Modals */
 .everygrid-popup-overlay {
   @apply fixed inset-0 bg-slate-900/30 flex items-center justify-center z-40 p-4;
+  /* Portalled to <body>, so set the font here too — otherwise the modal inherits the host page's
+     font instead of the grid's and the two look mismatched. */
+  font-family: var(--everygrid-font);
 }
 
 .everygrid-popup-content {
@@ -405,6 +428,16 @@ button {
 
 .everygrid-pagination-btn.active {
   @apply bg-indigo-600 text-white border-indigo-600 font-bold;
+}
+
+/* Bigger, easier touch targets for the pager on small screens. */
+@media (max-width: 640px) {
+  .everygrid-pagination-controls {
+    @apply gap-1.5;
+  }
+  .everygrid-pagination-btn {
+    @apply px-3 py-2 text-sm min-w-[40px];
+  }
 }
 
 .everygrid-pagination-info {
@@ -589,8 +622,10 @@ button {
   @apply border-r border-slate-200;
 }
 
-/* JSON Pretty Print */
-.everygrid-popup-body {
+/* JSON / long-text popup body (PopupComponent) — monospace, code-like. Scoped to its OWN class so
+   it no longer hijacks the shared `.everygrid-popup-body`, which was making every chrome modal (row
+   detail, column selectors) render in monospace and look unlike the grid. */
+.everygrid-popup-code-body {
   @apply p-6 overflow-auto overscroll-x-none bg-slate-50 font-mono text-sm leading-relaxed;
 }
 

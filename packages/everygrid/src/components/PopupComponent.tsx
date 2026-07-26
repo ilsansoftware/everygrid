@@ -45,7 +45,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
           </div>
           <span className='everygrid-popup-close' onClick={onClose}>&times;</span>
         </div>
-        <div className='everygrid-popup-body overflow-auto flex-1'>
+        <div className='everygrid-popup-body everygrid-popup-code-body overflow-auto flex-1'>
           {viewMode === 'table' ? (
             isXml ? (
               <pre

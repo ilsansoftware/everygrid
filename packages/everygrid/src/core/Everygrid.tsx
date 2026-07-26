@@ -1790,13 +1790,25 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public getColumns(containerId: string, items: T[], isMobile: boolean = false): GridColumn[] {
     let columns: GridColumn[] = this.buildBaseColumns(containerId, items);
 
-    // Mobile: a fixed set of ≤3 columns (no horizontal scroll) plus a per-row detail button that
-    // opens the full row in a modal. The desktop-only chrome below (pinning, the display whitelist,
-    // the checkbox column) is deliberately skipped so the row always fits the viewport width.
+    // Mobile: fixed-width columns that scroll horizontally, plus a per-row detail button that opens
+    // the full row in a modal. Column choice uses the same "Select Columns" whitelist as desktop
+    // (displayColsMap) — no longer capped at 3, since the row now scrolls. Default when nothing is
+    // selected: the configured mobileColumns, else every column. Desktop-only chrome (pinning, the
+    // checkbox column) is deliberately skipped.
     if (isMobile) {
-      const picked = this.getMobileFields(containerId, columns)
-        .map(field => columns.find(col => col.field === field))
-        .filter((col): col is GridColumn => !!col);
+      let picked: GridColumn[];
+      // An explicit whitelist (even empty, i.e. "deselect all") is honoured as-is; columns always
+      // render in the base column order, never the pick order. Only when the user has never chosen do
+      // we fall back to the configured mobileColumns, else every column.
+      if (this.displayColsMap.has(containerId)) {
+        const set = this.displayColsMap.get(containerId)!;
+        picked = columns.filter(col => set.has(col.field));
+      } else {
+        const configured = this.getMobileColumns(containerId)?.filter(f => columns.some(c => c.field === f));
+        picked = configured && configured.length > 0
+          ? columns.filter(col => configured.includes(col.field))
+          : columns;
+      }
       const hiddenFields = this.hiddenFieldsMap.get(containerId) || new Set();
       return [
         ...picked.filter(col => !hiddenFields.has(col.field)),
