@@ -49,7 +49,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
           {viewMode === 'table' ? (
             isXml ? (
               <pre
-                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full whitespace-pre-wrap break-all'>
+                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full min-h-full whitespace-pre-wrap break-all'>
                 {data as string}
               </pre>
             ) : (
@@ -57,7 +57,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
             )
           ) : (
             <pre
-              className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full'>
+              className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full min-h-full'>
               {JSON.stringify(data, null, 2)}
             </pre>
           )}

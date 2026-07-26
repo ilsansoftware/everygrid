@@ -318,9 +318,67 @@
   @apply w-full h-full min-w-full;
 }
 
-.everygrid-popup-content .everygrid-table,
-.everygrid-popup-content .everygrid-nested-table {
+.everygrid-popup-content .everygrid-table {
   @apply min-w-full;
+}
+
+/* A nested object renders a table per level, and each level's auto layout asks for the width its
+   content wants — four levels in, the outermost table's min-content was 2281px inside a 600px modal,
+   so the whole modal scrolled sideways. Only the OUTERMOST table is pinned to the popup width; the
+   levels below keep their natural width and scroll inside their own cell, so a wide section stays a
+   wide section instead of dragging the entire view (or being squashed flat) with it. */
+.everygrid-popup-body > .everygrid-nested-table {
+  @apply table-fixed w-full max-w-full min-w-0;
+}
+
+/* The scroll box each level below the top is wrapped in (NestedTableComponent). The table inside
+   keeps `min-width: 100%`, so it fills a wide cell and scrolls in a narrow one. */
+.everygrid-nested-scroll {
+  @apply overflow-x-auto max-w-full;
+}
+
+/* No frame of its own: the cell around it already draws one, and two lines a padding-width apart is
+   what made the nesting look heavy. */
+.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table {
+  @apply border-0;
+  table-layout: auto;
+}
+
+/* A cell holding a nested TABLE gives up its padding, so the child's grid lines continue the
+   parent's rather than floating in an inset box. Only a table — a nested level can also render as
+   plain text (a list of strings) or a summary button, and those still need their padding. */
+.everygrid-popup-content .everygrid-nested-table td:has(> .everygrid-nested-scroll > .everygrid-nested-table) {
+  @apply p-0;
+}
+
+/* One hairline between levels instead of two: every outer edge of the child would otherwise sit
+   right on top of the parent cell's own border, and the doubling compounded with each level. The
+   frame is the parent's job, so the child drops all four of its outer edges. */
+.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > * > tr > :first-child {
+  @apply border-l-0;
+}
+
+.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > * > tr > :last-child {
+  @apply border-r-0;
+}
+
+.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > :first-child > tr:first-child > * {
+  @apply border-t-0;
+}
+
+.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > :last-child > tr:last-child > * {
+  @apply border-b-0;
+}
+
+.everygrid-popup-content .everygrid-nested-table th,
+.everygrid-popup-content .everygrid-nested-table td {
+  @apply break-words whitespace-normal;
+}
+
+/* Key/value rows (a `th` leading each row) keep a narrow key column — fixed layout would otherwise
+   split them evenly and give a short key half the table. */
+.everygrid-popup-content .everygrid-nested-table > tbody > tr > th:first-child {
+  width: 30%;
 }
 
 .everygrid-popup-content pre:not(.whitespace-pre-wrap) {
@@ -625,8 +683,10 @@ button {
 /* JSON / long-text popup body (PopupComponent) — monospace, code-like. Scoped to its OWN class so
    it no longer hijacks the shared `.everygrid-popup-body`, which was making every chrome modal (row
    detail, column selectors) render in monospace and look unlike the grid. */
+/* Tighter inset on a phone-sized popup: 24px each side is most of what a narrow modal has, and it
+   pushed content that would otherwise fit into a horizontal scroll. */
 .everygrid-popup-code-body {
-  @apply p-6 overflow-auto overscroll-x-none bg-slate-50 font-mono text-sm leading-relaxed;
+  @apply p-3 sm:p-6 overflow-auto overscroll-x-none bg-slate-50 font-mono text-sm leading-relaxed;
 }
 
 .json-object {

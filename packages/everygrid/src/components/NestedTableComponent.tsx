@@ -13,7 +13,7 @@ interface NestedTableProps {
   elementGate?: (el: unknown) => string;
 }
 
-const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onShowPopup, filterText = '', elementGate}) => {
+const NestedTableInner: React.FC<NestedTableProps> = ({data, depth = 0, onShowPopup, filterText = '', elementGate}) => {
   if (depth > 0 && onShowPopup && isTooComplex(data)) {
     const label = getSummaryLabel(data);
 
@@ -41,6 +41,14 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
   const elFilter = (el: unknown): string => (filterText ? gate(el) : '');
 
   if (Array.isArray(data)) {
+    // A one-element array of an object reads better AS that object. The column-per-key layout below
+    // needs several rows to earn its header row, and with one row it just turns every value into a
+    // sliver of a column — worse the deeper the cell it sits in. Rendered through the inner
+    // component so this doesn't add a second scroll wrapper around the same level.
+    if (data.length === 1 && typeof data[0] === 'object' && data[0] !== null && !Array.isArray(data[0])) {
+      return <NestedTableInner data={data[0]} depth={depth} onShowPopup={onShowPopup} filterText={filterText}
+                               elementGate={elementGate}/>;
+    }
     // Check if it's an array of objects with identical single key
     const isArrayOfSameSingleKeyObjects = data.length > 1 && data.every(item =>
       typeof item === 'object' && item !== null && Object.keys(item).length === 1
@@ -131,7 +139,10 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
             const ef = elFilter(item);
             return (
             <tr key={i}>
-              <td className='p-0'>
+              {/* No hard-coded `p-0` here: a mixed list holds primitives too, and those need the
+                  normal cell padding. A cell whose only child is a nested level drops its padding
+                  through CSS instead (see `td:has(> .everygrid-nested-scroll)`). */}
+              <td>
                 {typeof item === 'object' && item !== null ? (
                   <NestedTableComponent data={item} depth={depth + 1} onShowPopup={onShowPopup} filterText={ef} elementGate={elementGate}/>
                 ) : (
@@ -285,6 +296,14 @@ const NestedTableComponent: React.FC<NestedTableProps> = ({data, depth = 0, onSh
   }
 
   return <span>{highlightText(String(data ?? ''), filterText)}</span>;
+};
+
+/* Every level below the top gets its own scroll box. A wide section then scrolls where it sits,
+   instead of either widening the whole popup or being squeezed flat — and because the table inside
+   keeps `min-width: 100%`, a narrow one still fills its cell rather than leaving a gap beside it. */
+const NestedTableComponent: React.FC<NestedTableProps> = props => {
+  const inner = <NestedTableInner {...props}/>;
+  return (props.depth ?? 0) > 0 ? <div className='everygrid-nested-scroll'>{inner}</div> : inner;
 };
 
 export {NestedTableComponent};

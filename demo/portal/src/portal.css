@@ -393,6 +393,10 @@ nav button.active img {
      overflow:auto can scroll horizontally instead of cutting the code off. */
   width: max-content;
   min-width: 100%;
+  /* Fill the body when the file is short: the theme's background lives on the <pre>, so a
+     content-height box left the modal's own darker background showing as a band underneath. */
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .code-modal-body code {

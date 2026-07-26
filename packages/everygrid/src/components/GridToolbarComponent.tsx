@@ -14,6 +14,103 @@ import {SortResetIcon} from '../icons/SortResetIcon';
 /** Hard cap on the search box: it grows to this many rows, and edits past it are rejected. */
 const MAX_FILTER_ROWS = 10;
 
+// The box shows coloured text through a transparent textarea sitting over a highlight overlay, so
+// the two elements have to break lines in exactly the same places. Soft wrapping cannot be relied on
+// for that — when only one of them takes a wrap, the glyphs (overlay) end up on a different line
+// from the caret (textarea) and the auto-grow below measures a height the text does not have. So the
+// box never soft wraps at all: EVERY wrap point is turned into a real `\n`, which is the one thing
+// every engine honours identically. The textarea then grows, and the caret follows the text.
+//
+// WHERE to break is decided on a hidden mirror of the query, which carries two invisible characters
+// the visible text never gets: a zero-width space after each `(` (line breaking offers no
+// opportunity there, and the column unit is where the break belongs) and a word joiner after `-`/`?`
+// (which do offer one inside a value — that is what split `2026-` / `07`). Greedy line breaking on
+// the mirror therefore lands on column boundaries, and those become the newlines.
+const ZWSP = '​';
+const WJ = '⁠';
+const PADDED = /[(\-?]/g;
+const decorate = (s: string) => s.replace(PADDED, ch => ch + (ch === '(' ? ZWSP : WJ));
+const isPad = (ch: string | undefined) => ch === ZWSP || ch === WJ;
+// An inserted break is a newline FOLLOWED by a word joiner. The marker is what tells it apart from a
+// newline the user typed with Shift+Enter: those are content and are never touched or sent anywhere
+// stripped, while these are layout, re-computed on every edit and resize and taken back out before
+// the query reaches the engine. It trails the newline rather than leading it because a full line
+// ends with a space that hangs past the edge, and anything after that space — even something
+// zero-width — is pushed onto a line of its own, costing the box a blank row.
+const AUTO = /\n⁠/g;
+const stripAuto = (s: string) => s.replace(AUTO, '');
+const withBreaks = (base: string, at: number[]) => {
+  let out = '', prev = 0;
+  for (const i of at) { out += base.slice(prev, i) + '\n' + WJ; prev = i; }
+  return out + base.slice(prev);
+};
+/** Caret between the two coordinate systems: the value the textarea holds, and the query itself. */
+const caretToBase = (value: string, pos: number) => {
+  // Never inside a marker: a caret between the newline and its joiner belongs after both.
+  const p = value[pos - 1] === '\n' && value[pos] === WJ ? pos + 1 : pos;
+  return p - 2 * (value.slice(0, p).match(AUTO)?.length ?? 0);
+};
+const caretFromBase = (pos: number, at: number[]) => pos + 2 * at.filter(i => i <= pos).length;
+
+/** Indices in `text` where the mirror wraps it. Filled and measured in place, so several passes can
+ *  run inside one layout effect.
+ *
+ *  Each character gets its own inline box and is located by ITS box, not by a Range: WebKit reports
+ *  a character range that touches a line boundary against the wrong line (the character after a
+ *  newline comes back on the line above), which put every break one character late on iOS. An inline
+ *  box belongs to exactly one line box, and Blink and WebKit agree on which. */
+const lineStarts = (mirror: HTMLElement, text: string, breakWord: boolean): number[] => {
+  mirror.style.overflowWrap = breakWord ? 'break-word' : 'normal';
+  const padded = decorate(text);
+  const frag = document.createDocumentFragment();
+  const boxes: {el: HTMLElement; at: number}[] = [];
+  for (let m = 0, i = 0; m < padded.length;) {
+    // Whole code points, so a surrogate pair is never split across two boxes and re-shaped.
+    const cp = padded.codePointAt(m) ?? 0;
+    const len = cp > 0xffff ? 2 : 1;
+    const el = document.createElement('span');
+    el.textContent = padded.slice(m, m + len);
+    frag.appendChild(el);
+    // Padding is not part of `text`, and never counts as the start of a line.
+    if (!isPad(padded[m])) { boxes.push({el, at: i}); i += len; }
+    m += len;
+  }
+  mirror.textContent = '';
+  mirror.appendChild(frag);
+  const at: number[] = [];
+  let top: number | null = null;
+  for (const box of boxes) {
+    const t = Math.round(box.el.getBoundingClientRect().top);
+    if (top === null) top = t;
+    // A line some newline already started needs no break of ours.
+    else if (t > top) { top = t; if (box.at > 0 && text[box.at - 1] !== '\n') at.push(box.at); }
+  }
+  return at;
+};
+
+/** Where the query should break, in `base` indices. Two passes, because one is not enough:
+ *  - pass 1 forbids breaking inside a word, so the breaks land on column boundaries and spaces —
+ *    a token too long for the line just overflows the (invisible) mirror rather than being split,
+ *    which is what keeps `&& active_subscriptions()` from leaving `a` stranded on the line above;
+ *  - pass 2 re-measures the result WITH mid-word breaking allowed, so a token that genuinely cannot
+ *    fit a line is split — but now it is split from the start of its own line. */
+const breakPoints = (mirror: HTMLElement, base: string): number[] => {
+  const first = lineStarts(mirror, base, false);
+  // Stage the pass-1 breaks as plain newlines, keeping a map back to `base` coordinates.
+  let staged = '', prev = 0;
+  const toBase: number[] = [];
+  for (const i of first) {
+    for (let k = prev; k < i; k++) toBase.push(k);
+    toBase.push(i); // the newline itself maps to where it was inserted
+    staged += base.slice(prev, i) + '\n';
+    prev = i;
+  }
+  for (let k = prev; k <= base.length; k++) toBase.push(k);
+  staged += base.slice(prev);
+  const second = lineStarts(mirror, staged, true).map(i => toBase[i]);
+  return [...new Set([...first, ...second])].sort((a, b) => a - b);
+};
+
 export interface GridToolbarProps {
   isExcelViewMode: boolean;
   /** While an export runs, filter/sort/reload/reset are locked (they'd corrupt the in-flight file). */
@@ -138,10 +235,22 @@ export const GridToolbarComponent = ({
 
   const filterRef = useRef<HTMLTextAreaElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  // Hidden copy of the query, padded, that the line breaks are measured on (see the header).
+  const mirrorRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   // Last value that fit within the row cap, and the height it had — what an over-long edit reverts to.
   const acceptedRef = useRef('');
   const lastHeightRef = useRef(0);
+  // Set when the component rewrites the value itself (a reflow, a suggestion): assigning `.value`
+  // parks the caret at the end, so the intended offset has to be put back after the render. Left
+  // null for ordinary typing, whose caret must not be touched — re-seating it mid-composition
+  // breaks Hangul input.
+  const pendingCaretRef = useRef<number | null>(null);
+  // Box width: a resize re-flows the breaks, so it belongs in the reflow effect's deps.
+  const [boxW, setBoxW] = useState(0);
+  // IME composition: the reflow holds off until the composition commits (see the effect).
+  const composingRef = useRef(false);
+  const [composeTick, setComposeTick] = useState(0);
   // Key autocomplete: suggestions for the field key being typed at a "key position".
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestIndex, setSuggestIndex] = useState(0);
@@ -177,7 +286,9 @@ export const GridToolbarComponent = ({
   const keyContext = (value: string, caret: number, lenient = false): {token: string; start: number} | null => {
     const before = value.slice(0, caret);
     const token = (before.match(/[\w]*$/) ?? [''])[0];
-    const prev = before.slice(0, before.length - token.length).replace(/\s+$/, '').slice(-1);
+    // The zero-width marker of an inserted break counts as whitespace here — a key typed at the
+    // start of a wrapped line still sits "right after `(`".
+    const prev = before.slice(0, before.length - token.length).replace(/[\s⁠]+$/, '').slice(-1);
     // After a closed `)` a sibling key can still start, but only the explicit ↓ opens it there
     // (`lenient`) — passive typing stays quiet since there's no operator yet.
     if (prev !== '' && !'(&|.'.includes(prev) && !(lenient && prev === ')')) return null;
@@ -249,7 +360,10 @@ export const GridToolbarComponent = ({
       const pos = head.length + lead.length + item.length + 1; // after "<op> "
       setInputValue(next);
       setCaret(pos);
-      requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(pos, pos); });
+      // The caret goes in through pendingCaretRef so a reflow triggered by the same edit can carry
+      // it across the newlines it inserts.
+      pendingCaretRef.current = pos;
+      requestAnimationFrame(() => el?.focus());
       refreshSuggestions(next, pos, true);
       return;
     }
@@ -259,12 +373,34 @@ export const GridToolbarComponent = ({
     const pos = start + item.length + 1;
     setInputValue(next);
     setCaret(pos);
-    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(pos, pos); });
+    pendingCaretRef.current = pos;
+    requestAnimationFrame(() => el?.focus());
     // Immediately offer the inserted field's sub-keys (empty for a leaf → dropdown closes).
     refreshSuggestions(next, pos);
   };
 
   const handleFilterKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // An inserted break is layout, not content: deleting it alone would just have the reflow put it
+    // straight back. Take the neighbouring real character instead, so one keypress makes one visible
+    // change; the reflow then decides whether the break is still needed.
+    if ((e.key === 'Backspace' || e.key === 'Delete') && !e.altKey && !e.metaKey) {
+      const el = e.currentTarget, v = el.value;
+      const s = el.selectionStart ?? 0;
+      const back = e.key === 'Backspace' && v[s - 1] === WJ && v[s - 2] === '\n';
+      const fwd = e.key === 'Delete' && v[s] === '\n' && v[s + 1] === WJ;
+      if (s === el.selectionEnd && (back || fwd)) {
+        e.preventDefault();
+        const base = stripAuto(inputValue);
+        const at = caretToBase(inputValue, s);
+        const cut = back ? at - 1 : at;
+        if (cut < 0 || cut >= base.length) return;
+        const next = base.slice(0, cut) + base.slice(cut + 1);
+        pendingCaretRef.current = cut;
+        setCaret(cut);
+        handleFilterChange(next, cut);
+        return;
+      }
+    }
     if (suggestions.length > 0) {
       // ↓ step INTO the dropdown (from the text field). Already inside → move to the next item.
       if (e.key === 'ArrowDown') {
@@ -301,7 +437,7 @@ export const GridToolbarComponent = ({
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      onFilter?.(inputValue);
+      onFilter?.(stripAuto(inputValue));
     }
   };
 
@@ -353,14 +489,46 @@ export const GridToolbarComponent = ({
       const pos = Math.max(0, Math.min((el.selectionStart ?? prev.length) - (inputValue.length - prev.length), prev.length));
       el.style.height = `${lastHeightRef.current}px`;
       setInputValue(prev);
+      pendingCaretRef.current = null;
       requestAnimationFrame(() => el.setSelectionRange(pos, pos));
       return;
+    }
+    // Only set when the component rewrote the value; ordinary typing keeps the caret the browser gave it.
+    if (pendingCaretRef.current != null) {
+      el.setSelectionRange(pendingCaretRef.current, pendingCaretRef.current);
+      pendingCaretRef.current = null;
     }
     acceptedRef.current = inputValue;
     const grown = el.scrollHeight;
     el.style.height = `${grown}px`;
     lastHeightRef.current = grown;
   }, [inputValue, isMobile]);
+
+  // Turn the mirror's wrap points into real newlines (see the header). Runs after the auto-grow
+  // effect, so the value it commits is the one the next pass measures the height on.
+  useLayoutEffect(() => {
+    const mirror = mirrorRef.current, el = filterRef.current;
+    // Rewriting the value mid-composition kills Hangul input, so a reflow waits for the IME to
+    // commit — compositionend re-runs this effect.
+    if (!mirror || !el || composingRef.current) return;
+    const base = stripAuto(inputValue);
+    const at = breakPoints(mirror, base);
+    const next = withBreaks(base, at);
+    if (next === inputValue) return;
+    // A caret already waiting to be applied belongs to this value, so it is what gets carried over.
+    const from = pendingCaretRef.current ?? el.selectionStart ?? inputValue.length;
+    pendingCaretRef.current = caretFromBase(caretToBase(inputValue, from), at);
+    setInputValue(next);
+  }, [inputValue, isMobile, boxW, composeTick]);
+
+  // The break positions depend on the box width, so a resize has to re-run the reflow above.
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setBoxW(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Position the suggestion dropdown under the textarea (measured after layout, so no ref reads
   // during render — the portal uses this state).
@@ -533,9 +701,15 @@ export const GridToolbarComponent = ({
             </div>
           ) : (
             <>
+              {/* Hidden, padded copy of the query: the only thing it exists for is that its own line
+                  breaking picks the points the real text then gets `\n`s at. Same width and metrics
+                  as the overlay; its text is written imperatively so the reflow can measure more than
+                  one candidate layout within a single pass. */}
+              <div ref={mirrorRef} aria-hidden
+                   className={`invisible absolute left-0 top-0 w-full pl-7 py-1.5 ${isMobile ? 'text-base pr-9' : 'text-xs pr-7'} leading-snug whitespace-pre-wrap break-keep pointer-events-none`}/>
               {/* Colour overlay behind the transparent textarea — same metrics so text lines up. */}
               <div aria-hidden
-                   className={`absolute inset-0 pl-7 py-1.5 ${isMobile ? 'text-base pr-9' : 'text-xs pr-7'} leading-snug whitespace-pre-wrap break-words text-slate-700 overflow-hidden pointer-events-none`}>
+                   className={`absolute inset-0 pl-7 py-1.5 ${isMobile ? 'text-base pr-9' : 'text-xs pr-7'} leading-snug whitespace-pre-wrap break-words break-keep text-slate-700 overflow-hidden pointer-events-none`}>
                 {renderHighlighted(inputValue, new Set(focused ? (matchingPair(inputValue, caret) ?? []) : []))}{'\n'}
               </div>
               <textarea
@@ -544,6 +718,8 @@ export const GridToolbarComponent = ({
                   value={inputValue}
                   onChange={e => handleFilterChange(e.target.value, e.target.selectionStart ?? e.target.value.length)}
                   onKeyDown={handleFilterKeyDown}
+                  onCompositionStart={() => { composingRef.current = true; }}
+                  onCompositionEnd={() => { composingRef.current = false; setComposeTick(t => t + 1); }}
                   onSelect={e => setCaret(e.currentTarget.selectionStart ?? 0)}
                   onFocus={e => {
                     setFocused(true);
@@ -557,7 +733,7 @@ export const GridToolbarComponent = ({
                   placeholder={I18n.t('toolbar.filterPlaceholder')}
                   // 16px on mobile (text-base) stops iOS from auto-zooming the page on focus; the
                   // overlay above matches so the highlighted text stays aligned.
-                  className={`relative block w-full pl-7 py-1.5 ${isMobile ? 'text-base pr-9' : 'text-xs pr-7'} leading-snug bg-transparent text-transparent caret-slate-700 placeholder:text-slate-400 resize-none overflow-hidden focus:outline-none`}
+                  className={`relative block w-full pl-7 py-1.5 ${isMobile ? 'text-base pr-9' : 'text-xs pr-7'} leading-snug break-words break-keep bg-transparent text-transparent caret-slate-700 placeholder:text-slate-400 resize-none overflow-hidden focus:outline-none`}
               />
               <SearchIcon className='absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none'/>
               {inputValue && (
