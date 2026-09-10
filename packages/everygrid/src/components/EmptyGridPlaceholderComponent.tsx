@@ -6,15 +6,36 @@ interface EmptyGridPlaceholderProps {
   dataUrl?: string;
   /** While the grid is indexing, show a skeleton to fill the body instead of the "no data" message. */
   indexing?: boolean;
+  /** Skeleton row count — the page size, so the body is the size of the table that replaces it. */
+  rows?: number;
+  /** Skeleton row height in px, matching the real table's rows. */
+  rowHeight?: number;
+  /** Skeleton header height in px, matching the real table's header. */
+  headerHeight?: number;
 }
 
-export const EmptyGridPlaceholder: React.FC<EmptyGridPlaceholderProps> = ({targetId, dataUrl, indexing}) => {
+/** Column bar widths, cycled per row so the skeleton reads as a table rather than a stack of bars. */
+const SKELETON_COLS = ['18%', '26%', '13%', '21%', '11%'];
+
+export const EmptyGridPlaceholder: React.FC<EmptyGridPlaceholderProps> = (
+  {targetId, dataUrl, indexing, rows = 12, rowHeight = 36, headerHeight = 44},
+) => {
   if (indexing) {
     return (
-      <div className='w-full h-full p-3 flex flex-col gap-2 overflow-hidden' aria-hidden='true'>
-        <div className='h-8 bg-slate-100 rounded animate-pulse shrink-0' />
-        {Array.from({length: 10}).map((_, i) => (
-          <div key={i} className='h-6 bg-slate-50 rounded animate-pulse shrink-0' />
+      <div className='everygrid-skeleton' aria-hidden='true'>
+        <div className='everygrid-skeleton-head' style={{height: headerHeight}}>
+          {SKELETON_COLS.map((width, i) => <span key={i} style={{width}}/>)}
+        </div>
+        {Array.from({length: rows}).map((_, r) => (
+          // Staggered start turns the pulse into a slow wave down the table instead of every
+          // row blinking in unison.
+          <div
+            key={r}
+            className='everygrid-skeleton-row'
+            style={{height: rowHeight, animationDelay: `${(r % 8) * 90}ms`}}
+          >
+            {SKELETON_COLS.map((width, i) => <span key={i} style={{width}}/>)}
+          </div>
         ))}
       </div>
     );

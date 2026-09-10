@@ -222,6 +222,15 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   // move the controls around. Defined here (not just before the normal-view return) because the
   // Excel branch below needs them too.
   const paginationActive = !showSkeleton && !virtualConf && !!pagination && pagination.active !== false;
+
+  // Skeleton geometry: the table that is about to replace it. A paginated grid grows to exactly
+  // pageSize rows, so drawing that many at the real row height keeps the body's height steady and
+  // stops the page below from being shoved down when the rows arrive. A virtual grid scrolls
+  // inside its own fixed-height box, so it only needs enough rows to fill.
+  const skeletonRowHeight = virtualConf ? rowHeight : DEFAULT_ROW_HEIGHT;
+  const skeletonRows = (!virtualConf && pagination?.active !== false && pagination?.pageSize)
+    ? Math.min(Math.max(pagination.pageSize, 1), 100)
+    : 12;
   const hasTopPagination = paginationActive &&
     (pagination!.position === 'top' || pagination!.position === 'all');
   const hasBottomPagination = paginationActive &&
@@ -451,7 +460,12 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             collapses out from under data that is still valid. */}
         {showSkeleton ? (
           <div className='relative w-full flex-1 min-h-0 overflow-hidden'>
-            <EmptyGridPlaceholder targetId={containerId} indexing/>
+            <EmptyGridPlaceholder
+              targetId={containerId}
+              indexing
+              rows={skeletonRows}
+              rowHeight={skeletonRowHeight}
+            />
           </div>
         ) : showEmpty ? (
           <div className='relative w-full flex-1 min-h-0 overflow-hidden'>

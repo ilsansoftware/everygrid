@@ -616,6 +616,25 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return run;
   }
 
+  /**
+   * Patches edited rows into every ready engine in place, then refreshes the visible page.
+   *
+   * The alternative, `_loadIntoEngine`, is a full `setData`: it re-uploads and re-indexes the
+   * entire dataset to change one cell, and its progress callback puts the indexing bar on
+   * screen for every keystroke-sized edit. Rows are addressed by their position in
+   * `options.data`, which is the engine's raw row order.
+   */
+  private _syncRowsToEngines(rows: { index: number; row: unknown }[]): void {
+    if (rows.length === 0) return;
+    this.options.targets?.forEach(idConfig => {
+      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const eng = this._wasmEngines.get(id);
+      if (eng && this._wasmEngineReady.get(id)) {
+        void eng.updateRows(rows).then(() => this.applyWasmFilter(id)).catch(console.error);
+      }
+    });
+  }
+
   /** Resolves with the target's engine once it exists, or null if it never shows up. */
   private _awaitEngine(targetId: string, timeoutMs = 10000): Promise<GridEngineWasm | null> {
     const existing = this._wasmEngines.get(targetId);
@@ -2047,16 +2066,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this._editedKeys.delete(JSON.stringify(rowData));
       this._editedKeys.set(JSON.stringify(newRow), newRow);
 
-      // Sync updated live data to WASM engine
+      // Sync just the edited row to the WASM engines — see _syncRowsToEngines.
       const {targets} = this.options;
-      targets?.forEach(idConfig => {
-        const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
-        const eng = this._wasmEngines.get(id);
-        if (eng && this._wasmEngineReady.get(id)) {
-          void this._loadIntoEngine(id, eng, this.options.data as unknown[])
-            .then(() => this.applyWasmFilter(id)).catch(console.error);
-        }
-      });
+      this._syncRowsToEngines([{index: idx, row: newRow}]);
 
       if (this.options.onDataChange) {
         this.options.onDataChange(this.options.data, this.originalData);
@@ -2077,6 +2089,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const data = (this.options.data || []) as Record<string, unknown>[];
 
       // Replace each modified row with a new object (restored from original) so React.memo re-renders
+      const restored: { index: number; row: unknown }[] = [];
       data.forEach((item, idx) => {
         const originalItem = this.originalDataMap.get(item as T) as Record<string, unknown>;
         if (originalItem) {
@@ -2084,19 +2097,14 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           data[idx] = restoredRow;
           this.originalDataMap.delete(item as T);
           this.originalDataMap.set(restoredRow, originalItem as T);
+          if (JSON.stringify(item) !== JSON.stringify(restoredRow)) {
+            restored.push({index: idx, row: restoredRow});
+          }
         }
       });
 
-      // Sync restored data to WASM engine
-      const {targets: resetTargets} = this.options;
-      resetTargets?.forEach(idConfig => {
-        const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
-        const eng = this._wasmEngines.get(id);
-        if (eng && this._wasmEngineReady.get(id)) {
-          void this._loadIntoEngine(id, eng, this.options.data as unknown[])
-            .then(() => this.applyWasmFilter(id)).catch(console.error);
-        }
-      });
+      // Sync the restored rows to the WASM engines — see _syncRowsToEngines.
+      this._syncRowsToEngines(restored);
 
       this.renderGrid(container);
 
@@ -2138,16 +2146,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       if (Object.keys(newRow as Record<string, unknown>).some(f => this.isCellModified(newRow, f))) {
         this._editedKeys.set(JSON.stringify(newRow), newRow);
       }
-      // Sync restored cell data to WASM engine
-      const {targets: resetCellTargets} = this.options;
-      resetCellTargets?.forEach(idConfig => {
-        const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
-        const eng = this._wasmEngines.get(id);
-        if (eng && this._wasmEngineReady.get(id)) {
-          void this._loadIntoEngine(id, eng, this.options.data as unknown[])
-            .then(() => this.applyWasmFilter(id)).catch(console.error);
-        }
-      });
+      // Sync just the restored row to the WASM engines — see _syncRowsToEngines.
+      this._syncRowsToEngines([{index: idx, row: newRow}]);
 
       this.renderGrid(container);
 

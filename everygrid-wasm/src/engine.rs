@@ -351,6 +351,43 @@ impl GridEngine {
         Ok(JsValue::from_str(&json_str))
     }
 
+    /// Replaces rows in place. `indices` are raw (unfiltered, unsorted) row positions —
+    /// the order `get_raw_page` returns, which is the order JS holds its data in — and
+    /// `rows_json` is a JSON array of replacement objects, positionally matched to them.
+    ///
+    /// This exists so a cell edit does not have to go through `set_data`, which re-uploads
+    /// and re-parses the whole dataset (and drives the indexing progress UI) to change one
+    /// value. Out-of-range indices are skipped rather than failing the batch, so a stale
+    /// index from a concurrent reload cannot break an otherwise valid edit.
+    pub fn update_rows(&mut self, indices: Vec<u32>, rows_json: &str) -> Result<(), JsError> {
+        let values: Vec<serde_json::Value> =
+            serde_json::from_str(rows_json).map_err(|e| JsError::new(&e.to_string()))?;
+        if values.len() != indices.len() {
+            return Err(JsError::new("update_rows: indices and rows length mismatch"));
+        }
+
+        let mut changed = false;
+        for (idx, value) in indices.iter().zip(values.iter()) {
+            let idx = *idx as usize;
+            if idx >= self.raw_data.len() {
+                continue;
+            }
+            let Some(row) = RowData::from_value(value, &mut self.interner) else {
+                return Err(JsError::new("update_rows: row is not an object"));
+            };
+            self.raw_data[idx] = row;
+            changed = true;
+        }
+
+        if changed {
+            // A whole row was swapped, so any column's value may have moved — every sorted
+            // index and the cached filtered set are stale.
+            self.invalidate_indices();
+            self.recompute();
+        }
+        Ok(())
+    }
+
     pub fn get_page_indices(&self, page: usize, page_size: usize) -> Vec<usize> {
         if page_size == 0 {
             return Vec::new();

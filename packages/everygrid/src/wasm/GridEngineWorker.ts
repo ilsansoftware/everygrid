@@ -25,6 +25,7 @@ export type WorkerRequest =
   | { id: string; seq: number; cmd: 'getRawPage'; page: number; pageSize: number }
   | { id: string; seq: number; cmd: 'getTotalCount' }
   | { id: string; seq: number; cmd: 'getRawCount' }
+  | { id: string; seq: number; cmd: 'updateRows'; indices: Uint32Array; rowsJson: string }
   | { id: string; seq: number; cmd: 'buildIndex' }
   | { id: string; seq: number; cmd: 'clear' }
   | { id: string; seq: number; cmd: 'finalize' }
@@ -234,6 +235,11 @@ function executeCommand(req: WorkerRequest): unknown {
         }
         // finalize triggers lazy index build via recompute (same as setData's finalize).
         getEngine(id).finalize();
+        break;
+      }
+
+      case 'updateRows': {
+        getEngine(id).update_rows(req.indices, req.rowsJson);
         break;
       }
 

@@ -142,6 +142,18 @@ export class GridEngineWasm {
     return this.send(req, [bytes.buffer]) as Promise<void>;
   }
 
+  /**
+   * Patches rows in place at their raw (unfiltered, unsorted) positions — the cheap path for
+   * an edit. `setData` would re-upload and re-index the whole dataset, and report progress
+   * while doing it, to change one cell.
+   */
+  updateRows(rows: { index: number; row: unknown }[]): Promise<void> {
+    const indices = Uint32Array.from(rows, r => r.index);
+    const rowsJson = JSON.stringify(rows.map(r => r.row));
+    const req = { id: this.engineId, cmd: 'updateRows' as const, indices, rowsJson };
+    return this.send(req) as Promise<void>;
+  }
+
   /** Applies a filter expression. */
   filter(text: string): Promise<void> {
     const req = { id: this.engineId, cmd: 'filter' as const, text };
