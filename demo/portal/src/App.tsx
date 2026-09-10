@@ -264,6 +264,24 @@ export default function App() {
               );
             })}
           </nav>
+          <button className='show-code-btn' title='Show source code'
+                  onClick={() => setModalOpen(true)}>
+            <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='18'
+                height='18'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2.2'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+            >
+              <path d='m18 16 4-4-4-4'/>
+              <path d='m6 8-4 4 4 4'/>
+              <path d='m14.5 4-5 16'/>
+            </svg>
+          </button>
           <div className='header-right'>
             <div className='locale-btn-group'>
               {LOCALES.map((l) => (
@@ -278,23 +296,6 @@ export default function App() {
                   </button>
               ))}
             </div>
-            <button className='show-code-btn' title='Show source code'
-                    onClick={() => setModalOpen(true)}>
-              <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  width='14'
-                  height='14'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-              >
-                <polyline points='16 18 22 12 16 6'/>
-                <polyline points='8 6 2 12 8 18'/>
-              </svg>
-            </button>
           </div>
         </header>
 

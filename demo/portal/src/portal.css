@@ -297,27 +297,33 @@ nav button.active img {
 }
 
 /* Show Code button in header */
+/* Sits immediately right of the tab capsule, so it borrows the capsule's height and background
+   and the same faint outline the idle tabs carry — one continuous control strip. */
 .show-code-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 38px;
-  padding: 6px 14px;
-  background: #24253a;
+  justify-content: center;
+  margin-left: 10px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: #2a2b3d;
   color: #94a3b8;
-  border: 1px solid #2a2b3d;
+  border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 8px;
+  font-family: inherit;
   font-size: 0.78rem;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
 
 .show-code-btn:hover {
-  background: #2a2b3d;
+  background: #3a3c55;
   color: #e2e8f0;
-  border-color: #3a3b5a;
+  border-color: rgba(148, 163, 184, 0.45);
 }
 
 .show-code-btn svg {
@@ -499,13 +505,12 @@ nav button.active img {
     font-size: 1.1rem;
   }
 
-  /* Match the locale/nav button GROUPS' outer height (34px button + 4px×2 group padding = 42px),
-     since the code button has no group wrapper of its own — so all three line up. */
+  /* Match the nav group's outer height (34px button + 4px×2 group padding = 42px) so the two
+     line up. */
   .show-code-btn {
     width: 42px;
     height: 42px;
-    padding: 6px;
-    justify-content: center;
+    margin-left: 6px;
   }
 
   .show-code-btn svg {
