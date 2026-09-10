@@ -11,6 +11,12 @@ export interface VirtualWindow {
   topPad: number;
   /** Spacer height below the rendered rows, in px. */
   bottomPad: number;
+  /**
+   * The scroller is moving faster than a screenful per frame. Nothing in that stream is readable,
+   * so the body draws placeholder rows instead of fetching and rendering cells it will replace
+   * before anyone sees them — which also makes each frame cheap enough to keep up.
+   */
+  fast?: boolean;
 }
 
 /**
@@ -122,8 +128,16 @@ export function computeWindow(
   };
 }
 
-/** How close to a segment edge the reader gets before the segment slides, in rows. */
-const REANCHOR_MARGIN_ROWS = 200;
+/** Quiet time that counts as the scroll having stopped, in ms. */
+const SETTLE_MS = 90;
+
+/**
+ * How close to a segment edge the reader gets before the segment slides, in rows.
+ *
+ * A couple of screenfuls: enough that the slide happens before anyone can scroll off the end, and
+ * narrow enough that the reader spends almost no time inside the band where it can trigger.
+ */
+const REANCHOR_MARGIN_ROWS = 40;
 
 /**
  * Slides the segment under the reader when they approach its edge, keeping the rows they are
@@ -180,6 +194,11 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
   // segment tall; this is which slice of the result that segment is showing.
   const anchorRef = useRef(0);
   const [anchor, setAnchor] = useState(0);
+  // Scroll speed, and the timer that declares the scroll over. Held apart from `metrics` because
+  // settling is a change in what to draw, not a change in where the window is.
+  const lastTopRef = useRef(0);
+  const settleRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [fast, setFast] = useState(false);
   const windowRows = Math.min(totalRows, segmentRows(rowHeight));
   // prevScrollTop is kept alongside so the render can tell how far the last frame travelled, which
   // is what sizes the lead overscan.
@@ -228,9 +247,26 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
    */
   const onScroll = useCallback(() => {
     const el = scrollerEl.current;
-    if (el) reanchor(el, anchorRef, totalRows, windowRows, rowHeight);
+    let moving = false;
+    if (el) {
+      const rowsMoved = Math.abs(el.scrollTop - lastTopRef.current) / rowHeight;
+      const screenful = Math.max(1, Math.ceil(el.clientHeight / rowHeight));
+      moving = rowsMoved > screenful;
+      reanchor(el, anchorRef, totalRows, windowRows, rowHeight);
+      // Recorded after the slide, not before. A re-anchor moves scrollTop by half a segment on
+      // purpose and the rows do not move with it; counting that as travel read as a fast scroll and
+      // flashed placeholders over a scroll that had barely moved.
+      lastTopRef.current = el.scrollTop;
+    }
+    // The scroll is over once nothing has moved for a beat; that is when the real rows go back in.
+    if (settleRef.current !== undefined) clearTimeout(settleRef.current);
+    settleRef.current = setTimeout(() => {
+      settleRef.current = undefined;
+      setFast(false);
+    }, SETTLE_MS);
     flushSync(() => {
       setAnchor(anchorRef.current);
+      if (moving) setFast(true);
       measure();
     });
   }, [measure, totalRows, windowRows, rowHeight]);
@@ -238,6 +274,7 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
   useEffect(() => () => {
     observerRef.current?.disconnect();
     observerRef.current = null;
+    if (settleRef.current !== undefined) clearTimeout(settleRef.current);
   }, []);
 
   /**
@@ -249,6 +286,8 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
     const el = scrollerEl.current;
     anchorRef.current = 0;
     setAnchor(0);
+    setFast(false);
+    lastTopRef.current = 0;
     if (el) el.scrollTop = 0;
     measure();
   }, [measure]);
@@ -290,6 +329,7 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
       end: anchor + local.end,
       topPad: local.topPad,
       bottomPad: local.bottomPad,
+      fast,
     },
   };
 }

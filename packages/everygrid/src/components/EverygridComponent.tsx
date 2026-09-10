@@ -145,8 +145,13 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
     virtualConf ? streamTotal : 0, rowHeight, overscan,
   );
 
+  // Flying: draw the window as placeholders rather than fetching rows nobody can read. The table
+  // already renders an absent row as a placeholder, so handing it a window of blanks is all it
+  // takes — and the blocks for the range being skipped past are never requested.
   const displayItems = virtualConf
-    ? grid.getRowsInRange(containerId, vwin.start, vwin.end)
+    ? (vwin.fast
+        ? (new Array(Math.max(0, vwin.end - vwin.start)).fill(undefined) as (T | undefined)[])
+        : grid.getRowsInRange(containerId, vwin.start, vwin.end))
     : grid.getDisplayItems(containerId, items);
   const virtual = virtualConf
     ? {topPad: vwin.topPad, bottomPad: vwin.bottomPad, rowHeight}

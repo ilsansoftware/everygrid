@@ -25,6 +25,12 @@ export default function VirtualScrollDemo() {
     // Locked while the rows are being built: a reload started during one already in flight is
     // dropped, which would leave the picker showing a size the grid never loaded.
     setBusy(true);
+    // Building the rows blocks the main thread, and starting it inside the change handler froze
+    // the select mid-interaction — the dropdown had not closed and the new value had not painted.
+    // Two frames is the cheap way to say "after the next paint", so the picker settles first.
+    await new Promise<void>(resolve => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
     try {
       await Everygrid.reload('virtual-grid', {silent: true, discard: true});
     } finally {
@@ -81,20 +87,33 @@ function resolveRowCount(): number {
   return deviceMax;
 }
 
-function makeVirtualGridData(rows: number): Promise<Row[]> {
+/** Rows are built in slices with a yield between them so the tab stays responsive: a million rows
+ *  in one loop locks the main thread for seconds, and the picker looks frozen for all of it. */
+const BUILD_CHUNK = 50_000;
+
+async function makeVirtualGridData(rows: number): Promise<Row[]> {
   const cities = ['Seoul', 'Busan', 'Incheon', 'Daegu', 'Daejeon', 'Gwangju', 'Ulsan'];
   const teams = ['Platform', 'Growth', 'Payments', 'Data', 'Infra', 'Design'];
+  // The three date components cycle every 10, 12 and 28 rows, so the dates repeat every 420 — build
+  // those once instead of constructing a million Date objects and formatting each one.
+  const dates = Array.from({length: 420}, (_, i) =>
+      new Date(Date.UTC(2015 + (i % 10), i % 12, (i % 28) + 1)).toISOString().slice(0, 10));
+
   const out: Row[] = new Array(rows);
-  for (let i = 0; i < rows; i++) {
-    out[i] = {
-      id: 'ID_' + (i + 1),
-      name: 'User_' + (i + 1),
-      team: teams[i % teams.length],
-      city: cities[i % cities.length],
-      score: (i * 7919) % 1000,
-      joinedDate: new Date(Date.UTC(2015 + (i % 10), i % 12, (i % 28) + 1)).toISOString().slice(0, 10),
-      active: i % 3 !== 0,
-    };
+  for (let start = 0; start < rows; start += BUILD_CHUNK) {
+    const end = Math.min(start + BUILD_CHUNK, rows);
+    for (let i = start; i < end; i++) {
+      out[i] = {
+        id: 'ID_' + (i + 1),
+        name: 'User_' + (i + 1),
+        team: teams[i % teams.length],
+        city: cities[i % cities.length],
+        score: (i * 7919) % 1000,
+        joinedDate: dates[i % dates.length],
+        active: i % 3 !== 0,
+      };
+    }
+    if (end < rows) await new Promise(resolve => setTimeout(resolve, 0));
   }
-  return Promise.resolve(out);
+  return out;
 }
