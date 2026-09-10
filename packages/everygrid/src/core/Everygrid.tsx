@@ -158,6 +158,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public _loading: Set<string> = new Set();
   /** Headers an origin may use to advertise the decoded size of a compressed body. */
   private static readonly UNCOMPRESSED_LENGTH_HEADERS = ['X-Uncompressed-Length', 'x-amz-meta-uncompressed-length'];
+  // Above this decoded size a payload is streamed into WASM instead of being buffered by res.json().
+  private static readonly LARGE_PAYLOAD_BYTES = 50 * 1024 * 1024;
   // Where each target's data came from, kept so the toolbar can re-load it on demand.
   // Unlike _streamUrl (cleared once a load finishes) this survives for the grid's lifetime.
   public _dataSource: Map<string, string | (() => Promise<Record<string, unknown>[]>)> = new Map();
@@ -532,7 +534,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         // deep-copy for originalData + setData clone) and freezes the tab. Streaming is safe
         // for small payloads too — it just shows the indexing UI briefly. contentLength===0
         // makes _streamJsonToWasm fall back to a "rows ingested" count instead of a fake %.
-        const isLarge = isNaN(declaredLength) || declaredLength >= 50 * 1024 * 1024;
+        const isLarge = isNaN(declaredLength) || declaredLength >= Everygrid.LARGE_PAYLOAD_BYTES;
         if (isLarge) {
           await Everygrid._streamJsonToWasm(this, targetId, res.body, contentLength).catch(err => {
             console.warn('Everygrid: streaming load failed for', targetId, err);
@@ -822,6 +824,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       instance._streamRows.delete(targetId);
       instance._wasmDataLoaded.set(targetId, true);
 
+      // A payload this small only streamed because its length was unmeasurable — give it the
+      // JS-side copy the buffered path would have installed, so edits work here too.
+      if (total > 0 && totalBytes < Everygrid.LARGE_PAYLOAD_BYTES) {
+        await Everygrid._materializeStreamedRows(instance, targetId, engine, total);
+      }
+
       // Populate the first page from WASM (suppressProcessing: initial load, not a user action).
       await instance.applyWasmFilter(targetId, true);
     } catch (e) {
@@ -834,6 +842,32 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     }
   }
 
+
+  /**
+   * Pulls a just-streamed dataset back out of WASM and installs it as `options.data`.
+   *
+   * Streaming is chosen whenever the response length is unmeasurable, and a compressed CDN
+   * response (`Content-Encoding` with no comparable length header) always is — so small payloads
+   * routinely take the streaming path in production while taking the buffered one locally. Those
+   * targets would otherwise be left with an empty `options.data`, and everything keyed off it —
+   * updateData, the modification marker, resetCell — would silently no-op. Only done while the
+   * payload really is small; a genuinely large stream keeps WASM as its only copy.
+   */
+  private static async _materializeStreamedRows(
+    instance: Everygrid,
+    targetId: string,
+    engine: GridEngineWasm,
+    total: number,
+  ): Promise<void> {
+    try {
+      const {rows} = await engine.getRawPage(0, total);
+      (instance.options as { data: unknown[] }).data = rows;
+      instance.originalData = JSON.parse(JSON.stringify(rows));
+      instance.initOriginalDataMap();
+    } catch (e) {
+      console.warn('Everygrid: could not materialize streamed rows for', targetId, e);
+    }
+  }
 
   /**
    * Re-renders all grid instances that are currently in the DOM.
