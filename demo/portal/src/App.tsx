@@ -251,8 +251,8 @@ export default function App() {
                     onClick={() => setTab(t.id)}
                 >
                   {t.label
-                      ? <span className='tab-label'>
-                          {t.label}
+                      ? <span className={`tab-label${loading ? ' is-loading' : ''}`}>
+                          <span className='tab-label-text'>{t.label}</span>
                           {loading && (
                             <span className='tab-progress-badge'>
                               {prog!.percent >= 0 ? `${prog!.percent}%` : compactCount(prog!.rowsLoaded)}
