@@ -646,6 +646,13 @@ button {
 
 .everygrid-virtual-scroller {
   @apply overflow-auto overscroll-x-none;
+  /* The top spacer changes height on every window update. Chrome reads that as content shifting
+     above the viewport and, to keep what you were looking at still, compensates by moving
+     scrollTop — which fires another scroll, which recomputes the window, which resizes the spacer
+     again. The list ends up fighting the browser: the offset creeps backwards and the rows drift
+     out from under the viewport, leaving a blank band. A virtual list has to opt out of anchoring;
+     it is doing that job itself. */
+  overflow-anchor: none;
 }
 
 /* Both axes move to the scroller. `overflow-y: visible` alongside `overflow-x: auto` is not a
@@ -673,7 +680,26 @@ button {
 .everygrid-table tbody tr.everygrid-spacer-row,
 .everygrid-table tbody tr.everygrid-spacer-row td {
   @apply p-0 border-0 bg-transparent;
+  /* Never an anchor: the spacers are the parts that resize, so anchoring to one guarantees the
+     compensation loop described on .everygrid-virtual-scroller. */
+  overflow-anchor: none;
 }
+
+/* A spacer is what shows through when a fast scroll outruns the render, and a blank slab reads as
+   the grid breaking. Painting the row grid onto it turns that moment into rows that have not
+   arrived yet — the same thing the placeholder rows say, for the region no element covers.
+   Every spacer's height is a whole number of rows, so lines drawn from its top land exactly where
+   the real row borders would. Static, not pulsing: this element can be millions of pixels tall. */
+.everygrid-virtual-scroller .everygrid-table tbody tr.everygrid-spacer-row td {
+  background-image: repeating-linear-gradient(
+      to bottom,
+      #fcfdfe 0,
+      #fcfdfe calc(var(--everygrid-row-height, 36px) - 1px),
+      #eef2f7 calc(var(--everygrid-row-height, 36px) - 1px),
+      #eef2f7 var(--everygrid-row-height, 36px)
+  );
+}
+
 
 /* A row whose block is still in flight. Holds its space and reads as "loading" rather than
    flashing an empty row that looks like missing data. */

@@ -164,7 +164,16 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // Unlike _streamUrl (cleared once a load finishes) this survives for the grid's lifetime.
   public _dataSource: Map<string, string | (() => Promise<Record<string, unknown>[]>)> = new Map();
   // True while a reloadData() call is in flight, so repeated clicks don't stack fetches.
-  public _reloading: Map<string, boolean> = new Map();
+  // Which reload is in flight, if any. 'button' means the toolbar's reload was pressed, and only
+  // that one puts the button into its spinning, disabled state; 'silent' is a reload the host asked
+  // for because the fetcher's inputs changed, which shows the same loading UI as a first load and
+  // leaves the button alone. Either value blocks a second reload from starting.
+  public _reloading: Map<string, 'button' | 'silent'> = new Map();
+  // Targets whose current rows have been thrown away for an incoming, different result. While a
+  // target is in here the virtual body must not fall back to the in-memory copy — those rows are
+  // the new ones, but they are not indexed yet, and showing them un-indexed means a grid that
+  // cannot be filtered or sorted for as long as the load takes.
+  private _discarding: Set<string> = new Set();
 
   constructor(options: GridOptions<T>) {
     this.options = options;
@@ -249,6 +258,19 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   /** Unmounts every grid and forgets all loaded config — the next loadConfig re-fetches. */
+  /**
+   * Re-fetches a mounted grid's data from the source it was created with, in place.
+   *
+   * The instance method needs a handle the host usually does not keep; this is the same call for
+   * callers that only know the target id — what the toolbar's reload button does, by another name.
+   * Use it when the fetcher's own inputs have changed (a different row count, a new date range) and
+   * the grid should pick that up without being torn down and remounted.
+   */
+  public static async reload(id: string, opts: {silent?: boolean} = {}): Promise<void> {
+    const instance = Everygrid.instances.get(id) as Everygrid | undefined;
+    await instance?.reloadData(id, opts);
+  }
+
   public static resetAutoInit(): void {
     // Destroy all existing instances before clearing to free WASM engines and React roots
     Everygrid.instances.forEach(instance => {
@@ -660,12 +682,36 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   /**
    * Re-fetches a grid's data from the source it was created with and rebuilds its WASM
    * index. No-op for grids whose data was passed in directly (nothing to re-fetch).
+   *
+   * `silent` marks a reload the host asked for rather than one the reader clicked, so the toolbar's
+   * reload button stays as it is. The data still loads with the usual loading UI — the button's
+   * spinner reports that *that button* is working, and spinning it for something the reader did not
+   * press reads as the grid reloading itself.
+   *
+   * `discard` says the incoming rows replace the old ones rather than refreshing them — a different
+   * query, not the same one again. Holding the previous rows on screen through that is showing an
+   * answer to a question nobody asked any more, so the body drops to the loading skeleton the way a
+   * first load does. Leave it off for a plain refresh, where the rows on screen stay valid until
+   * the new ones land.
    */
-  public async reloadData(containerId: string): Promise<void> {
+  public async reloadData(containerId: string, opts: {silent?: boolean; discard?: boolean} = {}): Promise<void> {
     const source = this._dataSource.get(containerId);
     if (!source || this._reloading.get(containerId)) return;
 
-    this._reloading.set(containerId, true);
+    this._reloading.set(containerId, opts.silent ? 'silent' : 'button');
+    if (opts.discard) {
+      // Drop what is on screen so the body falls back to the skeleton: these rows answer the
+      // previous query, and the incoming ones are not a newer version of them.
+      this._wasmPageCache.delete(containerId);
+      this._wasmRawTotal.delete(containerId);
+      this._blockCache.delete(containerId);
+      // Also the in-memory copy: a virtual grid bridges missing blocks from it while the engine
+      // catches up, so leaving it in place would keep serving the previous result's rows straight
+      // past the cleared caches.
+      (this.options as {data: unknown[]}).data = [];
+      this._loading.add(containerId);
+      this._discarding.add(containerId);
+    }
     // Drop every derived view of the old data so nothing stale can be rendered while the
     // new rows are in flight. NOT _wasmEngineReady: that flag means "the engine finished
     // initialising", which a reload does not undo — the engine object outlives it and only
@@ -716,6 +762,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     } finally {
       this._reloading.delete(containerId);
       this._processing.delete(containerId);
+      this._loading.delete(containerId);
+      this._discarding.delete(containerId);
       const el2 = document.getElementById(containerId);
       if (el2) this.renderGrid(el2);
     }
@@ -1535,7 +1583,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // the moment the engine turns ready, getPage's block cache is empty, and without this fallback
     // the whole window would blank out until the first block arrives. A filter/sort makes
     // options.data (unfiltered) the wrong source, so we skip the bridge and let those blanks stand.
-    const naturalOrder = !this.filterText && !this.sortConfig.get(containerId)?.direction;
+    // Not while discarding: the bridge exists to cover the JS→WASM handoff on a load whose rows are
+    // already the ones on screen. Through a discard the body should read as loading, not hand back
+    // rows the engine has not taken yet.
+    const naturalOrder = !this.filterText && !this.sortConfig.get(containerId)?.direction
+      && !this._discarding.has(containerId);
     const jsData = naturalOrder ? ((this.options.data || []) as T[]) : undefined;
 
     const out: (T | undefined)[] = [];

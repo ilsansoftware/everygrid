@@ -174,7 +174,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   _wasmRawTotal: Map<string, number>;
   _wasmPageCache: Map<string, { rows: unknown[]; total: number }>;
   _dataSource: Map<string, string | (() => Promise<Record<string, unknown>[]>)>;
-  _reloading: Map<string, boolean>;
+  _reloading: Map<string, 'button' | 'silent'>;
   reloadData(containerId: string): Promise<void>;
   _indexingAllRows: Map<string, Record<string, unknown>[]>;
   _indexingStage: Map<string, 'indexing' | 'ready'>;

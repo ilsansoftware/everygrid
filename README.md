@@ -311,6 +311,19 @@ hasn't arrived yet shows a placeholder row rather than shifting the scrollbar.
 | `overscan` | `number` | `6` | Extra rows rendered above and below the viewport |
 | `blockSize` | `number` | `200` | Rows fetched from the engine per request |
 
+**Very large results.** Browsers cap how tall a single element can be (Chrome at 16,777,214px), so
+past **200,000 rows** the scroller covers a segment of the result rather than all of it, and slides
+that segment under you as you approach its edge — the anchor and the scroll offset move together, so
+there is nothing to see and no pager to click. Each segment stays laid out 1:1, which is what keeps
+scrolling smooth: a row is exactly `rowHeight` tall and travelling `rowHeight` advances exactly one
+row. The height cap is the backstop rather than the target — an unusually tall row yields a shorter
+segment instead of one the browser would clip.
+
+The trade is the scrollbar: past the threshold its thumb describes the current segment, not the
+whole result, and it returns to the middle each time the segment slides. Dragging the thumb halfway
+does not land halfway through the data. Below the threshold nothing changes. Only the rows in view
+plus a bounded block cache are ever held in JS, so memory does not grow with the result.
+
 **Constraints.** Enabling it for a grid changes a few behaviours, all of them consequences of
 never having more than a screenful of rows in the DOM:
 

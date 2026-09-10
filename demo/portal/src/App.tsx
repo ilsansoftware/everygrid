@@ -33,7 +33,7 @@ const TABS: { id: TabId; title: string; icon?: string; label?: string }[] = [
   {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico'},
   {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/favicon.ico'},
   {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large\ndata'},
-  {id: 'virtual', title: 'Virtual Scroll — 100k rows', label: 'virtual\nscroll'},
+  {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
 ];
 
 const LOCALES: { id: Locale; flag: string; title: string }[] = [

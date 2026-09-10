@@ -138,6 +138,9 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   const virtualConf = grid.getVirtualScroll(containerId);
   const rowHeight = virtualConf?.rowHeight ?? DEFAULT_ROW_HEIGHT;
   const overscan = virtualConf?.overscan ?? DEFAULT_OVERSCAN;
+
+  // The hook slides its own segment under the reader when the result is too tall for one scroller,
+  // so the window it reports is already in absolute row indices — nothing here has to know.
   const {scrollerRef, onScroll, scrollToTop, window: vwin} = useVirtualWindow(
     virtualConf ? streamTotal : 0, rowHeight, overscan,
   );
@@ -228,14 +231,19 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   // stops the page below from being shoved down when the rows arrive. A virtual grid scrolls
   // inside its own fixed-height box, so it only needs enough rows to fill.
   const skeletonRowHeight = virtualConf ? rowHeight : DEFAULT_ROW_HEIGHT;
-  const skeletonRows = (!virtualConf && pagination?.active !== false && pagination?.pageSize)
-    ? Math.min(Math.max(pagination.pageSize, 1), 100)
-    : 12;
+  const skeletonRows = virtualConf
+    // A virtual grid scrolls inside its own box; enough rows to fill a typical one, clipped by the
+    // skeleton's own overflow if the box is shorter.
+    ? 20
+    : (pagination?.active !== false && pagination?.pageSize)
+      ? Math.min(Math.max(pagination.pageSize, 1), 100)
+      : 12;
+  const pagerPosition = pagination?.position;
   const hasTopPagination = paginationActive &&
-    (pagination!.position === 'top' || pagination!.position === 'all');
+    (pagerPosition === 'top' || pagerPosition === 'all');
   const hasBottomPagination = paginationActive &&
-    (pagination!.position === 'bottom' || pagination!.position === 'all' ||
-      (!pagination!.position && (streamTotal > 0 || streamTotalRaw > 0)));
+    (pagerPosition === 'bottom' || pagerPosition === 'all' ||
+      (!pagerPosition && (streamTotal > 0 || streamTotalRaw > 0)));
 
   // Excel View Mode
   if (grid.isExcelViewMode) {
@@ -322,7 +330,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           allCount={streamTotalRaw}
           // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
           onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
-          isReloading={grid._reloading?.get(containerId) ?? false}
+          isReloading={grid._reloading?.get(containerId) === 'button'}
           onReset={() => grid.reset(container)}
           onResetSort={() => grid.resetSort(container)}
           hasChanges={grid.checkHasChanges()}
@@ -410,7 +418,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             allCount={streamTotalRaw}
             // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
             onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
-            isReloading={grid._reloading?.get(containerId) ?? false}
+            isReloading={grid._reloading?.get(containerId) === 'button'}
             onReset={() => grid.reset(container)}
             onResetSort={() => grid.resetSort(container)}
             hasChanges={grid.checkHasChanges()}
