@@ -103,6 +103,20 @@ export interface GridPaginationConfig {
  *
  * Requires a fixed row height — variable-height rows are not supported in this mode.
  */
+/** Options for a reload the host asks for — see `Everygrid.reload` / `reloadData`. */
+export interface ReloadOptions {
+  /**
+   * The host asked for this reload, not the reader — leave the toolbar's reload button alone.
+   * The data still loads with the usual loading UI.
+   */
+  silent?: boolean;
+  /**
+   * The incoming rows replace the previous result rather than refreshing it, so the body drops to
+   * the loading state instead of showing rows that answer the old query.
+   */
+  discard?: boolean;
+}
+
 export interface GridVirtualScrollConfig {
   id: string;
   active?: boolean;

@@ -19,6 +19,7 @@ export {GlobeIcon} from './icons/GlobeIcon';
 export {ChevronDownIcon} from './icons/ChevronDownIcon';
 
 export type {
+  ReloadOptions,
   GridOptions,
   GridColumn,
   ColumnI18n,

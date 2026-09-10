@@ -23,6 +23,7 @@ import {
   type GridVirtualScrollConfig,
   type IEverygrid,
   type KeyTree,
+  type ReloadOptions,
   type ServerFetchParams,
 } from './types';
 
@@ -266,7 +267,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * Use it when the fetcher's own inputs have changed (a different row count, a new date range) and
    * the grid should pick that up without being torn down and remounted.
    */
-  public static async reload(id: string, opts: {silent?: boolean} = {}): Promise<void> {
+  public static async reload(id: string, opts: ReloadOptions = {}): Promise<void> {
     const instance = Everygrid.instances.get(id) as Everygrid | undefined;
     await instance?.reloadData(id, opts);
   }
@@ -694,7 +695,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * first load does. Leave it off for a plain refresh, where the rows on screen stay valid until
    * the new ones land.
    */
-  public async reloadData(containerId: string, opts: {silent?: boolean; discard?: boolean} = {}): Promise<void> {
+  public async reloadData(containerId: string, opts: ReloadOptions = {}): Promise<void> {
     const source = this._dataSource.get(containerId);
     if (!source || this._reloading.get(containerId)) return;
 
