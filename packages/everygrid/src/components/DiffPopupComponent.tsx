@@ -1,15 +1,6 @@
 import {useEffect} from 'react';
 import {I18n} from '../i18n/I18n';
 import {Everygrid} from '../core/Everygrid';
-import type {RowChange} from '../core/GridHandle';
-
-const STATUS_CLASS: Record<RowChange['status'], string> = {
-  inserted: 'bg-emerald-100 text-emerald-800',
-  updated: 'bg-amber-100 text-amber-800',
-  deleted: 'bg-red-100 text-red-800',
-};
-
-const show = (v: unknown) => v === undefined ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v);
 
 interface DiffPopupProps<T extends Record<string, unknown>> {
   grid: Everygrid<T>;
@@ -17,12 +8,25 @@ interface DiffPopupProps<T extends Record<string, unknown>> {
   onClose: () => void;
 }
 
+/** One line of the diff grid: a changed cell, or one field of an inserted / deleted row. */
+interface DiffLine extends Record<string, unknown> {
+  status: 'inserted' | 'updated' | 'deleted';
+  key: string | number | null;
+  row: number;
+  field: string;
+  from: unknown;
+  to: unknown;
+}
+
 /**
- * Original vs current, read-only, from the grid's own change tracking: one block per changed row
- * (status, key, index) — an updated row lists each changed cell before → after, an inserted or
- * deleted row its fields. The toolbar's "diff" button opens it.
+ * The diff, shown by Everygrid itself: a second, read-only grid mounted inside the popup whose
+ * rows are the changes since load — an updated row's cells before → after, an inserted or
+ * deleted row field by field. Everything the grid does (search, sort, columns, export) works on
+ * the diff too. Destroyed with the popup.
  */
 export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, containerId, onClose}: DiffPopupProps<T>) => {
+  const diffId = `${containerId}__diff`;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -30,8 +34,37 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
   }, [onClose]);
 
   const changes = grid._changedRows(containerId);
+  const lines: DiffLine[] = [];
+  const empty = (v: unknown) => v === null || v === undefined || v === '';
+  for (const r of changes) {
+    if (r.status === 'updated') {
+      for (const c of r.cells) lines.push({status: 'updated', key: r.key, row: r.index, field: c.field, from: c.from, to: c.to});
+    } else {
+      const source = r.status === 'deleted' ? r.original : r.row;
+      for (const [field, v] of Object.entries(source)) {
+        if (empty(v)) continue;
+        lines.push({status: r.status, key: r.key, row: r.index, field, from: r.status === 'deleted' ? v : null, to: r.status === 'inserted' ? v : null});
+      }
+    }
+  }
   const cells = changes.reduce((n, r) => n + r.cells.length, 0);
-  const label = (field: string) => grid.columnLabel(field, containerId);
+
+  // The diff grid lives for the popup: created once its container exists, destroyed with it.
+  useEffect(() => {
+    const locale = I18n.getLocale();
+    const labels: Record<string, string> = {
+      status: I18n.t('grid.diffStatus'), key: I18n.t('grid.diffKey'), row: I18n.t('grid.diffRow'),
+      field: I18n.t('grid.diffField'), from: I18n.t('grid.diffFrom'), to: I18n.t('grid.diffTo'),
+    };
+    const instance = new Everygrid<DiffLine>({
+      targets: [{id: diffId, title: I18n.t('toolbar.diff')}],
+      data: lines,
+      columnI18n: {[locale]: {[diffId]: labels}},
+    });
+    return () => { instance.destroy(); };
+    // The lines are computed from the grid's state at open time; the popup is not live.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diffId]);
 
   return (
     <div className={Everygrid.POPUP_OVERLAY_CLASS} onClick={onClose}>
@@ -46,40 +79,8 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
           <span className={Everygrid.POPUP_CLOSE_CLASS} onClick={onClose}
                 dangerouslySetInnerHTML={{__html: Everygrid.POPUP_CLOSE_HTML}}></span>
         </div>
-        <div className='everygrid-popup-body flex-1 overflow-auto'>
-          {changes.length === 0 && <p className='text-sm text-slate-500'>{I18n.t('grid.noChanges')}</p>}
-          {changes.map((r) => (
-            <div key={`${r.status}-${r.index}`} className='everygrid-diff-row'>
-              <div className='everygrid-diff-row-head'>
-                <span className={`everygrid-diff-status ${STATUS_CLASS[r.status]}`}>{r.status}</span>
-                {r.key !== null
-                  ? <span className='font-medium text-slate-800'>key {show(r.key)}</span>
-                  : <span className='font-medium text-slate-500'>{I18n.t('grid.newRow')}</span>}
-                <span className='text-xs text-slate-500'>#{r.index}</span>
-              </div>
-              <table className='everygrid-diff-table'>
-                <tbody>
-                {r.status !== 'updated'
-                  ? Object.entries(r.status === 'deleted' ? r.original : r.row)
-                      .filter(([, v]) => v !== null && v !== undefined && v !== '')
-                      .map(([field, v]) => (
-                        <tr key={field}>
-                          <td className='everygrid-diff-field'>{label(field)}</td>
-                          <td className={r.status === 'deleted' ? 'everygrid-diff-from' : 'everygrid-diff-to'} colSpan={3}>{show(v)}</td>
-                        </tr>
-                      ))
-                  : r.cells.map((c) => (
-                    <tr key={c.field}>
-                      <td className='everygrid-diff-field'>{label(c.field)}</td>
-                      <td className='everygrid-diff-from'>{show(c.from)}</td>
-                      <td className='everygrid-diff-arrow'>→</td>
-                      <td className='everygrid-diff-to'>{show(c.to)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
+        <div className='everygrid-popup-body flex-1 min-h-0 flex flex-col'>
+          <div id={diffId} className='everygrid-diff-grid flex-1 min-h-0 flex flex-col'/>
         </div>
       </div>
     </div>

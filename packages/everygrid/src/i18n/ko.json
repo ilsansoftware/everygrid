@@ -50,7 +50,12 @@
     "insertedRows": "추가된 행",
     "diffSummary": "{rows}행 · {cells}셀",
     "noChanges": "변경 사항이 없습니다.",
-    "newRow": "새 행"
+    "diffStatus": "상태",
+    "diffKey": "키",
+    "diffRow": "행",
+    "diffField": "필드",
+    "diffFrom": "변경 전",
+    "diffTo": "변경 후"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",

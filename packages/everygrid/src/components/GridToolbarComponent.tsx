@@ -826,11 +826,11 @@ export const GridToolbarComponent = ({
         {segmentButton(DownloadIcon, 'export', downloadExcelBtnText,
           () => { if (filteredCount === allCount) onDownloadExcel('all'); else setExportMenuOpen(prev => !prev); },
           {active: exportMenuOpen, disabled: isExporting || isIndexing})}
-        {onShowDiff && segmentButton(DiffIcon, 'diff', I18n.t('toolbar.diff'), onShowDiff, {
-          disabled: !hasChanges || gridActionsDisabled || isExporting,
-        })}
         {onInsertRow && segmentButton(InsertRowIcon, 'row', I18n.t('grid.insertRow'), onInsertRow, {
           disabled: gridActionsDisabled || isExporting,
+        })}
+        {onShowDiff && segmentButton(DiffIcon, 'diff', I18n.t('toolbar.diff'), onShowDiff, {
+          disabled: !hasChanges || gridActionsDisabled || isExporting,
         })}
       </div>
   );

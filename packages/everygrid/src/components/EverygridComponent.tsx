@@ -187,6 +187,10 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   const dataFields = grid.getDataFields(containerId);
   const currentWidths = grid.getCurrentWidths(containerId);
   const editableFields = grid.getEditableFields(containerId);
+  // A grid that can change — editable columns or row actions — gets the toolbar's diff button.
+  const rowActions = grid.getRowActions(containerId);
+  const canChange = editableFields.length > 0 || rowActions.insertRow || rowActions.deleteRow;
+
   const pagination = grid.getPagination(containerId);
   const colorConfig = grid.options.colors?.find(conf => conf.id === containerId);
   const gridTitle = grid.getGridTitle(containerId);
@@ -331,7 +335,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
           onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
           onInsertRow={grid.getRowActions(containerId).insertRow ? () => grid.insertRow(containerId) : undefined}
-          onShowDiff={() => grid.showDiff(container)}
+          onShowDiff={canChange ? () => grid.showDiff(container) : undefined}
           isReloading={grid._reloading?.get(containerId) === 'button'}
           onReset={() => grid.reset(container)}
           onResetSort={() => grid.resetSort(container)}
@@ -423,7 +427,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
             onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
             onInsertRow={grid.getRowActions(containerId).insertRow ? () => grid.insertRow(containerId) : undefined}
-            onShowDiff={() => grid.showDiff(container)}
+            onShowDiff={canChange ? () => grid.showDiff(container) : undefined}
             isReloading={grid._reloading?.get(containerId) === 'button'}
             onReset={() => grid.reset(container)}
             onResetSort={() => grid.resetSort(container)}
