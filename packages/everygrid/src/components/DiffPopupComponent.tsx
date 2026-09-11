@@ -14,8 +14,7 @@ interface DiffPopupProps<T extends Record<string, unknown>> {
  * inserted row the row's values, for a deleted row the row as loaded.
  */
 interface DiffLine extends Record<string, unknown> {
-  /** The status in the current locale ("추가" / "inserted"…), since the column is what is shown. */
-  status: string;
+  status: 'inserted' | 'updated' | 'deleted';
   key: string | number | null;
   row: number;
   diff: Record<string, unknown>;
@@ -40,11 +39,8 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
   const empty = (v: unknown) => v === null || v === undefined || v === '';
   const compact = (row: Record<string, unknown>) =>
     Object.fromEntries(Object.entries(row).filter(([, v]) => !empty(v)));
-  const statusLabel = {
-    inserted: I18n.t('grid.statusInserted'), updated: I18n.t('grid.statusUpdated'), deleted: I18n.t('grid.statusDeleted'),
-  };
   const lines: DiffLine[] = changes.map(r => ({
-    status: statusLabel[r.status],
+    status: r.status,
     key: r.key,
     row: r.index,
     diff: r.status === 'updated'
