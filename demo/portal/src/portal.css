@@ -253,15 +253,13 @@ nav button.active .tab-name {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 14px;
   width: 100%;
   max-width: 80rem;
   margin: 1.25rem auto 0.75rem;
   padding: 0 1.5rem;
 }
-/* Title, then a demo's own controls (portaled in) right beside it; the code button stays at the
-   far end of the row. */
+/* Title (with its caption beneath), then the code button right beside it. */
 .demo-heading-title {
   display: flex;
   flex-direction: column;
