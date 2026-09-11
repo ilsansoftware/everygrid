@@ -121,7 +121,10 @@ export default function SandboxDemo({active}: { active: boolean }) {
     const next = el.value.slice(0, el.selectionStart) + clip + el.value.slice(el.selectionEnd);
     try { JSON.parse(next); } catch { return; }
     e.preventDefault();
-    setPasted(next);
+    // Insert through the editing pipeline rather than setting state: a value set from script
+    // wipes the box's undo history, so Cmd+Z / Cmd+Shift+Z stopped working after a paste. The
+    // resulting input event lands in onChange as usual.
+    document.execCommand('insertText', false, clip);
     void loadText(next);
   };
 
