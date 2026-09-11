@@ -37,7 +37,6 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
   const g = Everygrid.get(gridId);
   const patch = g?.patch() ?? {inserted: [], updated: [], deleted: []};
   const none = changes.length === 0;
-  const btn = 'rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-100 disabled:opacity-40';
 
   // One tab per kind: the count, and only the code that deals with rows of that kind — how to
   // reach them, and the JSON they give you — filled in with the live values.
@@ -109,12 +108,14 @@ ${pj(g?.checkedRows().map(r => r.get()) ?? [])}`,
                 <span className='font-semibold tabular-nums'>{counts[k]}</span> {k}
               </button>
           ))}
-          <button type='button' className={`ml-auto ${btn}`} disabled={none} onClick={() => setDiffOpen(true)}>diff</button>
-          <button type='button' className='rounded bg-slate-800 px-2 py-1 text-white hover:bg-slate-700 disabled:opacity-40'
-                  disabled={none} onClick={() => g?.commit()}>commit</button>
+          <button type='button' disabled={none} onClick={() => setDiffOpen(true)}
+                  className='ml-auto rounded px-2 py-1 font-mono text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent'>
+            g.diff()
+          </button>
         </div>
-        {/* Same highlighter and theme as the portal's Code modal. */}
-        <div className='mt-3 max-h-72 overflow-auto rounded-lg'>
+        {/* Same highlighter and theme as the portal's Code modal. Grows with its content — an inner
+            scroll box hid the JSON below the fold. */}
+        <div className='mt-3 overflow-x-auto rounded-lg'>
           <Highlight code={code[tab]} language='tsx' theme={themes.nightOwl}>
             {({className, style, tokens, getLineProps, getTokenProps}) => (
                 <pre className={`${className} changes-code`} style={style}>
