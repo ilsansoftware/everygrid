@@ -743,6 +743,9 @@ nav button.active .tab-name {
   background: #f1f5f9;
   padding: 0.1em 0.35em;
   border-radius: 4px;
+  /* An identifier or a signature is one token: never broken across lines (table cells wrapped
+     `loadConfig(entryConfigUrl?, opts?)` and `number | 'auto'` mid-way). */
+  white-space: nowrap;
 }
 .docs-body pre {
   margin: 0.75rem 0 1rem;
