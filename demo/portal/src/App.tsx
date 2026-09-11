@@ -210,6 +210,8 @@ export default function App() {
 
   const meta = CODE_META[tab];
 
+  const current = TABS.find((t) => t.id === tab);
+
   const tabsOf = (group: TabGroup) => TABS.filter((t) =>
       (t.group ?? 'demo') === group && !(isNarrow && MOBILE_HIDDEN_TABS.includes(t.id)));
   const renderTab = (t: typeof TABS[number]) => {
@@ -289,10 +291,8 @@ export default function App() {
             <div className='demo-heading'>
               {/* Caption on the title's line, so the row is the same height on every tab. */}
               <div className='demo-heading-title'>
-                <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
-                {TABS.find((t) => t.id === tab)?.caption && (
-                  <span className='demo-caption'>{TABS.find((t) => t.id === tab)?.caption}</span>
-                )}
+                <h2>{current?.title}</h2>
+                {current?.caption && <span className='demo-caption'>{current.caption}</span>}
               </div>
               {codeButton}
             </div>

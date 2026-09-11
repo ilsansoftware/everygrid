@@ -1,19 +1,19 @@
 import {useEffect, useState} from 'react';
 import {Highlight, themes} from 'prism-react-renderer';
-import {Everygrid, type RowChange} from '@everygrid/grid';
-import DiffModal from './DiffModal';
+import {Everygrid} from '@everygrid/grid';
 
 type Kind = 'inserted' | 'updated' | 'deleted' | 'checked';
 
 /**
  * Change tracking through the handle API. `Everygrid.get(id)` is a grid → row → cell cursor;
  * `changes()` is every inserted / updated / deleted row, and `patch()` what a save would send.
- * Edit, insert, delete or check rows in the grid above and watch each tab; open the diff or commit from here.
+ * Edit, insert, delete or check rows in the grid above and watch each tab; the toolbar's diff
+ * button shows the same changes as a grid.
  */
 export default function ChangesPanel({gridId}: { gridId: string }) {
-  const [changes, setChanges] = useState<RowChange[]>([]);
+  // The panel reads the handle on every render; these only make it re-render on grid events.
+  const [, bump] = useState(0);
   const [checked, setChecked] = useState<unknown[]>([]);
-  const [diffOpen, setDiffOpen] = useState(false);
   const [tab, setTab] = useState<Kind>('inserted');
 
   useEffect(() => {
@@ -23,9 +23,9 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
       const g = Everygrid.get(gridId);
       if (!g) return;
       clearInterval(timer);
-      setChanges(g.changes());
+      bump(n => n + 1);
       setChecked(g.checkedValues());
-      const offChange = g.on('change', setChanges);
+      const offChange = g.on('change', () => bump(n => n + 1));
       // The checkbox column: `values` is every checked row's mapping value (here: id).
       const offCheck = g.on('check', (e) => setChecked(e.values));
       off = () => { offChange(); offCheck(); };
@@ -36,7 +36,6 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
 
   const g = Everygrid.get(gridId);
   const patch = g?.patch() ?? {inserted: [], updated: [], deleted: []};
-  const none = changes.length === 0;
 
   // One tab per kind: the count, and only the code that deals with rows of that kind — how to
   // reach them, and the JSON they give you — filled in with the live values.
@@ -108,10 +107,6 @@ ${pj(g?.checkedRows().map(r => r.get()) ?? [])}`,
                 <span className='font-semibold tabular-nums'>{counts[k]}</span> {k}
               </button>
           ))}
-          <button type='button' disabled={none} onClick={() => setDiffOpen(true)}
-                  className='ml-auto rounded px-2 py-1 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent'>
-            diff
-          </button>
         </div>
         {/* Same highlighter and theme as the portal's Code modal. Grows with its content — an inner
             scroll box hid the JSON below the fold. */}
@@ -128,7 +123,6 @@ ${pj(g?.checkedRows().map(r => r.get()) ?? [])}`,
             )}
           </Highlight>
         </div>
-        {diffOpen && <DiffModal gridId={gridId} changes={changes} onClose={() => setDiffOpen(false)}/>}
       </div>
   );
 }
