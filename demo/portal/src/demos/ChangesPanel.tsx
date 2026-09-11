@@ -1,6 +1,9 @@
 import {useEffect, useState} from 'react';
+import {Highlight, themes} from 'prism-react-renderer';
 import {Everygrid, type RowChange} from '@everygrid/grid';
 import DiffModal from './DiffModal';
+
+type Kind = 'inserted' | 'updated' | 'deleted' | 'checked';
 
 /**
  * Change tracking through the handle API. `Everygrid.get(id)` is a grid → row → cell cursor;
@@ -12,7 +15,7 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
   const [changes, setChanges] = useState<RowChange[]>([]);
   const [checked, setChecked] = useState<unknown[]>([]);
   const [diffOpen, setDiffOpen] = useState(false);
-  const [tab, setTab] = useState<'patch' | 'save' | 'select'>('patch');
+  const [tab, setTab] = useState<Kind>('inserted');
 
   useEffect(() => {
     // The grid mounts asynchronously, so poll once until its handle exists, then subscribe.
@@ -48,63 +51,71 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
   const patch = g?.patch() ?? {inserted: [], updated: [], deleted: []};
   const none = changes.length === 0;
   const btn = 'rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-100 disabled:opacity-40';
-  const tabBtn = (id: typeof tab, label: string) => (
-      <button type='button' onClick={() => setTab(id)}
-              className={`px-2 py-0.5 rounded ${tab === id ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-800'}`}>
-        {label}
-      </button>
-  );
 
-  // What a save looks like for exactly this patch: one request per kind, then commit.
-  const saveExample = `const g = Everygrid.get('${gridId}');
-const {inserted, updated, deleted} = g.patch();
+  // One tab per kind: the count, and only the code that deals with rows of that kind — how to
+  // reach them, and what the save does with them — filled in with the live values.
+  const j = (v: unknown) => JSON.stringify(v);
+  const counts: Record<Kind, number> = {
+    inserted: patch.inserted.length, updated: patch.updated.length, deleted: patch.deleted.length, checked: checked.length,
+  };
+  const code: Record<Kind, string> = {
+    inserted: `const g = Everygrid.get('${gridId}');
 
-// ${patch.inserted.length} inserted → POST the whole rows
+g.insertRow({name: 'New person'});   // an empty row at the top, these fields filled; needs rowActions.insertRow
+g.inserted()                          // RowHandle[]  → ${g?.inserted().map(r => `#${r.index}`).join(' ') || '—'}
+g.inserted()[0]?.cell('age').set(30)  // fill it in; edits on a new row stay "inserted"
+g.inserted()[0]?.revert()             // drop it again
+
+// save: POST the whole rows
+const {inserted} = g.patch();         // ${j(patch.inserted.map(r => r.name || '(unnamed)'))}
 if (inserted.length) await fetch('/api/users', {method: 'POST', body: JSON.stringify(inserted)});
-// ${patch.updated.length} updated → PATCH each by key with only the changed fields
-for (const {key, changes} of updated)   // ${patch.updated.map(u => `${u.key}: ${JSON.stringify(u.changes)}`).join(', ') || '—'}
+g.commit();`,
+    updated: `const g = Everygrid.get('${gridId}');
+
+g.row(0).cell('age').set(31)          // edit exactly as typing would (honours editableCols)
+g.updated()                           // RowHandle[]  → ${g?.updated().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
+g.updated()[0]?.changes()             // [{field, from, to}]  → ${j(g?.updated()[0]?.changes() ?? [])}
+g.column('age').changes()             // the same seen from a column
+g.updated()[0]?.cell('age').revert()  // one cell back;  g.updated()[0]?.revert() — the whole row
+
+// save: PATCH each by key with only the changed fields
+const {updated} = g.patch();          // ${j(patch.updated)}
+for (const {key, changes} of updated)
   await fetch(\`/api/users/\${key}\`, {method: 'PATCH', body: JSON.stringify(changes)});
-// ${patch.deleted.length} deleted → DELETE by key
-for (const key of deleted)              // ${patch.deleted.join(', ') || '—'}
-  await fetch(\`/api/users/\${key}\`, {method: 'DELETE'});
+g.commit();`,
+    deleted: `const g = Everygrid.get('${gridId}');
 
-g.commit();   // saved: current state becomes the baseline`;
+g.row(2).delete()                     // struck through until commit; needs rowActions.deleteRow
+g.deleted()                           // RowHandle[]  → ${g?.deleted().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
+g.deleted()[0]?.original()            // the row as loaded
+g.deleted()[0]?.restore()             // undo
 
-  const selectors = `const g = Everygrid.get('${gridId}');
+// save: DELETE by key
+const {deleted} = g.patch();          // ${j(patch.deleted)}
+for (const key of deleted) await fetch(\`/api/users/\${key}\`, {method: 'DELETE'});
+g.commit();                           // now the rows are really gone`,
+    checked: `const g = Everygrid.get('${gridId}');   // checkbox.mapping = 'id'
 
-// changed rows by kind — each is a RowHandle
-g.inserted()      // ${g?.inserted().map(r => `#${r.index}`).join(' ') || '—'}
-g.updated()    // ${g?.updated().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
-g.deleted()    // ${g?.deleted().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
-
-// any row: by data index, by key, by predicate, by position on screen
-g.row(0)  g.rowByKey(2)  g.find(r => r.name === 'Kim')  g.visibleRow(0)
-
-// a row's state and its cells
-g.row(0).status()      // 'inserted' | 'updated' | 'deleted' | null
-g.row(0).changes()     // [{field, from, to}]
-g.row(0).cell('age').get() / .original() / .set(31) / .revert()
-g.row(0).delete() / .restore() / .revert()
-
-// a column across all rows
-g.column('age').changes()   // [{index, key, from, to, row}]
-
-// the checkbox column (checkbox.mapping = 'id')
-g.checked()                 // ${g?.checked().map(r => `#${r.index}`).join(' ') || '—'}  (RowHandle[])
-g.checkedValues()           // ${JSON.stringify(g?.checkedValues() ?? [])}
+g.checked()                           // RowHandle[]  → ${g?.checked().map(r => `#${r.index}`).join(' ') || '—'}
+g.checkedValues()                     // ${j(checked)}
 g.check([1, 2])  g.uncheck([1])  g.checkAll()  g.uncheckAll()
 g.row(0).isChecked()  g.row(0).check()
-g.on('check', ({values, rows, changed, checked}) => …)`;
+g.on('check', ({values, rows, changed, checked}) => …)
+
+// a bulk action over the checked rows is one line
+g.checked().forEach(r => r.delete());
+g.checked().forEach(r => r.cell('active').set(false));`,
+  };
 
   return (
       <div className='rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm'>
-        <div className='flex items-center gap-3'>
-          <span className='font-medium text-slate-800'>Changes</span>
-          <span className='text-slate-500'>
-            {patch.inserted.length} inserted · {patch.updated.length} updated · {patch.deleted.length} deleted
-          </span>
-          <span className='text-slate-400'>·</span>
-          <span className='text-slate-500'>{checked.length} checked</span>
+        <div className='flex items-center gap-1'>
+          {(['inserted', 'updated', 'deleted', 'checked'] as Kind[]).map((k) => (
+              <button key={k} type='button' onClick={() => setTab(k)}
+                      className={`rounded px-2 py-1 ${tab === k ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-200'}`}>
+                <span className='font-semibold tabular-nums'>{counts[k]}</span> {k}
+              </button>
+          ))}
           <button type='button' className={`ml-auto ${btn}`} onClick={editViaApi}>edit via API</button>
           <button type='button' className={btn} disabled={checked.length === 0} onClick={deleteChecked}>delete checked</button>
           <button type='button' className={btn} disabled={none} onClick={() => setDiffOpen(true)}>diff</button>
@@ -112,13 +123,20 @@ g.on('check', ({values, rows, changed, checked}) => …)`;
           <button type='button' className='rounded bg-slate-800 px-2 py-1 text-white hover:bg-slate-700 disabled:opacity-40'
                   disabled={none} onClick={() => g?.commit()}>commit</button>
         </div>
-        <div className='mt-3 flex items-center gap-1 text-xs'>
-          {tabBtn('patch', 'patch()')}{tabBtn('save', 'save with fetch')}{tabBtn('select', 'selectors')}
+        {/* Same highlighter and theme as the portal's Code modal. */}
+        <div className='mt-3 max-h-72 overflow-auto rounded-lg'>
+          <Highlight code={code[tab]} language='tsx' theme={themes.nightOwl}>
+            {({className, style, tokens, getLineProps, getTokenProps}) => (
+                <pre className={`${className} changes-code`} style={style}>
+                  {tokens.map((line, i) => (
+                      <div key={i} {...getLineProps({line})}>
+                        {line.map((token, key) => <span key={key} {...getTokenProps({token})}/>)}
+                      </div>
+                  ))}
+                </pre>
+            )}
+          </Highlight>
         </div>
-        <pre className='mt-2 max-h-56 overflow-auto rounded bg-white p-3 font-mono text-xs leading-relaxed text-slate-700'>
-          {tab === 'patch' ? (none ? '// patch(): nothing changed yet' : JSON.stringify(patch, null, 2))
-              : tab === 'save' ? saveExample : selectors}
-        </pre>
         {diffOpen && <DiffModal gridId={gridId} changes={changes} onClose={() => setDiffOpen(false)}/>}
       </div>
   );

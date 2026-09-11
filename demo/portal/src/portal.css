@@ -691,3 +691,13 @@ nav button.active .tab-name {
   .docs-page { grid-template-columns: 1fr; gap: 1rem; }
   .docs-toc { position: static; flex-direction: row; flex-wrap: wrap; }
 }
+
+/* Code blocks inside a demo page (the Changes panel) — the modal's type and spacing, boxed. */
+.changes-code {
+  margin: 0;
+  padding: 14px 18px;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  min-width: max-content;
+}
