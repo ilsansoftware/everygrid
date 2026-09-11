@@ -22,10 +22,11 @@ function formatBytes(n: number): string {
 }
 
 /**
- * The rows in a parsed document. A bare array is the rows. An object whose first array-valued
- * property holds objects is unwrapped (`{data: [...]}`, `{rows: [...]}`…), so an API response
- * saved to disk works without editing. Any other object is one row — the same rule the library
- * applies to a fetched document — with nested objects and arrays shown as JSON cells.
+ * The rows in a parsed document. A bare array is the rows. A wrapper — an object whose ONLY
+ * property is an array of objects (`{data: [...]}`, `{rows: [...]}`) — is unwrapped, so an API
+ * response saved to disk works without editing. Any other object is one row, the same rule the
+ * library applies to a fetched document, with nested objects and arrays shown as JSON cells: an
+ * order with `items` inside is one order, not two items.
  */
 function extractRows(doc: unknown): Row[] {
   const isRow = (r: unknown): r is Row => !!r && typeof r === 'object' && !Array.isArray(r);
@@ -36,8 +37,9 @@ function extractRows(doc: unknown): Row[] {
     return doc as Row[];
   }
   if (!isRow(doc)) throw new Error('Expected a JSON array or object at the top level.');
-  const nested = Object.values(doc).find(v => Array.isArray(v) && v.length > 0 && v.every(isRow));
-  return nested ? (nested as Row[]) : [doc];
+  const values = Object.values(doc);
+  const only = values.length === 1 ? values[0] : undefined;
+  return Array.isArray(only) && only.length > 0 && only.every(isRow) ? (only as Row[]) : [doc];
 }
 
 type FileInfo = { name: string; bytes: number; rows: number; columns: number };
@@ -158,7 +160,7 @@ export default function SandboxDemo({active}: { active: boolean }) {
                 .
               </p>
               <p className='mt-1 text-xs text-slate-500'>
-                An array of objects, an object containing one, or a single object.
+                An array of objects, a single object, or a wrapper like {'{'}data: [...]{'}'}.
                 Up to {formatBytes(maxBytes())}. Nothing leaves your browser.
               </p>
               <input ref={inputRef} type='file' accept='.json,application/json' hidden onChange={onChange}/>
