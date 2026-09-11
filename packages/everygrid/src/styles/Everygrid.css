@@ -160,8 +160,13 @@
   @apply opacity-40 pointer-events-none;
 }
 /* A deleted row stays where it was, struck through and inert, until commit or restore. */
+/* Deleted and inserted rows share one tint scale — the 50 shade as fill, the 100 shade as the row
+   border — red for what goes, green for what comes. */
+.everygrid-table tbody tr.everygrid-row-deleted td {
+  @apply bg-red-50 border-b border-red-100;
+}
 .everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) {
-  @apply line-through text-slate-400 bg-red-50/40;
+  @apply line-through text-slate-400;
   pointer-events: none;
 }
 .everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) * {
