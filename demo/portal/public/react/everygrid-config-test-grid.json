@@ -113,5 +113,11 @@
       "insertRow": true,
       "deleteRow": true
     }
+  ],
+  "toolbar": [
+    {
+      "id": "test-grid",
+      "showConfig": true
+    }
   ]
 }

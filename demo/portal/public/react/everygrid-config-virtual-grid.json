@@ -36,5 +36,11 @@
         "active": "Active"
       }
     }
-  }
+  },
+  "toolbar": [
+    {
+      "id": "virtual-grid",
+      "showConfig": true
+    }
+  ]
 }

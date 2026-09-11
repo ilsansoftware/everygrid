@@ -124,5 +124,15 @@
         "active_subscriptions": "Active Subscriptions"
       }
     }
-  }
+  },
+  "toolbar": [
+    {
+      "id": "demo-grid",
+      "showConfig": true
+    },
+    {
+      "id": "demo-grid2",
+      "showConfig": true
+    }
+  ]
 }

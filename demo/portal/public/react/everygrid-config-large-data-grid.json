@@ -54,5 +54,11 @@
         "remarks_log": "Remarks"
       }
     }
-  }
+  },
+  "toolbar": [
+    {
+      "id": "large-data-grid",
+      "showConfig": true
+    }
+  ]
 }

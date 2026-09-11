@@ -19,7 +19,8 @@
     "indexingPercent": "인덱스 생성 중... {percent}%",
     "indexingRows": "인덱스 생성 중... {count}행",
     "suggestNav": "↓ 진입 · ← → 선택 · Enter 적용 · ↑ 탈출",
-    "diff": "Diff"
+    "diff": "Diff",
+    "config": "설정"
   },
   "grid": {
     "index": "번호",

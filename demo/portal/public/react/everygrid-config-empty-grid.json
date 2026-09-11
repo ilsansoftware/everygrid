@@ -3,5 +3,11 @@
     {
       "id": "empty-grid"
     }
+  ],
+  "toolbar": [
+    {
+      "id": "empty-grid",
+      "showConfig": true
+    }
   ]
 }

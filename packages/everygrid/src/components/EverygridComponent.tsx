@@ -336,6 +336,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
           onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
           onInsertRow={grid.getRowActions(containerId).insertRow ? () => grid.insertRow(containerId) : undefined}
           onShowDiff={canChange ? () => grid.showDiff(container) : undefined}
+          onShowConfig={grid.showsConfig(containerId) ? () => grid.showConfig(container) : undefined}
           isReloading={grid._reloading?.get(containerId) === 'button'}
           onReset={() => grid.reset(container)}
           onResetSort={() => grid.resetSort(container)}
@@ -428,6 +429,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
             onInsertRow={grid.getRowActions(containerId).insertRow ? () => grid.insertRow(containerId) : undefined}
             onShowDiff={canChange ? () => grid.showDiff(container) : undefined}
+            onShowConfig={grid.showsConfig(containerId) ? () => grid.showConfig(container) : undefined}
             isReloading={grid._reloading?.get(containerId) === 'button'}
             onReset={() => grid.reset(container)}
             onResetSort={() => grid.resetSort(container)}

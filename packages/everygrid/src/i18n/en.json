@@ -19,7 +19,8 @@
     "indexingPercent": "Indexing... {percent}%",
     "indexingRows": "Indexing... {count} rows",
     "suggestNav": "↓ enter · ← → select · Enter apply · ↑ exit",
-    "diff": "Diff"
+    "diff": "Diff",
+    "config": "Config"
   },
   "grid": {
     "index": "Index",

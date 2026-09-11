@@ -36,5 +36,11 @@
         "department": "Department"
       }
     }
-  }
+  },
+  "toolbar": [
+    {
+      "id": "test-grid3",
+      "showConfig": true
+    }
+  ]
 }

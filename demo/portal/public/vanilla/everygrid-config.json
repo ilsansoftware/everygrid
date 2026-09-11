@@ -155,5 +155,19 @@
         "bio"
       ]
     }
+  ],
+  "toolbar": [
+    {
+      "id": "demo-grid",
+      "showConfig": true
+    },
+    {
+      "id": "users",
+      "showConfig": true
+    },
+    {
+      "id": "virtual-grid",
+      "showConfig": true
+    }
   ]
 }

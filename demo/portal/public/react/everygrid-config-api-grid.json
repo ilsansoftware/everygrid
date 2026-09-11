@@ -31,5 +31,11 @@
         "body": "Body"
       }
     }
-  }
+  },
+  "toolbar": [
+    {
+      "id": "api-grid",
+      "showConfig": true
+    }
+  ]
 }

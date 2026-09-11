@@ -1237,6 +1237,42 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return conf?.active !== false;
   }
 
+  /** Whether the toolbar offers the "config" button (`toolbar: [{id, showConfig: true}]`). */
+  public showsConfig(containerId: string): boolean {
+    return !!this.options.toolbar?.find(c => c.id === containerId)?.showConfig;
+  }
+
+  /**
+   * The grid's effective configuration: the target entry plus, from every per-target option, the
+   * entry that names this grid — the same shape the config file uses, reduced to one grid. Data,
+   * callbacks and fetchers are left out.
+   */
+  public getTargetConfig(containerId: string): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    const target = this.options.targets?.find(t => (typeof t === 'string' ? t : t.id) === containerId);
+    if (target) out.targets = [typeof target === 'string' ? {id: target} : {...target, data: undefined}];
+    const skip = new Set(['targets', 'data', 'dataUrl', 'columns', 'columnI18n', 'serverFetcher', 'onDataChange', 'onCellClick', 'dataCache']);
+    for (const [key, value] of Object.entries(this.options)) {
+      if (skip.has(key) || value === undefined) continue;
+      const list = Array.isArray(value) ? value : [value];
+      const mine = list.filter(v => v && typeof v === 'object' && (v as {id?: string}).id === containerId);
+      if (mine.length > 0) out[key] = mine;
+    }
+    if (this.options.columnI18n) {
+      const i18n: Record<string, Record<string, Record<string, string>>> = {};
+      for (const [locale, byGrid] of Object.entries(this.options.columnI18n)) {
+        if (byGrid[containerId]) i18n[locale] = {[containerId]: byGrid[containerId]};
+      }
+      if (Object.keys(i18n).length > 0) out.columnI18n = i18n;
+    }
+    return JSON.parse(JSON.stringify(out));
+  }
+
+  /** Opens the grid's effective configuration in the popup viewer (the toolbar's "config" button). */
+  public showConfig(container: HTMLElement) {
+    this.showPopup(this.getTargetConfig(container.id), undefined, I18n.t('toolbar.config'));
+  }
+
   public getRowActions(containerId: string): {insertRow: boolean; deleteRow: boolean} {
     const conf = this.options.rowActions?.find(c => c.id === containerId);
     return {insertRow: !!conf?.insertRow, deleteRow: !!conf?.deleteRow};

@@ -64,5 +64,11 @@
         "language": "Language"
       }
     }
-  }
+  },
+  "toolbar": [
+    {
+      "id": "test-grid2",
+      "showConfig": true
+    }
+  ]
 }

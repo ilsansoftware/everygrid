@@ -12,5 +12,11 @@
       "rowHeight": 34,
       "overscan": 8
     }
+  ],
+  "toolbar": [
+    {
+      "id": "sandbox-grid",
+      "showConfig": true
+    }
   ]
 }
