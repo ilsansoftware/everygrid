@@ -4,6 +4,7 @@ import {Everygrid, type GridLoadProgress} from '@everygrid/grid';
 import ReactDemo, {type Locale} from './demos/ReactDemo';
 import LargeDataDemo from './demos/LargeDataDemo';
 import VirtualScrollDemo from './demos/VirtualScrollDemo';
+import {HeadingSlotContext} from './headingSlot';
 import SandboxDemo from './demos/SandboxDemo';
 import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
@@ -88,6 +89,8 @@ export default function App() {
   const [tab, setTab] = useState<TabId>(initialTab);
   const [locale, setLocale] = useState<Locale>(initialLocale);
   const [modalOpen, setModalOpen] = useState(false);
+  // Title-row slot for a demo's own controls; see HeadingSlotContext.
+  const [headingSlot, setHeadingSlot] = useState<HTMLElement | null>(null);
   // Source of each HTML demo, once fetched. State rather than a ref, so the modal can
   // derive its text during render instead of a ref read + setState round trip.
   const [codeByTab, setCodeByTab] = useState<Partial<Record<TabId, string>>>({});
@@ -267,7 +270,7 @@ export default function App() {
   );
 
   return (
-      <>
+      <HeadingSlotContext.Provider value={headingSlot}>
         <header>
           <h1>everygrid Demo</h1>
           {TAB_GROUPS.map((group) => (
@@ -325,7 +328,10 @@ export default function App() {
           {!isNarrow && (
             <div className='demo-heading'>
               <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
-              {codeButton}
+              <div className='demo-heading-right'>
+                <div ref={setHeadingSlot}/>
+                {codeButton}
+              </div>
             </div>
           )}
           <div className='demo-scroll'>
@@ -337,7 +343,7 @@ export default function App() {
                       ) : t.id === 'large' ? (
                           <LargeDataDemo/>
                       ) : t.id === 'virtual' ? (
-                          <VirtualScrollDemo/>
+                          <VirtualScrollDemo active={t.id === tab}/>
                       ) : (
                           <SandboxDemo/>
                       )}
@@ -408,6 +414,6 @@ export default function App() {
             </div>
           </div>
         </div>
-      </>
+      </HeadingSlotContext.Provider>
   );
 }

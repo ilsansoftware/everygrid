@@ -208,6 +208,15 @@ nav button.active img {
   margin: 1.25rem auto 0.75rem;
   padding: 0 1.5rem;
 }
+/* Controls on the title row: a demo's own (portaled in) then the code button, one height. */
+.demo-heading-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.demo-heading-right > div:empty {
+  display: none;
+}
 .demo-heading h2 {
   margin: 0;
   font-size: 1.375rem;
