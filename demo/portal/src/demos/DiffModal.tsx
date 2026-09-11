@@ -1,13 +1,12 @@
 import {useEffect} from 'react';
-import {Everygrid, type RowChange} from '@everygrid/grid';
+import type {RowChange} from '@everygrid/grid';
 
 const show = (v: unknown) => v === undefined ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v);
 
 /**
  * Original vs modified, side by side, straight from `Everygrid.get(id).changes()`: one block per
  * changed row (its status, key and index) — a modified row lists each changed cell before → after,
- * an inserted row its values, a deleted row the row that goes. Each line and each row can be
- * cancelled from here — `g.row(i).cell(f).cancel()` / `g.row(i).cancel()`.
+ * an inserted row its values, a deleted row the row that goes. Read-only: a view of `changes()`.
  */
 const STATUS = {
   inserted: 'bg-emerald-100 text-emerald-800',
@@ -25,7 +24,6 @@ export default function DiffModal({gridId, changes, onClose}: {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const g = Everygrid.get(gridId);
   const cells = changes.reduce((n, r) => n + r.cells.length, 0);
 
   return (
@@ -45,8 +43,6 @@ export default function DiffModal({gridId, changes, onClose}: {
                     <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase ${STATUS[r.status]}`}>{r.status}</span>
                     <span className='font-medium text-slate-800'>key {show(r.key)}</span>
                     <span className='text-xs text-slate-500'>row #{r.index}</span>
-                    <button type='button' className='ml-auto text-xs text-slate-500 hover:text-slate-800'
-                            onClick={() => g?.row(r.index).cancel()}>cancel row</button>
                   </div>
                   {/* An inserted or deleted row is listed field by field (the values it has); long
                       values wrap rather than widen the modal. */}
@@ -74,10 +70,6 @@ export default function DiffModal({gridId, changes, onClose}: {
                           <td className='px-3 py-1.5 font-mono text-xs break-all whitespace-pre-wrap text-red-700 line-through decoration-red-300'>{show(c.from)}</td>
                           <td className='w-6 text-center text-slate-400'>→</td>
                           <td className='px-3 py-1.5 font-mono text-xs break-all whitespace-pre-wrap text-emerald-700'>{show(c.to)}</td>
-                          <td className='w-16 px-2 text-right'>
-                            <button type='button' className='text-xs text-slate-400 hover:text-slate-800'
-                                    onClick={() => g?.row(r.index).cell(c.field).cancel()}>cancel</button>
-                          </td>
                         </tr>
                     ))}
                     </tbody>
