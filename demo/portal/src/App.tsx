@@ -273,7 +273,8 @@ export default function App() {
   return (
       <>
         <header>
-          <h1>everygrid</h1>
+          {/* The wordmark is the docs link. */}
+          <h1><a href='#docs' onClick={(e) => { e.preventDefault(); setTab('docs'); }}>everygrid</a></h1>
           <div className='tool-tabs'>{tabsOf('docs').map(renderTab)}</div>
           {(['demo', 'scale'] as TabGroup[]).map((group) => (
             <React.Fragment key={group}>
