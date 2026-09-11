@@ -5,6 +5,7 @@ import {I18n} from '../i18n/I18n';
 import {TableCellComponent} from './TableCellComponent';
 import {PinEmptyIcon} from '../icons/PinEmptyIcon.tsx';
 import {EditIcon} from '../icons/EditIcon.tsx';
+import {PlusIcon} from '../icons/PlusIcon.tsx';
 import {CommaIcon} from '../icons/CommaIcon.tsx';
 import {SortDownIcon} from '../icons/SortDownIcon.tsx';
 import {HideIcon} from '../icons/HideIcon.tsx';
@@ -198,7 +199,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
 
   const getColumnStyle = (col: GridColumn) => {
     if (isMobile) {
-      if (col.type === 'row_detail') return {width: `${MOBILE_DETAIL_W}px`, minWidth: `${MOBILE_DETAIL_W}px`};
+      if (col.type === 'row_detail' || col.type === 'row_actions') return {width: `${MOBILE_DETAIL_W}px`, minWidth: `${MOBILE_DETAIL_W}px`};
       const w = `${mobileWidthByField.get(col.field) ?? mobileBaseColW}px`;
       return {width: w, minWidth: w, maxWidth: w};
     }
@@ -221,11 +222,28 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
         <tr>
           {gridColumns.map((col) => (
             <th key={col.field} data-field={col.field} style={getColumnStyle(col)}
-                className={`${col.type === 'row_detail' ? 'everygrid-detail-cell ' : ''}${col.type === 'data_checkbox' ? 'w-10' : ''} text-left`}>
+                className={`${col.type === 'row_detail' ? 'everygrid-detail-cell ' : ''}${col.type === 'row_actions' ? 'everygrid-actions-cell ' : ''}${col.type === 'data_checkbox' ? 'w-10' : ''} text-left`}>
               <div
                 className='everygrid-header-content px-2 py-2'
               >
-                {col.type === 'row_detail' ? (
+                {col.type === 'row_actions' ? (
+                  <div className='flex w-full justify-center'>
+                    {grid.getRowActions(containerId).addRow && (
+                      <button
+                        type='button'
+                        className='everygrid-action-btn'
+                        aria-label={I18n.t('grid.addRow')}
+                        title={I18n.t('grid.addRow')}
+                        disabled={isIndexing || isExporting}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          grid.addRow(containerId);
+                        }}>
+                        <PlusIcon className='w-4 h-4'/>
+                      </button>
+                    )}
+                  </div>
+                ) : col.type === 'row_detail' ? (
                   <div className='flex w-full justify-center'>
                     <button
                       type='button'
@@ -363,10 +381,11 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
             );
           }
           const isActiveRow = grid.activePopupRowKey != null && grid.activePopupRowKey === JSON.stringify(item);
+          const rowState = grid.isRowDeleted(item) ? ' everygrid-row-deleted' : grid.isRowAdded(item) ? ' everygrid-row-added' : '';
           return (
             <tr key={rowIndex}
                 style={virtual ? {height: `${virtual.rowHeight}px`} : undefined}
-                className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} ${isActiveRow ? 'is-popup-active' : ''}`}>
+                className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} ${isActiveRow ? 'is-popup-active' : ''}${rowState}`}>
               {gridColumns.map((col) => (
                 <TableCellComponent
                   key={`${rowIndex}-${col.field}`}

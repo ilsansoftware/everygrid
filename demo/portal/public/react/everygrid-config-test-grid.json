@@ -106,5 +106,12 @@
       "id": "test-grid",
       "field": "id"
     }
+  ],
+  "rowActions": [
+    {
+      "id": "test-grid",
+      "addRow": true,
+      "deleteRow": true
+    }
   ]
 }

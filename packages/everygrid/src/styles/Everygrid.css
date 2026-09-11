@@ -144,6 +144,34 @@
   @apply text-center bg-slate-50/30 align-middle;
 }
 
+/* Row actions column: "+" in the header (rowActions.addRow), delete / restore per row
+   (rowActions.deleteRow). Narrow, centred, and it never gets a pointer-events lock — a deleted
+   row's restore button must stay clickable. */
+.everygrid-actions-cell {
+  @apply text-center align-middle w-10;
+}
+.everygrid-action-btn {
+  @apply inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 transition-colors;
+}
+.everygrid-action-btn:hover {
+  @apply text-slate-800 bg-slate-100;
+}
+.everygrid-action-btn:disabled {
+  @apply opacity-40 pointer-events-none;
+}
+/* A deleted row stays where it was, struck through and inert, until commit or restore. */
+.everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) {
+  @apply line-through text-slate-400 bg-red-50/40;
+  pointer-events: none;
+}
+.everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) * {
+  @apply text-slate-400;
+}
+/* An added row reads as new until commit. */
+.everygrid-table tbody tr.everygrid-row-added td:not(.everygrid-actions-cell) {
+  @apply bg-emerald-50/60;
+}
+
 /* The detail column is narrow (52px) and holds a 40px button, so it can't afford the mobile cells'
    px-3. Higher specificity than `.everygrid-table.everygrid-mobile tbody td`, so it wins.
    It is also pinned to the right (sticky) so it stays reachable while the data columns scroll; an

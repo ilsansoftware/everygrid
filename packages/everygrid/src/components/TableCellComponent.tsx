@@ -3,6 +3,8 @@ import type {GridColumn, IEverygrid} from '../core/types';
 import {I18n} from '../i18n/I18n';
 import {EditIcon} from '../icons/EditIcon';
 import {RowDetailIcon} from '../icons/RowDetailIcon';
+import {TrashIcon} from '../icons/TrashIcon.tsx';
+import {UndoIcon} from '../icons/UndoIcon.tsx';
 import {formatIsoTimestamp, getSummaryLabel, isJsonString, isXmlString} from '../core/utils';
 import {highlightText, objectContainsFilter} from '../core/highlightUtils';
 
@@ -89,6 +91,25 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       setEditValue(String(item[col.field] ?? ''));
     }
   }, [item, col.field, isFocused]);
+
+  if (col.type === 'row_actions') {
+    const deleted = grid.isRowDeleted(item);
+    return (
+      <td className='everygrid-actions-cell text-center'>
+        {grid.getRowActions(containerId).deleteRow && (
+          <button
+            type='button'
+            className='everygrid-action-btn'
+            aria-label={I18n.t(deleted ? 'grid.restoreRow' : 'grid.deleteRow')}
+            title={I18n.t(deleted ? 'grid.restoreRow' : 'grid.deleteRow')}
+            onClick={() => deleted ? grid.restoreRow(containerId, item) : grid.deleteRow(containerId, item)}
+          >
+            {deleted ? <UndoIcon className='w-4 h-4'/> : <TrashIcon className='w-4 h-4'/>}
+          </button>
+        )}
+      </td>
+    );
+  }
 
   if (col.type === 'row_detail') {
     // Flag the button when the search matches a field that isn't one of the visible mobile columns —

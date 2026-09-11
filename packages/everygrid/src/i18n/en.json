@@ -42,7 +42,10 @@
     "sortDesc": "Sort Descending",
     "edit": "Edit",
     "dataLimited": "Showing the first {shown} of {total} rows — this device's safe limit.",
-    "dataLimitedStream": "Showing the first {shown} rows — this device's safe limit; the rest was not loaded."
+    "dataLimitedStream": "Showing the first {shown} rows — this device's safe limit; the rest was not loaded.",
+    "addRow": "Add row",
+    "deleteRow": "Delete row",
+    "restoreRow": "Restore row"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",

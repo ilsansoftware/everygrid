@@ -246,6 +246,12 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   getColumns(containerId: string, items: T[], isMobile?: boolean): GridColumn[];
   columnLabel(field: string, containerId: string): string;
   getMobileColumns(containerId: string): string[] | undefined;
+  getRowActions(containerId: string): {addRow: boolean; deleteRow: boolean};
+  addRow(containerId: string, values?: Partial<T>, at?: number): T;
+  deleteRow(containerId: string, rowData: T): void;
+  restoreRow(containerId: string, rowData: T): void;
+  isRowAdded(row: T): boolean;
+  isRowDeleted(row: T): boolean;
   showMobileColumnSelector(allFields: string[], container: HTMLElement): void;
   showRowDetail(row: T, container: HTMLElement): void;
 
