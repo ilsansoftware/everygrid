@@ -112,36 +112,52 @@ export default function SandboxDemo() {
 
   return (
       <div className='max-w-7xl mx-auto'>
-        <main className='min-h-150 flex flex-col gap-6 py-8 bg-white'>
-          <div
-              className={`rounded-lg border-2 border-dashed px-6 py-8 text-center text-sm transition-colors
-                ${dragging ? 'border-indigo-400 bg-indigo-50' : 'border-slate-300 bg-slate-50'}`}
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={onDrop}
-          >
-            <p className='text-slate-700'>
-              Drop a <code>.json</code> file here, or{' '}
-              <button
-                  type='button'
-                  className='text-indigo-600 underline disabled:opacity-50'
-                  disabled={busy}
-                  onClick={() => inputRef.current?.click()}
-              >
-                choose one
-              </button>
-              .
-            </p>
-            <p className='mt-1 text-xs text-slate-500'>
-              An array of objects, an object containing one, or a single object. Up to {formatBytes(maxBytes())}.
-              Columns are inferred from the rows; nothing leaves your browser.
-            </p>
-            <input ref={inputRef} type='file' accept='.json,application/json' hidden onChange={onChange}/>
+        {/* Grid on the left at twice the width; the file drop and paste inputs stacked on the right.
+            Stacked the other way round on a narrow screen, inputs first. */}
+        <main className='min-h-150 grid gap-4 py-8 bg-white md:grid-cols-3'>
+          <div className='order-2 md:order-1 md:col-span-2 h-[560px] flex flex-col'>
+            {/* The grid is mounted from the start (the hook needs its element) but stays hidden until
+                a file has loaded — empty, it would show the library's "check your configuration"
+                hint, which is the wrong message here. Virtual scrolling needs a bounded height. */}
+            <div hidden={!info} className='flex-1 min-h-0 flex flex-col'>
+              <div id='sandbox-grid' className='w-full h-full border-slate-200 flex flex-col'/>
+            </div>
+            {!info && (
+                <div className='flex-1 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-400'>
+                  {busy ? 'Parsing…' : 'The grid appears here.'}
+                </div>
+            )}
           </div>
 
-          <div className='flex flex-col gap-2'>
+          <div className='order-1 md:order-2 flex flex-col gap-4 md:h-[560px]'>
+            <div
+                className={`rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm transition-colors
+                  ${dragging ? 'border-indigo-400 bg-indigo-50' : 'border-slate-300 bg-slate-50'}`}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={onDrop}
+            >
+              <p className='text-slate-700'>
+                Drop a <code>.json</code> file here, or{' '}
+                <button
+                    type='button'
+                    className='text-indigo-600 underline disabled:opacity-50'
+                    disabled={busy}
+                    onClick={() => inputRef.current?.click()}
+                >
+                  choose one
+                </button>
+                .
+              </p>
+              <p className='mt-1 text-xs text-slate-500'>
+                An array of objects, an object containing one, or a single object.
+                Up to {formatBytes(maxBytes())}. Nothing leaves your browser.
+              </p>
+              <input ref={inputRef} type='file' accept='.json,application/json' hidden onChange={onChange}/>
+            </div>
+
             <textarea
-                className='min-h-28 w-full resize-y rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none'
+                className='min-h-28 w-full flex-1 resize-none rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none'
                 placeholder='…or paste JSON here'
                 spellCheck={false}
                 value={pasted}
@@ -167,24 +183,16 @@ export default function SandboxDemo() {
                 Clear
               </button>
             </div>
-          </div>
 
-          {busy && <p className='text-sm text-slate-500'>Parsing…</p>}
-          {error && <p className='text-sm text-red-600' role='alert'>{error}</p>}
-          {info && !error && (
-              <p className='text-sm text-slate-600'>
-                <span className='font-medium text-slate-800'>{info.name}</span>
-                {' · '}{formatBytes(info.bytes)}
-                {' · '}{info.rows.toLocaleString()} rows
-                {' · '}{info.columns} columns
-              </p>
-          )}
-
-          {/* The grid is mounted from the start (the hook needs its element) but stays hidden until a
-              file has loaded — empty, it would show the library's "check your configuration" hint,
-              which is the wrong message here. Virtual scrolling needs a bounded height to scroll in. */}
-          <div hidden={!info}>
-            <div id='sandbox-grid' className='w-full border-slate-200 h-[560px] flex flex-col'/>
+            {error && <p className='text-sm text-red-600' role='alert'>{error}</p>}
+            {info && !error && (
+                <p className='text-sm text-slate-600'>
+                  <span className='font-medium text-slate-800'>{info.name}</span>
+                  {' · '}{formatBytes(info.bytes)}
+                  {' · '}{info.rows.toLocaleString()} rows
+                  {' · '}{info.columns} columns
+                </p>
+            )}
           </div>
         </main>
       </div>
