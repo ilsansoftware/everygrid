@@ -136,7 +136,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // Virtual scrolling: engine rows cached in fixed-size blocks, keyed by the filter/sort
   // generation (`seq`) they were fetched under so a filter change drops all of them at once.
   private _blockCache: Map<string, {seq: number; blocks: Map<number, unknown[]>; order: number[]}> = new Map();
-  private _blockPending: Map<string, Set<number>> = new Map();
+  // Keyed `${seq}:${block}`: a block still in flight for an old generation must not stop the
+  // same block being fetched for the new one, or the hole would stay until the next scroll.
+  private _blockPending: Map<string, Set<string>> = new Map();
   private _blockRenderScheduled: Set<string> = new Set();
   // Engine loads, serialised per target. setData uploads the dataset as a sequence of awaited
   // batches, so two overlapping loads interleave in the worker: the second one's opening "clear"
@@ -1157,17 +1159,18 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.renderGrid(container);
   }
 
+  /**
+   * Walks only the rows that have been edited, not the whole dataset. This runs on every render,
+   * including the synchronous one per scroll event, and over a million rows the full scan cost
+   * ~300ms a frame — the main thread fell that far behind the compositor, which is what the blank
+   * band during a scroll actually was. _editedKeys is maintained by every path that mutates a row.
+   */
   public checkHasChanges(): boolean {
-    const data = (this.options.data || []) as T[];
-    return data.some(item => {
-      const original = this.originalDataMap.get(item);
-      if (!original) {
-        return false;
-      }
-
-      // Call isCellModified for each field for consistent comparison
-      return Object.keys(item).some(field => this.isCellModified(item, field));
-    });
+    for (const item of this._editedKeys.values()) {
+      if (!this.originalDataMap.has(item)) continue;
+      if (Object.keys(item).some(field => this.isCellModified(item, field))) return true;
+    }
+    return false;
   }
 
   /** Server-side paging: calls serverFetcher, loads the result into WASM, and re-renders */
@@ -1592,7 +1595,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const jsData = naturalOrder ? ((this.options.data || []) as T[]) : undefined;
 
     const out: (T | undefined)[] = [];
-    for (let b = Math.floor(start / blockSize); b <= Math.floor((end - 1) / blockSize); b++) {
+    const firstBlock = Math.floor(start / blockSize);
+    const lastBlock = Math.floor((end - 1) / blockSize);
+    for (let b = firstBlock; b <= lastBlock; b++) {
       const block = cache.blocks.get(b);
       if (!block) this._fetchBlock(containerId, b, seq);
       const blockStart = b * blockSize;
@@ -1605,6 +1610,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         out.push(row && this._editedKeys.size > 0 ? (this._editedKeys.get(JSON.stringify(row)) ?? row) : row);
       }
     }
+    // Prefetch the neighbours. A block is many screenfuls tall, so asking for the next one while
+    // the reader is still inside this one lands it well before the window crosses the boundary —
+    // without it every crossing showed a band of placeholders for one worker round trip.
+    const lastValid = Math.floor(Math.max(0, this.getFilteredTotal(containerId) - 1) / blockSize);
+    if (firstBlock > 0 && !cache.blocks.has(firstBlock - 1)) this._fetchBlock(containerId, firstBlock - 1, seq);
+    if (lastBlock < lastValid && !cache.blocks.has(lastBlock + 1)) this._fetchBlock(containerId, lastBlock + 1, seq);
     return out;
   }
 
@@ -1612,14 +1623,15 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private _fetchBlock(containerId: string, blockIndex: number, seq: number): void {
     let pending = this._blockPending.get(containerId);
     if (!pending) { pending = new Set(); this._blockPending.set(containerId, pending); }
-    if (pending.has(blockIndex)) return;
-    pending.add(blockIndex);
+    const key = `${seq}:${blockIndex}`;
+    if (pending.has(key)) return;
+    pending.add(key);
 
     const engine = this._wasmEngines.get(containerId);
     if (!engine) return;
     const blockSize = this._blockSize(containerId);
     engine.getPage(blockIndex, blockSize).then(result => {
-      pending.delete(blockIndex);
+      pending.delete(key);
       // The generation moved on while this was in flight — the rows belong to a result set that
       // is no longer on screen, so they must not be cached under the new seq.
       const cache = this._blockCache.get(containerId);
@@ -1632,7 +1644,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       }
       this._scheduleVirtualRender(containerId);
     }).catch(err => {
-      pending.delete(blockIndex);
+      pending.delete(key);
       console.error('Everygrid: virtual block fetch failed:', err);
     });
   }
