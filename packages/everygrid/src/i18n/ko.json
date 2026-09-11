@@ -45,7 +45,8 @@
     "dataLimitedStream": "이 기기 안전 한도로 상위 {shown}행만 불러왔습니다. 나머지는 로드하지 않았습니다.",
     "insertRow": "행 추가",
     "deleteRow": "행 삭제",
-    "restoreRow": "삭제 취소"
+    "restoreRow": "삭제 취소",
+    "insertedRows": "추가된 행"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",

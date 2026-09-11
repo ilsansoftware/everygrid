@@ -106,9 +106,14 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
     return new RowHandle(this.grid, this, index);
   }
 
-  /** Every row as a handle, in data order — a plain array: index it, filter it, map it. */
+  /** Every loaded row as a handle, in data order — a plain array: index it, filter it, map it. */
   rows(): RowHandle<T>[] {
     return this.data().map((_, i) => this.row(i));
+  }
+
+  /** A row of the insert grid, by its position there. */
+  insertedRow(index: number): RowHandle<T> {
+    return new RowHandle(this.grid, this, index, 'inserted');
   }
 
   rowByKey(key: RowKey): RowHandle<T> {
@@ -145,7 +150,7 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
   // Selectors: the changed rows of one kind, as plain arrays of handles — what you do with them
   // is yours: `g.updatedRows()[0].cell('x').revert()`, `g.deletedRows().forEach(r => r.restore())`.
   insertedRows(): RowHandle<T>[] {
-    return this.changes().filter(r => r.status === 'inserted').map(r => this.row(r.index));
+    return this.grid.getInsertedRows().map((_, i) => this.insertedRow(i));
   }
 
   updatedRows(): RowHandle<T>[] {
@@ -183,14 +188,17 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
     };
   }
 
-  /** Inserts a row (at the top by default) and returns its handle. Needs `rowActions.insertRow`. */
-  insertRow(values: Partial<T> = {}, at = 0): RowHandle<T> {
+  /**
+   * Adds a row to the insert grid and returns its handle. The loaded data is untouched until
+   * commit, when the new rows join it at the end. Needs `rowActions.insertRow`.
+   */
+  insertRow(values: Partial<T> = {}): RowHandle<T> {
     if (!this.grid.getRowActions(this.id).insertRow) {
       console.warn(`Everygrid: "${this.id}" has no rowActions.insertRow — rows cannot be inserted.`);
-      return this.row(-1);
+      return this.insertedRow(-1);
     }
-    const row = this.grid.insertRow(this.id, values, at);
-    return this.row(this.data().indexOf(row));
+    const row = this.grid.insertRow(this.id, values);
+    return this.insertedRow(this.grid.getInsertedRows().indexOf(row));
   }
 
   /** Puts every row back as loaded: edits undone, inserted rows dropped, deleted rows restored. */
@@ -247,19 +255,27 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
 export class RowHandle<T extends Record<string, unknown> = Record<string, unknown>> {
   private readonly grid: Everygrid<T>;
   private readonly parent: GridHandle<T>;
+  /** Position in the loaded data — or, for a row of the insert grid, in that grid. */
   public readonly index: number;
+  /** Which list `index` addresses: the loaded data, or the insert grid. */
+  public readonly kind: 'data' | 'inserted';
   /** The grid this row belongs to. */
   public readonly gridId: string;
 
-  constructor(grid: Everygrid<T>, parent: GridHandle<T>, index: number) {
+  constructor(grid: Everygrid<T>, parent: GridHandle<T>, index: number, kind: 'data' | 'inserted' = 'data') {
     this.grid = grid;
     this.parent = parent;
     this.index = index;
+    this.kind = kind;
     this.gridId = parent.id;
   }
 
+  private list(): T[] {
+    return this.kind === 'inserted' ? this.grid.getInsertedRows() : this.parent.data();
+  }
+
   exists(): boolean {
-    return this.index >= 0 && this.index < this.parent.data().length;
+    return this.index >= 0 && this.index < this.list().length;
   }
 
   /** The row's key: its `rowKey` field, else its index. */
@@ -269,7 +285,7 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
   }
 
   get(): T | undefined {
-    return this.exists() ? this.parent.data()[this.index] : undefined;
+    return this.exists() ? this.list()[this.index] : undefined;
   }
 
   /** The row as it was loaded (the row itself when it has not been edited). */
@@ -287,8 +303,7 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
   }
 
   inserted(): boolean {
-    const row = this.get();
-    return !!row && this.grid.isRowInserted(row);
+    return this.kind === 'inserted' && this.exists();
   }
 
   deleted(): boolean {

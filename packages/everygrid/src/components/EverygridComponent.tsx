@@ -394,6 +394,18 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   const pinnedProps = {instance: grid, ...commonTableProps};
   const mainProps = {grid, currentWidths, ...commonTableProps};
 
+  // The insert grid: rows added since load, kept apart from the loaded data (and its indices)
+  // until commit. Same columns and editors as the main grid, minus the checkbox column — a new
+  // row has no key to be checked by yet.
+  const insertedRows = grid.getInsertedRows();
+  const insertProps = {
+    ...mainProps,
+    columns: columns.filter(c => c.type !== 'data_checkbox'),
+    displayItems: insertedRows,
+    startIndex: 0,
+    virtual: undefined,
+  };
+
   // Normal View
   return (
     <div className='everygrid-wrapper relative bg-white overflow-hidden flex flex-col pb-2'>
@@ -468,6 +480,17 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             the skeleton only if there is nothing to show yet. Rows already on screen (a reload,
             or a second load) stay up and the progress lives in the toolbar pill — the body never
             collapses out from under data that is still valid. */}
+        {insertedRows.length > 0 && (
+          <div className='everygrid-insert-grid everygrid-panel shrink-0'>
+            <div className='everygrid-insert-grid-caption'>
+              {I18n.t('grid.insertedRows')} · {insertedRows.length}
+            </div>
+            <div className='everygrid-insert-grid-body'>
+              <GridTableComponent {...insertProps}/>
+            </div>
+          </div>
+        )}
+
         {showSkeleton ? (
           <div className='relative w-full flex-1 min-h-0 overflow-hidden'>
             <EmptyGridPlaceholder

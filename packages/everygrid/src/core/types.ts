@@ -56,10 +56,12 @@ export interface GridRowKeyConfig {
 }
 
 /**
- * Row-level editing per grid. `insertRow` puts a "+ row" button in the toolbar that inserts an
- * empty row at the top; `deleteRow` puts a delete button on every row. A deleted row stays on
- * screen, struck through, until commit removes it or revert brings it back; an inserted row is
- * simply dropped by revert. Both show up in `GridHandle.changes()` / `patch()`.
+ * Row-level editing per grid. `insertRow` puts a "+ row" button in the toolbar that adds an empty
+ * row to the insert grid — a small table above the data, so the loaded rows and their indices stay
+ * put until commit moves the new rows in (at the end). `deleteRow` puts a delete button on every
+ * row; a deleted row stays on screen, struck through, until commit removes it or revert brings it
+ * back. An inserted row is simply dropped by revert. Both show up in `GridHandle.changes()` /
+ * `patch()`.
  */
 export interface GridRowActionsConfig {
   id: string;
@@ -254,6 +256,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   setChecked(containerId: string, values: unknown[], checked: boolean): void;
   clearChecked(containerId: string): void;
   insertRow(containerId: string, values?: Partial<T>, at?: number): T;
+  getInsertedRows(): T[];
   deleteRow(containerId: string, rowData: T): void;
   restoreRow(containerId: string, rowData: T): void;
   isRowInserted(row: T): boolean;

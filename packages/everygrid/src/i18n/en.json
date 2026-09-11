@@ -45,7 +45,8 @@
     "dataLimitedStream": "Showing the first {shown} rows — this device's safe limit; the rest was not loaded.",
     "insertRow": "Insert row",
     "deleteRow": "Delete row",
-    "restoreRow": "Restore row"
+    "restoreRow": "Restore row",
+    "insertedRows": "New rows"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",
