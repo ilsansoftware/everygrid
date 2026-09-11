@@ -8,7 +8,7 @@ type Kind = 'inserted' | 'updated' | 'deleted' | 'checked';
 /**
  * Change tracking through the handle API. `Everygrid.get(id)` is a grid → row → cell cursor;
  * `changes()` is every inserted / updated / deleted row, and `patch()` what a save would send.
- * Edit, insert or delete rows in the grid above (or press "edit via API") and watch the patch; open the diff, cancel or commit from here.
+ * Edit, insert, delete or check rows in the grid above and watch each tab; open the diff or commit from here.
  */
 export default function ChangesPanel({gridId}: { gridId: string }) {
   const [changes, setChanges] = useState<RowChange[]>([]);
@@ -33,18 +33,6 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
     return () => { clearInterval(timer); off(); };
   }, [gridId]);
 
-  const editViaApi = () => {
-    const g = Everygrid.get(gridId);
-    if (!g) return;
-    const age = g.row(0).cell('age');                 // first row, "age" column
-    age.set(Number(age.get() || 0) + 1);
-    g.rowByKey(2).set({category: 'Ops'});              // the row whose rowKey (id) is 2
-    g.insertRow({name: 'New person', age: 30});           // a new row above the data (rowActions.insertRow)
-    g.row(g.data().length - 1).delete();               // the last row (rowActions.deleteRow)
-  };
-
-  // Checked rows as handles — a bulk action is one line.
-  const deleteChecked = () => Everygrid.get(gridId)?.checkedRows().forEach(r => r.delete());
 
   const g = Everygrid.get(gridId);
   const patch = g?.patch() ?? {inserted: [], updated: [], deleted: []};
@@ -121,10 +109,7 @@ ${pj(g?.checkedRows().map(r => r.get()) ?? [])}`,
                 <span className='font-semibold tabular-nums'>{counts[k]}</span> {k}
               </button>
           ))}
-          <button type='button' className={`ml-auto ${btn}`} onClick={editViaApi}>edit via API</button>
-          <button type='button' className={btn} disabled={checked.length === 0} onClick={deleteChecked}>delete checked</button>
-          <button type='button' className={btn} disabled={none} onClick={() => setDiffOpen(true)}>diff</button>
-          <button type='button' className={btn} disabled={none} onClick={() => g?.cancel()}>cancel</button>
+          <button type='button' className={`ml-auto ${btn}`} disabled={none} onClick={() => setDiffOpen(true)}>diff</button>
           <button type='button' className='rounded bg-slate-800 px-2 py-1 text-white hover:bg-slate-700 disabled:opacity-40'
                   disabled={none} onClick={() => g?.commit()}>commit</button>
         </div>
