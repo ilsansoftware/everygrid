@@ -6,14 +6,15 @@ import LargeDataDemo from './demos/LargeDataDemo';
 import VirtualScrollDemo from './demos/VirtualScrollDemo';
 import {HeadingSlotContext} from './headingSlot';
 import SandboxDemo from './demos/SandboxDemo';
+import DocsPage from './demos/DocsPage';
 import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
 import virtualSrc from './demos/VirtualScrollDemo.tsx?raw';
 
-type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual' | 'sandbox';
+type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual' | 'sandbox' | 'docs';
 
 // React-based tabs (rendered inline) vs. iframe demos.
-const REACT_TABS: TabId[] = ['react', 'large', 'virtual', 'sandbox'];
+const REACT_TABS: TabId[] = ['react', 'large', 'virtual', 'sandbox', 'docs'];
 
 // Tabs whose grid streams/indexes long enough to be worth a progress indicator on the nav button —
 // keyed to the grid's container id so App can poll Everygrid.getLoadProgress while the tab is hidden.
@@ -41,6 +42,7 @@ const TABS: { id: TabId; title: string; icon?: string; name?: string; label?: st
   {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large\ndata'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
   {id: 'sandbox', title: 'JSON to Grid — drop a file, get a grid', label: 'json to\ngrid', group: 'tool'},
+  {id: 'docs', title: 'API Docs', label: 'api\ndocs', group: 'tool'},
 ];
 
 const LOCALES: { id: Locale; flag: string; title: string }[] = [
@@ -49,7 +51,7 @@ const LOCALES: { id: Locale; flag: string; title: string }[] = [
 ];
 
 // Tabs that are tools rather than demos: nothing to show under 'Show Code'.
-const NO_CODE_TABS: TabId[] = ['sandbox'];
+const NO_CODE_TABS: TabId[] = ['sandbox', 'docs'];
 
 // Prism language + label used by the 'Show Code' modal per demo. ('markup' is Prism's name for HTML.)
 const CODE_META: Record<TabId, { lang: string; label: string }> = {
@@ -59,10 +61,11 @@ const CODE_META: Record<TabId, { lang: string; label: string }> = {
   large: {lang: 'tsx', label: 'tsx'},
   virtual: {lang: 'tsx', label: 'tsx'},
   sandbox: {lang: 'tsx', label: 'tsx'},
+  docs: {lang: 'tsx', label: 'tsx'},
 };
 
 function isTabId(v: string | null): v is TabId {
-  return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual' || v === 'sandbox';
+  return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual' || v === 'sandbox' || v === 'docs';
 }
 
 // Tabs dropped on a phone: the large-data demo streams 1.6M rows, too heavy to feature on mobile.
@@ -348,8 +351,10 @@ export default function App() {
                           <LargeDataDemo/>
                       ) : t.id === 'virtual' ? (
                           <VirtualScrollDemo active={t.id === tab}/>
-                      ) : (
+                      ) : t.id === 'sandbox' ? (
                           <SandboxDemo/>
+                      ) : (
+                          <DocsPage/>
                       )}
                     </div>
                 ) : (
