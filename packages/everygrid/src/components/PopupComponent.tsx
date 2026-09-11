@@ -63,7 +63,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
               children
             )
           ) : (
-            <div className='flex flex-col min-h-full'>
+            <div className='flex flex-col min-h-full min-w-0'>
               {/* Its own row above the text, so it never sits on the first lines of the JSON. */}
               <div className='flex justify-end mb-2 shrink-0'>
                 <button
@@ -75,8 +75,11 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
                   {I18n.t(copied ? 'popup.copied' : 'popup.copy')}
                 </button>
               </div>
+              {/* min-w-0 + w-full: a flex item's minimum width is its content, so a long line would
+                  otherwise widen the pre past the popup and scroll the whole body sideways; the pre
+                  scrolls on its own instead. */}
               <pre
-                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto flex-1'>
+                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto flex-1 min-w-0 w-full'>
                 {JSON.stringify(data, null, 2)}
               </pre>
             </div>

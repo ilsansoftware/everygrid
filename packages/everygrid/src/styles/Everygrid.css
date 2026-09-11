@@ -454,8 +454,11 @@
   width: 30%;
 }
 
+/* A popup's <pre> keeps the popup's width and scrolls its long lines itself. It used to grow to
+   its content (min-width: max-content), which pushed the whole popup body sideways — the copy
+   row landed mid-scroll and the text's left edge was off-screen. */
 .everygrid-popup-content pre:not(.whitespace-pre-wrap) {
-  @apply min-w-max bg-slate-50 border-slate-200;
+  @apply min-w-0 w-full bg-slate-50 border-slate-200;
 }
 
 .everygrid-popup-header {
