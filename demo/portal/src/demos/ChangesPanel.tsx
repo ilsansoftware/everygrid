@@ -8,8 +8,7 @@ type Kind = 'inserted' | 'updated' | 'deleted' | 'checked';
 /**
  * Change tracking through the handle API. `Everygrid.get(id)` is a grid → row → cell cursor;
  * `changes()` is every inserted / updated / deleted row, and `patch()` what a save would send.
- * Edit, insert or delete rows in the grid above (or press "edit via API") and watch the patch turn
- * into the save calls below; open the diff, revert or commit from here.
+ * Edit, insert or delete rows in the grid above (or press "edit via API") and watch the patch; open the diff, cancel or commit from here.
  */
 export default function ChangesPanel({gridId}: { gridId: string }) {
   const [changes, setChanges] = useState<RowChange[]>([]);
@@ -67,7 +66,7 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
 g.insertRow({name: 'New person'})     // a new row above the data rows; needs rowActions.insertRow
 g.insertedRows()                      // RowHandle[] (their own index space)  → ${g?.insertedRows().map(r => `#${r.index}`).join(' ') || '—'}
 g.insertedRows()[0]?.cell('age').set(30)
-g.insertedRows().forEach(r => r.revert())            // drop them again
+g.insertedRows().forEach(r => r.cancel())            // drop them again
 g.rows().filter(r => r.inserted())                   // the same rows, as a filter
 
 const {inserted} = g.patch();         // the new rows, whole:
@@ -80,7 +79,7 @@ g.row(0).cell('age').set(31)          // edit exactly as typing would (honours e
 g.updatedRows()                       // RowHandle[]  → ${g?.updatedRows().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
 g.updatedRows()[0]?.changes()         // [{field, from, to}]
 g.column('age').changes()             // the same seen from a column
-g.updatedRows().forEach(r => r.cell('age').revert())
+g.updatedRows().forEach(r => r.cell('age').cancel())
 g.rows().filter(r => r.updated())                    // the same rows, as a filter
 
 const {updated} = g.patch();          // per row: its key and only the changed fields:
@@ -92,7 +91,7 @@ g.commit();                           // once they are saved`,
 g.row(2).delete()                     // struck through until commit; needs rowActions.deleteRow
 g.deletedRows()                       // RowHandle[]  → ${g?.deletedRows().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
 g.deletedRows()[0]?.original()        // the row as loaded
-g.deletedRows().forEach(r => r.restore())            // undo them all
+g.deletedRows().forEach(r => r.cancel())             // bring them all back
 g.rows().filter(r => r.deleted())                    // the same rows, as a filter
 
 const {deleted} = g.patch();          // per row: its key, and the row as loaded:
@@ -125,7 +124,7 @@ ${pj(g?.checkedRows().map(r => r.get()) ?? [])}`,
           <button type='button' className={`ml-auto ${btn}`} onClick={editViaApi}>edit via API</button>
           <button type='button' className={btn} disabled={checked.length === 0} onClick={deleteChecked}>delete checked</button>
           <button type='button' className={btn} disabled={none} onClick={() => setDiffOpen(true)}>diff</button>
-          <button type='button' className={btn} disabled={none} onClick={() => g?.revert()}>revert</button>
+          <button type='button' className={btn} disabled={none} onClick={() => g?.cancel()}>cancel</button>
           <button type='button' className='rounded bg-slate-800 px-2 py-1 text-white hover:bg-slate-700 disabled:opacity-40'
                   disabled={none} onClick={() => g?.commit()}>commit</button>
         </div>

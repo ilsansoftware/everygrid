@@ -69,7 +69,7 @@ export interface CheckEvent<T = Record<string, unknown>> {
 export interface GridEvents<T = Record<string, unknown>> {
   /** One cell was edited (through the grid's UI or `set`). */
   cellChange: (e: CellChangeEvent<T>) => void;
-  /** The set of changes moved: an edit, a revert, or a commit. */
+  /** The set of changes moved: an edit, a cancel, or a commit. */
   change: (changes: RowChange<T>[]) => void;
   /** Rows were checked or unchecked, from the UI or the API. */
   check: (e: CheckEvent<T>) => void;
@@ -77,7 +77,7 @@ export interface GridEvents<T = Record<string, unknown>> {
 
 /**
  * Coordinates into one grid's data — grid → row → cell — with the same verbs at every level:
- * `get`, `set`, `original`, `updated`, `changes`, `revert`. Handles are stateless views over
+ * `get`, `set`, `original`, `changes`, `cancel`. Handles are stateless views over
  * the grid, so they are cheap to make and never go stale; a handle to a row that does not exist
  * reports `exists() === false` and its writes are no-ops, so a chain never has to null-check.
  *
@@ -148,7 +148,7 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
   }
 
   // Selectors: the changed rows of one kind, as plain arrays of handles — what you do with them
-  // is yours: `g.updatedRows()[0].cell('x').revert()`, `g.deletedRows().forEach(r => r.restore())`.
+  // is yours: `g.updatedRows()[0].cell('x').cancel()`, `g.deletedRows().forEach(r => r.cancel())`.
   insertedRows(): RowHandle<T>[] {
     return this.grid.getInsertedRows().map((_, i) => this.insertedRow(i));
   }
@@ -201,8 +201,8 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
     return this.insertedRow(this.grid.getInsertedRows().indexOf(row));
   }
 
-  /** Puts every row back as loaded: edits undone, inserted rows dropped, deleted rows restored. */
-  revert(): void {
+  /** Cancels every change: edits undone, inserted rows dropped, deleted rows back. */
+  cancel(): void {
     const el = document.getElementById(this.id);
     if (el) this.grid.reset(el);
   }
@@ -336,7 +336,7 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     if (row && mapping) this.grid.setChecked(this.gridId, [row[mapping]], checked);
   }
 
-  /** Marks the row deleted (struck through until commit; revert restores it). Needs `rowActions.deleteRow`. */
+  /** Marks the row deleted (struck through until commit; cancel() brings it back). Needs `rowActions.deleteRow`. */
   delete(): boolean {
     const row = this.get();
     if (!row) return false;
@@ -346,12 +346,6 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     }
     this.grid.deleteRow(this.gridId, row);
     return true;
-  }
-
-  /** Undoes `delete()`. */
-  restore(): void {
-    const row = this.get();
-    if (row) this.grid.restoreRow(this.gridId, row);
   }
 
   changes(): CellChange[] {
@@ -373,13 +367,13 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     return n;
   }
 
-  /** Back as loaded: an inserted row is dropped, a deleted one restored, edits undone. */
-  revert(): void {
+  /** Cancels this row's change: an inserted row is dropped, a deleted one comes back, edits are undone. */
+  cancel(): void {
     const row = this.get();
     if (!row) return;
     if (this.grid.isRowInserted(row)) { this.grid.deleteRow(this.gridId, row); return; }
     if (this.grid.isRowDeleted(row)) this.grid.restoreRow(this.gridId, row);
-    for (const c of this.changes()) this.cell(c.field).revert();
+    for (const c of this.changes()) this.cell(c.field).cancel();
   }
 }
 
@@ -433,7 +427,8 @@ export class CellHandle<T extends Record<string, unknown> = Record<string, unkno
     return true;
   }
 
-  revert(): void {
+  /** Puts the loaded value back. */
+  cancel(): void {
     const row = this.row.get();
     const el = document.getElementById(this.row.gridId);
     if (row && el && this.modified()) this.grid.resetCell(row, this.field, el);
@@ -464,7 +459,8 @@ export class ColumnHandle<T extends Record<string, unknown> = Record<string, unk
     return out;
   }
 
-  revert(): void {
-    for (const c of this.changes()) this.parent.row(c.index).cell(this.field).revert();
+  /** Cancels every change in this column. */
+  cancel(): void {
+    for (const c of this.changes()) this.parent.row(c.index).cell(this.field).cancel();
   }
 }

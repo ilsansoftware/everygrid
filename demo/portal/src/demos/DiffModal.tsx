@@ -7,7 +7,7 @@ const show = (v: unknown) => v === undefined ? '—' : typeof v === 'object' ? J
  * Original vs modified, side by side, straight from `Everygrid.get(id).changes()`: one block per
  * changed row (its status, key and index) — a modified row lists each changed cell before → after,
  * an inserted row its values, a deleted row the row that goes. Each line and each row can be
- * reverted from here — `g.row(i).cell(f).revert()` / `g.row(i).revert()`.
+ * cancelled from here — `g.row(i).cell(f).cancel()` / `g.row(i).cancel()`.
  */
 const STATUS = {
   inserted: 'bg-emerald-100 text-emerald-800',
@@ -46,7 +46,7 @@ export default function DiffModal({gridId, changes, onClose}: {
                     <span className='font-medium text-slate-800'>key {show(r.key)}</span>
                     <span className='text-xs text-slate-500'>row #{r.index}</span>
                     <button type='button' className='ml-auto text-xs text-slate-500 hover:text-slate-800'
-                            onClick={() => g?.row(r.index).revert()}>revert row</button>
+                            onClick={() => g?.row(r.index).cancel()}>cancel row</button>
                   </div>
                   {r.status !== 'updated' && (
                       <div className={`px-3 py-2 font-mono text-xs ${r.status === 'deleted' ? 'text-red-700 line-through decoration-red-300' : 'text-emerald-700'}`}>
@@ -63,7 +63,7 @@ export default function DiffModal({gridId, changes, onClose}: {
                           <td className='px-3 py-1.5 font-mono text-xs text-emerald-700'>{show(c.to)}</td>
                           <td className='w-16 px-2 text-right'>
                             <button type='button' className='text-xs text-slate-400 hover:text-slate-800'
-                                    onClick={() => g?.row(r.index).cell(c.field).revert()}>revert</button>
+                                    onClick={() => g?.row(r.index).cell(c.field).cancel()}>cancel</button>
                           </td>
                         </tr>
                     ))}
