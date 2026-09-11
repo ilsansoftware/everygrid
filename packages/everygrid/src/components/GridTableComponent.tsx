@@ -5,6 +5,7 @@ import {I18n} from '../i18n/I18n';
 import {TableCellComponent} from './TableCellComponent';
 import {PinEmptyIcon} from '../icons/PinEmptyIcon.tsx';
 import {EditIcon} from '../icons/EditIcon.tsx';
+import {TrashIcon} from '../icons/TrashIcon.tsx';
 import {CommaIcon} from '../icons/CommaIcon.tsx';
 import {SortDownIcon} from '../icons/SortDownIcon.tsx';
 import {HideIcon} from '../icons/HideIcon.tsx';
@@ -218,7 +219,9 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                 className='everygrid-header-content px-2 py-2'
               >
                 {col.type === 'row_actions' ? (
-                  <div className='w-full'/>
+                  <div className='flex w-full justify-center text-slate-400' title={I18n.t('grid.deleteRow')}>
+                    <TrashIcon className='w-4 h-4'/>
+                  </div>
                 ) : col.type === 'row_detail' ? (
                   <div className='flex w-full justify-center'>
                     <button
