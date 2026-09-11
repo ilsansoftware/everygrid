@@ -2,7 +2,7 @@
 // it intentionally exports a hook + a component + a type together — react-refresh's "components only"
 // rule doesn't apply to a consumed package entry.
 /* eslint-disable react-refresh/only-export-components */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { Everygrid } from '../core/Everygrid';
 
@@ -22,13 +22,28 @@ const pendingUnmount = new Map<string, ReturnType<typeof setTimeout>>();
  * neither double-creates nor unmounts a root mid-render.
  */
 export function useGrid(id: string, fetcher?: Fetcher): void {
+  // The grid is created once per id, but the fetcher it was given can close over component state
+  // (a size picker, a filter). Registering a wrapper that reads the latest one means a reload runs
+  // the fetcher as currently rendered, rather than the one captured at mount.
+  const fetcherRef = useRef(fetcher);
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
+
   useEffect(() => {
     const pending = pendingUnmount.get(id);
     if (pending !== undefined) {
       clearTimeout(pending);
       pendingUnmount.delete(id);
     }
-    void Everygrid.createGrid(id, fetcher);
+    const initial = fetcher;
+    const source: Fetcher | undefined = typeof initial === 'function'
+      ? () => {
+          const latest = fetcherRef.current;
+          return typeof latest === 'function' ? latest() : initial();
+        }
+      : initial;
+    void Everygrid.createGrid(id, source);
 
     return () => {
       pendingUnmount.set(id, setTimeout(() => {

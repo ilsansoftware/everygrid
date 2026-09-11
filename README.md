@@ -143,6 +143,15 @@ defers teardown, so React StrictMode's double-invoke is safe. The config target 
 any) customizes it; otherwise it renders with defaults. Nothing else on the page needs to know the
 grid exists.
 
+The fetcher may close over component state — a size picker, a filter — because a reload runs the
+fetcher as *last rendered*, not the one captured at mount:
+
+```tsx
+const [rows, setRows] = useState(1000);
+useGrid('user-grid', () => buildRows(rows));
+// later: setRows(5000); Everygrid.reload('user-grid', {silent: true, discard: true});
+```
+
 ---
 
 ## CDN Usage
@@ -490,7 +499,12 @@ Everygrid.refreshAll();
 // The toolbar shows a "Reload Data" button for exactly those grids; grids given their
 // rows inline have no source to re-fetch, so they get no button and this is a no-op.
 // Reloaded rows become the new baseline: pending cell edits are discarded.
-grid.reloadData('my-grid-id');
+// Options: {silent} skips the button's spinner; {discard} drops the rows on screen first (the
+// incoming result is a different query, not a refresh of this one). A reload requested while
+// one is running is queued behind it — latest wins — and its promise settles when that run ends.
+// The loading UI is painted before the fetcher runs, so a fetcher that builds rows synchronously
+// does not block it.
+grid.reloadData('my-grid-id', {silent: true, discard: true});   // or Everygrid.reload(id, opts)
 
 // Internationalization
 import { I18n } from '@everygrid/core';

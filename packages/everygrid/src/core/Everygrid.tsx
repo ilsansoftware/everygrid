@@ -171,6 +171,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // for because the fetcher's inputs changed, which shows the same loading UI as a first load and
   // leaves the button alone. Either value blocks a second reload from starting.
   public _reloading: Map<string, 'button' | 'silent'> = new Map();
+  // The reload currently running, and the one asked for while it ran. Latest wins: every request
+  // made during a run is folded into a single follow-up, and each caller's promise settles when
+  // the run that carries its request has finished.
+  private _reloadRun: Map<string, Promise<void>> = new Map();
+  private _reloadNext: Map<string, {opts: ReloadOptions; promise: Promise<void>}> = new Map();
   // Targets whose current rows have been thrown away for an incoming, different result. While a
   // target is in here the virtual body must not fall back to the in-memory copy — those rows are
   // the new ones, but they are not indexed yet, and showing them un-indexed means a grid that
@@ -458,7 +463,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const instance = new Everygrid({...config, targets: [target], data: []});
       instance._dataSource.set(targetId, fetcherOrUrl);
       instance._loading.add(targetId);
-      void fetcherOrUrl()
+      // The skeleton has to reach the screen before the fetcher runs: a fetcher that builds its
+      // rows synchronously would otherwise block the paint it was mounted for.
+      void Everygrid._afterPaint()
+        .then(fetcherOrUrl)
         .then(rows => instance._setRows(targetId, rows))
         .catch(err => console.warn('Everygrid: fetcher failed for', targetId, err))
         .finally(() => {
@@ -694,9 +702,49 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * first load does. Leave it off for a plain refresh, where the rows on screen stay valid until
    * the new ones land.
    */
-  public async reloadData(containerId: string, opts: ReloadOptions = {}): Promise<void> {
+  public reloadData(containerId: string, opts: ReloadOptions = {}): Promise<void> {
+    if (this._destroyed || !this._dataSource.has(containerId)) return Promise.resolve();
+    // Already reloading: fold this request into the follow-up run rather than dropping it. Two
+    // requests merge to the stronger of each option — a discard is still a discard, and a button
+    // press still shows as one.
+    const running = this._reloadRun.get(containerId);
+    if (running) {
+      const next = this._reloadNext.get(containerId);
+      if (next) {
+        next.opts = {silent: !!next.opts.silent && !!opts.silent, discard: !!next.opts.discard || !!opts.discard};
+        return next.promise;
+      }
+      const entry = {opts: {...opts}, promise: Promise.resolve()};
+      entry.promise = running.then(() => {
+        this._reloadNext.delete(containerId);
+        return this.reloadData(containerId, entry.opts);
+      });
+      this._reloadNext.set(containerId, entry);
+      return entry.promise;
+    }
+    const run = this._runReload(containerId, opts).finally(() => {
+      if (this._reloadRun.get(containerId) === run) this._reloadRun.delete(containerId);
+    });
+    this._reloadRun.set(containerId, run);
+    return run;
+  }
+
+  /** Resolves once the browser has painted — or at once in a hidden tab, where it never will. */
+  private static _afterPaint(): Promise<void> {
+    return new Promise(resolve => {
+      if (typeof document === 'undefined' || document.visibilityState === 'hidden'
+          || typeof requestAnimationFrame !== 'function') {
+        setTimeout(resolve, 0);
+        return;
+      }
+      // rAF runs just before the paint; the timeout after it runs once the paint is done.
+      requestAnimationFrame(() => setTimeout(resolve, 0));
+    });
+  }
+
+  private async _runReload(containerId: string, opts: ReloadOptions): Promise<void> {
     const source = this._dataSource.get(containerId);
-    if (!source || this._reloading.get(containerId)) return;
+    if (!source) return;
 
     this._reloading.set(containerId, opts.silent ? 'silent' : 'button');
     if (opts.discard) {
@@ -752,6 +800,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         this._streamUrl.set(containerId, source);
         await this._loadFromUrl(containerId, source);
       } else {
+        // Let the loading UI just rendered reach the screen before the fetcher runs; one that
+        // builds its rows synchronously would otherwise block that paint (and whatever the user
+        // was interacting with when they asked for the reload).
+        await Everygrid._afterPaint();
         await this._setRows(containerId, await source());
       }
     } catch (err) {
