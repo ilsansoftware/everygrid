@@ -147,6 +147,18 @@ export class GridEngineWasm {
     return this.send(req) as Promise<void>;
   }
 
+  /** Inserts rows at a raw position — the row-add path. */
+  insertRows(index: number, rows: unknown[]): Promise<void> {
+    const req = { id: this.engineId, cmd: 'insertRows' as const, index, rowsJson: JSON.stringify(rows) };
+    return this.send(req) as Promise<void>;
+  }
+
+  /** Removes rows at raw positions. */
+  removeRows(indices: number[]): Promise<void> {
+    const req = { id: this.engineId, cmd: 'removeRows' as const, indices: Uint32Array.from(indices) };
+    return this.send(req) as Promise<void>;
+  }
+
   /** Applies filter+sort and fetches the page in a single atomic Worker call — prevents interleaving. */
   async filterSortAndGetPage(
     text: string, col: string, asc: boolean, page: number, pageSize: number

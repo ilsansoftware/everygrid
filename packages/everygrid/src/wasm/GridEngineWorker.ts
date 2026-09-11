@@ -23,6 +23,8 @@ export type WorkerRequest =
   | { id: string; seq: number; cmd: 'getTotalCount' }
   | { id: string; seq: number; cmd: 'getRawCount' }
   | { id: string; seq: number; cmd: 'updateRows'; indices: Uint32Array; rowsJson: string }
+  | { id: string; seq: number; cmd: 'insertRows'; index: number; rowsJson: string }
+  | { id: string; seq: number; cmd: 'removeRows'; indices: Uint32Array }
   | { id: string; seq: number; cmd: 'finalize' };
 
 export type WorkerResponse =
@@ -239,6 +241,16 @@ function executeCommand(req: WorkerRequest): unknown {
 
       case 'updateRows': {
         getEngine(id).update_rows(req.indices, req.rowsJson);
+        break;
+      }
+
+      case 'insertRows': {
+        getEngine(id).insert_rows(req.index, req.rowsJson);
+        break;
+      }
+
+      case 'removeRows': {
+        getEngine(id).remove_rows(req.indices);
         break;
       }
 

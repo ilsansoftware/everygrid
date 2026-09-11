@@ -259,6 +259,47 @@ impl GridEngine {
     /// and re-parses the whole dataset (and drives the indexing progress UI) to change one
     /// value. Out-of-range indices are skipped rather than failing the batch, so a stale
     /// index from a concurrent reload cannot break an otherwise valid edit.
+    /// Inserts rows at `index` (clamped to the end), in the order given — the row-add path.
+    pub fn insert_rows(&mut self, index: u32, rows_json: &str) -> Result<(), JsError> {
+        let values: Vec<serde_json::Value> =
+            serde_json::from_str(rows_json).map_err(|e| JsError::new(&e.to_string()))?;
+        let mut rows = Vec::with_capacity(values.len());
+        for value in &values {
+            let Some(row) = RowData::from_value(value, &mut self.interner) else {
+                return Err(JsError::new("insert_rows: row is not an object"));
+            };
+            rows.push(row);
+        }
+        if rows.is_empty() {
+            return Ok(());
+        }
+        let at = (index as usize).min(self.raw_data.len());
+        self.raw_data.splice(at..at, rows);
+        self.invalidate_indices();
+        self.recompute();
+        Ok(())
+    }
+
+    /// Removes the rows at `indices` (raw positions; duplicates and out-of-range are ignored).
+    pub fn remove_rows(&mut self, indices: Vec<u32>) {
+        let mut sorted: Vec<usize> = indices
+            .into_iter()
+            .map(|i| i as usize)
+            .filter(|&i| i < self.raw_data.len())
+            .collect();
+        if sorted.is_empty() {
+            return;
+        }
+        sorted.sort_unstable();
+        sorted.dedup();
+        // Highest first, so each removal leaves the lower positions untouched.
+        for &i in sorted.iter().rev() {
+            self.raw_data.remove(i);
+        }
+        self.invalidate_indices();
+        self.recompute();
+    }
+
     pub fn update_rows(&mut self, indices: Vec<u32>, rows_json: &str) -> Result<(), JsError> {
         let values: Vec<serde_json::Value> =
             serde_json::from_str(rows_json).map_err(|e| JsError::new(&e.to_string()))?;
