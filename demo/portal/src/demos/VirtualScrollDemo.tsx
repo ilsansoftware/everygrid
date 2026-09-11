@@ -44,9 +44,10 @@ export default function VirtualScrollDemo({active}: { active: boolean }) {
   // when that row exists; on a phone (no title row) it stays above the grid.
   const slot = useContext(HeadingSlotContext);
   const picker = (
-      <label className='flex items-center gap-2 text-sm text-slate-600'>
-        Rows
+      <label className='flex items-center'>
         <select
+            aria-label='Rows'
+            title='Rows'
             className='h-[34px] rounded-lg border border-slate-300 bg-white px-2 text-sm text-slate-700 shadow-sm disabled:opacity-50'
             value={ROW_CHOICES.includes(current) ? current : ''}
             disabled={busy}
