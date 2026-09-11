@@ -64,6 +64,8 @@ export default function SandboxDemo({active}: { active: boolean }) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [pasted, setPasted] = useState('');
+  /** Which input the right column shows: the file drop zone or the JSON text box. */
+  const [source, setSource] = useState<'file' | 'json'>('file');
 
   /** A file and pasted text take the same path; `read` hands over the text once the size passed. */
   const load = async (name: string, bytes: number, read: () => Promise<string>) => {
@@ -121,8 +123,8 @@ export default function SandboxDemo({active}: { active: boolean }) {
 
   return (
       <div className='max-w-7xl mx-auto'>
-        {/* Grid on the left at twice the width; the file drop and paste inputs stacked on the right.
-            Stacked the other way round on a narrow screen, inputs first. */}
+        {/* Grid on the left at twice the width; the input on the right, one of two behind a
+            File | JSON toggle. Stacked the other way round on a narrow screen, input first. */}
         <main className='min-h-150 grid gap-4 py-8 bg-white md:grid-cols-3'>
           <div className='demo-tools md:col-span-3'><LocaleSwitch value={locale} onChange={setLocale}/></div>
           <div className='order-2 md:order-1 md:col-span-2 h-[560px] flex flex-col'>
@@ -140,8 +142,23 @@ export default function SandboxDemo({active}: { active: boolean }) {
           </div>
 
           <div className='order-1 md:order-2 flex flex-col gap-4 md:h-[560px]'>
+            <div className='locale-btn-group' role='group' aria-label='Input'>
+              {(['file', 'json'] as const).map((id) => (
+                  <button
+                      key={id}
+                      type='button'
+                      className={`locale-btn source-btn${source === id ? ' active' : ''}`}
+                      aria-pressed={source === id}
+                      onClick={() => setSource(id)}
+                  >
+                    {id === 'file' ? 'File' : 'JSON'}
+                  </button>
+              ))}
+            </div>
+
+            {source === 'file' && (
             <div
-                className={`rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm transition-colors
+                className={`flex-1 flex flex-col justify-center rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm transition-colors
                   ${dragging ? 'border-indigo-400 bg-indigo-50' : 'border-slate-300 bg-slate-50'}`}
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
@@ -165,10 +182,12 @@ export default function SandboxDemo({active}: { active: boolean }) {
               </p>
               <input ref={inputRef} type='file' accept='.json,application/json' hidden onChange={onChange}/>
             </div>
+            )}
 
+            {source === 'json' && (<>
             <textarea
                 className='min-h-28 w-full flex-1 resize-none rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none'
-                placeholder='…or paste JSON here'
+                placeholder='Paste JSON here'
                 spellCheck={false}
                 value={pasted}
                 disabled={busy}
@@ -193,6 +212,7 @@ export default function SandboxDemo({active}: { active: boolean }) {
                 Clear
               </button>
             </div>
+            </>)}
 
             {error && <p className='text-sm text-red-600' role='alert'>{error}</p>}
             {info && !error && (

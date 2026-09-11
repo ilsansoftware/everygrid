@@ -413,6 +413,18 @@ nav button.active .tab-name {
   opacity: 1;
 }
 
+/* The sandbox's File | JSON input toggle: the locale switch's segmented control with text tabs. */
+.source-btn {
+  width: auto;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+.source-btn.active {
+  color: #0f172a;
+}
+
 /* Show Code button. In the header (phone only) it sits right of the tab capsule and borrows the
    capsule's height, background and faint outline — one continuous control strip. */
 .show-code-btn {
