@@ -73,6 +73,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // the CURRENT filterText — highlighting stays live if the filter changes while it is open.
   public activePopupData: {data: unknown} | null = null;
   public activePopupTitle: string | null = null;
+  public activePopupSubtitle: string | null = null;
   public activePopupRow: unknown | null = null;
   public activePopupRowKey: string | null = null;
   public currentPage: Map<string, number> = new Map();
@@ -1144,6 +1145,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.activePopup = null;
     this.activePopupData = null;
     this.activePopupTitle = null;
+    this.activePopupSubtitle = null;
     this.activePopupRow = null;
     this.activePopupRowKey = null;
     const {targets} = this.options;
@@ -1272,9 +1274,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    */
   public getTargetConfig(containerId: string): Record<string, unknown> {
     const out: Record<string, unknown> = {};
-    // The file the target came from, first — so the reader knows where to edit.
-    const url = Everygrid._targetRegistry.get(containerId)?.url;
-    if (url) out.file = url;
     const target = this.options.targets?.find(t => (typeof t === 'string' ? t : t.id) === containerId);
     if (target) out.targets = [typeof target === 'string' ? {id: target} : {...target, data: undefined}];
     const skip = new Set(['targets', 'data', 'dataUrl', 'columns', 'columnI18n', 'serverFetcher', 'onDataChange', 'onCellClick', 'dataCache']);
@@ -1296,7 +1295,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /** Opens the grid's effective configuration in the popup viewer (the toolbar's "config" button). */
   public showConfig(container: HTMLElement) {
-    this.showPopup(this.getTargetConfig(container.id), undefined, I18n.t('toolbar.config'));
+    // The source file is shown as the popup's subtitle, not inside the JSON — the body must stay
+    // a faithful excerpt of the config file so it can be copied back verbatim.
+    this.showPopup(this.getTargetConfig(container.id), undefined, I18n.t('toolbar.config'), Everygrid._targetRegistry.get(container.id)?.url);
   }
 
   public getRowActions(containerId: string): {insertRow: boolean; deleteRow: boolean} {
@@ -2454,12 +2455,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
 
-  public showPopup(data: unknown, rowData?: unknown, title?: string) {
+  public showPopup(data: unknown, rowData?: unknown, title?: string, subtitle?: string) {
     this.activePopupRow = rowData || null;
     this.activePopupRowKey = rowData ? JSON.stringify(rowData) : null;
     // Store data only; EverygridComponent builds the popup with the live filterText each render.
     this.activePopupData = {data};
     this.activePopupTitle = title ?? null;
+    this.activePopupSubtitle = subtitle ?? null;
     this.activePopup = null;
     const {targets} = this.options;
     targets?.forEach(idConfig => {

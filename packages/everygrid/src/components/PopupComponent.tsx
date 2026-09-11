@@ -4,6 +4,8 @@ import {I18n} from '../i18n/I18n';
 interface PopupProps {
   onClose: () => void;
   title?: string;
+  /** Muted line under the title, e.g. the file a config came from. */
+  subtitle?: string;
   children: React.ReactNode;
   data?: unknown; // Add data prop for JSON view
   /**
@@ -14,7 +16,7 @@ interface PopupProps {
   size?: 's' | 'm' | 'l' | 'auto';
 }
 
-const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, size = 'm'}) => {
+const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, children, data, size = 'm'}) => {
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
   const [copied, setCopied] = useState(false);
   const copyJson = () => {
@@ -32,7 +34,12 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
       <div className={`everygrid-popup-content everygrid-popup-${size}`}>
         <div className='everygrid-popup-header flex items-center justify-between'>
           <div className='flex items-center gap-4'>
-            {title && <h3 className='m-0'>{title}</h3>}
+            {title && (
+              <div className='min-w-0'>
+                <h3 className='m-0'>{title}</h3>
+                {subtitle && <div className='everygrid-popup-subtitle'>{subtitle}</div>}
+              </div>
+            )}
             {(data !== undefined && !isXml) && (
               <div className='flex bg-slate-100 p-0.5 rounded text-[10px] font-bold'>
                 <button

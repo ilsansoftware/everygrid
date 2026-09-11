@@ -469,6 +469,11 @@
   @apply text-lg font-bold text-slate-800;
 }
 
+/* Source line under a popup title (e.g. the config file a grid came from). */
+.everygrid-popup-subtitle {
+  @apply mt-0.5 text-[11px] font-mono text-slate-400 truncate;
+}
+
 .everygrid-popup-close {
   @apply text-slate-400 text-2xl leading-none cursor-pointer hover:text-slate-600 transition-colors px-1;
 }

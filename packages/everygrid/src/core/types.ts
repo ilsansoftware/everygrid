@@ -206,6 +206,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   activePopupData: {data: unknown} | null;
   /** Title for the active detail popup — the field the cell belongs to, or undefined for a fallback. */
   activePopupTitle: string | null;
+  activePopupSubtitle: string | null;
   activePopupRow: unknown | null;
   activePopupRowKey: string | null;
   wasmReady: boolean;
