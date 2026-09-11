@@ -4,20 +4,23 @@ import {Everygrid, type GridLoadProgress} from '@everygrid/grid';
 import ReactDemo, {type Locale} from './demos/ReactDemo';
 import LargeDataDemo from './demos/LargeDataDemo';
 import VirtualScrollDemo from './demos/VirtualScrollDemo';
+import SandboxDemo from './demos/SandboxDemo';
 import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
 import virtualSrc from './demos/VirtualScrollDemo.tsx?raw';
+import sandboxSrc from './demos/SandboxDemo.tsx?raw';
 
-type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual';
+type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual' | 'sandbox';
 
 // React-based tabs (rendered inline) vs. iframe demos.
-const REACT_TABS: TabId[] = ['react', 'large', 'virtual'];
+const REACT_TABS: TabId[] = ['react', 'large', 'virtual', 'sandbox'];
 
 // Tabs whose grid streams/indexes long enough to be worth a progress indicator on the nav button —
 // keyed to the grid's container id so App can poll Everygrid.getLoadProgress while the tab is hidden.
 const PROGRESS_GRID_OF_TAB: Partial<Record<TabId, string>> = {
   large: 'large-data-grid',
   virtual: 'virtual-grid',
+  sandbox: 'sandbox-grid',
 };
 
 // Compact row count for the nav badge: 1_600_000 → '1.6M', 25_000 → '25k'.
@@ -34,6 +37,7 @@ const TABS: { id: TabId; title: string; icon?: string; label?: string }[] = [
   {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/favicon.ico'},
   {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large\ndata'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
+  {id: 'sandbox', title: 'JSON Sandbox — drop a file, get a grid', label: 'json\nsandbox'},
 ];
 
 const LOCALES: { id: Locale; flag: string; title: string }[] = [
@@ -48,10 +52,11 @@ const CODE_META: Record<TabId, { lang: string; label: string }> = {
   jquery: {lang: 'markup', label: 'html'},
   large: {lang: 'tsx', label: 'tsx'},
   virtual: {lang: 'tsx', label: 'tsx'},
+  sandbox: {lang: 'tsx', label: 'tsx'},
 };
 
 function isTabId(v: string | null): v is TabId {
-  return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual';
+  return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual' || v === 'sandbox';
 }
 
 // Tabs dropped on a phone: the large-data demo streams 1.6M rows, too heavy to feature on mobile.
@@ -201,7 +206,8 @@ export default function App() {
   const codeText = tab === 'react' ? reactSrc
       : tab === 'large' ? largeSrc
           : tab === 'virtual' ? virtualSrc
-              : (codeByTab[tab] ?? 'Loading...');
+              : tab === 'sandbox' ? sandboxSrc
+                  : (codeByTab[tab] ?? 'Loading...');
 
   // Fetch a html demo's source the first time its modal is opened (React tabs are bundled).
   useEffect(() => {
@@ -311,8 +317,10 @@ export default function App() {
                           <ReactDemo/>
                       ) : t.id === 'large' ? (
                           <LargeDataDemo/>
-                      ) : (
+                      ) : t.id === 'virtual' ? (
                           <VirtualScrollDemo/>
+                      ) : (
+                          <SandboxDemo/>
                       )}
                     </div>
                 ) : (

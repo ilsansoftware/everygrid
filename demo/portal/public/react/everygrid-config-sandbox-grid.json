@@ -1,0 +1,16 @@
+{
+  "targets": [
+    {
+      "id": "sandbox-grid",
+      "title": "JSON Sandbox"
+    }
+  ],
+  "virtualScroll": [
+    {
+      "id": "sandbox-grid",
+      "active": true,
+      "rowHeight": 34,
+      "overscan": 8
+    }
+  ]
+}
