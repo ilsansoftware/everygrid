@@ -17,6 +17,12 @@
 
 <div class='container'>
   <main>
+    <div class='page-tools'>
+      <div class='locale-btn-group' role='group' aria-label='Language'>
+        <button type='button' class='locale-btn' data-locale='ko' title='한국어'>🇰🇷</button>
+        <button type='button' class='locale-btn active' data-locale='en' title='English'>🇺🇸</button>
+      </div>
+    </div>
     <div id='demo-grid'></div>
     <div id='demo-grid2'></div>
   </main>
@@ -24,9 +30,14 @@
 
 <script>
   (function ($, everygrid) {
-    // Apply locale pushed by the portal (this page is embedded in an iframe). The library owns the
-    // message handshake; the portal side calls everygrid's sendLocale(...).
-    everygrid.listenForLocale({source: window.parent});
+    // Language toggle: setLocale switches every grid on the page and re-renders it. Explicit 'en' at
+    // start so the grids and the toggle agree, whatever the browser language.
+    everygrid.setLocale('en');
+    $('.locale-btn').on('click', function () {
+      everygrid.setLocale($(this).data('locale'));
+      $('.locale-btn').removeClass('active');
+      $(this).addClass('active');
+    });
 
     // Fetch data, optionally filtered by userId
     function getData() {

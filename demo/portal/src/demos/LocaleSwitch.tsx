@@ -1,7 +1,3 @@
-import {useContext} from 'react';
-import {createPortal} from 'react-dom';
-import {HeadingSlotContext} from '../headingSlot';
-
 export type Locale = 'en' | 'ko';
 
 const LOCALES: { id: Locale; flag: string; title: string }[] = [
@@ -11,16 +7,14 @@ const LOCALES: { id: Locale; flag: string; title: string }[] = [
 
 /**
  * The language toggle for one demo tab. Each tab keeps its own locale and applies it with
- * `Everygrid.setLocale` while it is the active tab — see the demos. Sits on the title row (via the
- * heading slot) while the tab is active and that row exists; inline on a phone.
+ * `Everygrid.setLocale` while it is the active tab — see the demos. Every demo, React or plain
+ * html, draws it in the same place: the control row above its first grid.
  */
-export default function LocaleSwitch({value, onChange, active}: {
+export default function LocaleSwitch({value, onChange}: {
   value: Locale;
   onChange: (locale: Locale) => void;
-  active: boolean;
 }) {
-  const slot = useContext(HeadingSlotContext);
-  const group = (
+  return (
       <div className='locale-btn-group' role='group' aria-label='Language'>
         {LOCALES.map((l) => (
             <button
@@ -36,5 +30,4 @@ export default function LocaleSwitch({value, onChange, active}: {
         ))}
       </div>
   );
-  return slot && active ? createPortal(group, slot) : group;
 }

@@ -22,7 +22,7 @@ export default function ReactDemo({active}: { active: boolean }) {
   return (
       <div className='max-w-7xl mx-auto'>
         <main className='min-h-150 flex flex-col gap-8 py-8 bg-white'>
-          <LocaleSwitch value={locale} onChange={setLocale} active={active}/>
+          <div className='demo-tools'><LocaleSwitch value={locale} onChange={setLocale}/></div>
           <div id='test-grid' className='w-full border-slate-200'/>
           <div id='test-grid2' className='w-full border-slate-200'/>
           <div id='test-grid3' className='w-full border-slate-200'/>

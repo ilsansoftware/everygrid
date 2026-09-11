@@ -1,23 +1,13 @@
-import {useContext} from 'react';
-import {createPortal} from 'react-dom';
-import {HeadingSlotContext} from '../headingSlot';
-
 /** Row counts offered. Past ~493,000 rows (34px rows) the grid splits the result into scrollable
  *  segments, so the larger sizes are what exercise that path. */
 const ROW_CHOICES = [100_000, 250_000, 500_000, 750_000, 1_000_000];
 
-/**
- * The row-count picker for the virtual-scroll demo. It belongs to the whole tab, so it sits on the
- * title row (via the heading slot) while the tab is active and that row exists; on a phone, where
- * there is no title row, it renders in place.
- */
-export default function RowCountPicker({value, onChange, active}: {
+/** The row-count picker for the virtual-scroll demo; sits in the control row above the grid. */
+export default function RowCountPicker({value, onChange}: {
   value: number;
   onChange: (rows: number) => void;
-  active: boolean;
 }) {
-  const slot = useContext(HeadingSlotContext);
-  const picker = (
+  return (
       <label className='flex items-center'>
         <select
             aria-label='Rows'
@@ -35,5 +25,4 @@ export default function RowCountPicker({value, onChange, active}: {
         </select>
       </label>
   );
-  return slot && active ? createPortal(picker, slot) : picker;
 }

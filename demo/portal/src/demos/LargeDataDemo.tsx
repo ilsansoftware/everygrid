@@ -18,7 +18,7 @@ export default function LargeDataDemo({active}: { active: boolean }) {
   return (
     <div className='max-w-7xl mx-auto'>
       <main className='min-h-150 flex flex-col gap-8 py-8 bg-white'>
-        <LocaleSwitch value={locale} onChange={setLocale} active={active}/>
+        <div className='demo-tools'><LocaleSwitch value={locale} onChange={setLocale}/></div>
         <div id='large-data-grid' className='w-full border-slate-200' />
       </main>
     </div>

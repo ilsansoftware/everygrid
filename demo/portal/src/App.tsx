@@ -4,9 +4,7 @@ import {Everygrid, type GridLoadProgress} from '@everygrid/grid';
 import ReactDemo from './demos/ReactDemo';
 import LargeDataDemo from './demos/LargeDataDemo';
 import VirtualScrollDemo from './demos/VirtualScrollDemo';
-import {HeadingSlotContext} from './headingSlot';
 import SandboxDemo from './demos/SandboxDemo';
-import LocaleSwitch, {type Locale} from './demos/LocaleSwitch';
 import DocsPage from './demos/DocsPage';
 import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
@@ -82,24 +80,7 @@ function initialTab(): TabId {
 export default function App() {
   const [tab, setTab] = useState<TabId>(initialTab);
   const [modalOpen, setModalOpen] = useState(false);
-  // Title-row slot for a demo's own controls; see HeadingSlotContext.
-  const [headingSlot, setHeadingSlot] = useState<HTMLElement | null>(null);
-
   const frameRefs = useRef<Partial<Record<TabId, HTMLIFrameElement | null>>>({});
-  // The html demos live in iframes, so their language toggle is drawn here on the title row and the
-  // choice is pushed into the page with Everygrid.sendLocale (each page called listenForLocale).
-  // Per tab, like the React demos, which each own their locale.
-  const [frameLocale, setFrameLocale] = useState<Partial<Record<TabId, Locale>>>({});
-  const frameLocaleOf = (id: TabId): Locale => frameLocale[id] ?? 'en';
-  const pushFrameLocale = (id: TabId, locale: Locale) => {
-    const win = frameRefs.current[id]?.contentWindow;
-    if (win) Everygrid.sendLocale(win, locale);
-  };
-  useEffect(() => {
-    if (!REACT_TABS.includes(tab)) pushFrameLocale(tab, frameLocaleOf(tab));
-    // Only the tab switch matters here; a toggle click pushes on its own.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
   // Source of each HTML demo, once fetched. State rather than a ref, so the modal can
   // derive its text during render instead of a ref read + setState round trip.
   const [codeByTab, setCodeByTab] = useState<Partial<Record<TabId, string>>>({});
@@ -227,17 +208,6 @@ export default function App() {
 
   const meta = CODE_META[tab];
 
-  const frameLocaleSwitch = (active: boolean) => (
-    <LocaleSwitch
-        value={frameLocaleOf(tab)}
-        active={active}
-        onChange={(next) => {
-          setFrameLocale((prev) => ({...prev, [tab]: next}));
-          pushFrameLocale(tab, next);
-        }}
-    />
-  );
-
   const tabsOf = (group: TabGroup) => TABS.filter((t) =>
       (t.group ?? 'demo') === group && !(isNarrow && MOBILE_HIDDEN_TABS.includes(t.id)));
   const renderTab = (t: typeof TABS[number]) => {
@@ -296,13 +266,12 @@ export default function App() {
   );
 
   return (
-      <HeadingSlotContext.Provider value={headingSlot}>
+      <>
         <header>
           <h1>everygrid Demo</h1>
           <nav>{tabsOf('demo').map(renderTab)}</nav>
           {/* Tools stand outside the capsule as buttons of their own. */}
           <div className='tool-tabs'>{tabsOf('tool').map(renderTab)}</div>
-          {isNarrow && !REACT_TABS.includes(tab) && frameLocaleSwitch(false)}
           {isNarrow && codeButton}
         </header>
 
@@ -311,15 +280,11 @@ export default function App() {
             would pin to the panel top and cover it. Dropped entirely on mobile to save space. */}
           {!isNarrow && (
             <div className='demo-heading'>
-              <div className='demo-heading-left'>
-                <div className='demo-heading-title'>
-                  <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
-                  {TABS.find((t) => t.id === tab)?.caption && (
-                    <p className='demo-caption'>{TABS.find((t) => t.id === tab)?.caption}</p>
-                  )}
-                </div>
-                <div ref={setHeadingSlot} className='demo-heading-slot'/>
-                {!REACT_TABS.includes(tab) && frameLocaleSwitch(false)}
+              <div className='demo-heading-title'>
+                <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
+                {TABS.find((t) => t.id === tab)?.caption && (
+                  <p className='demo-caption'>{TABS.find((t) => t.id === tab)?.caption}</p>
+                )}
               </div>
               {codeButton}
             </div>
@@ -348,9 +313,6 @@ export default function App() {
                         }}
                         className='demo-frame'
                         hidden={t.id !== tab}
-                        // The page registers listenForLocale synchronously, so once it has loaded the
-                        // current choice can be pushed straight in.
-                        onLoad={() => pushFrameLocale(t.id, frameLocaleOf(t.id))}
                         // Use the explicit file path: the vite dev server does not serve a
                         // nested public/<demo>/index.html for the bare "/<demo>/" directory
                         // URL (it falls back to the SPA root, nesting the whole portal).
@@ -402,6 +364,6 @@ export default function App() {
             </div>
           </div>
         </div>
-      </HeadingSlotContext.Provider>
+      </>
   );
 }

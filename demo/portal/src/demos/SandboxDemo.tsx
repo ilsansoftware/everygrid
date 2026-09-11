@@ -122,7 +122,7 @@ export default function SandboxDemo({active}: { active: boolean }) {
         {/* Grid on the left at twice the width; the file drop and paste inputs stacked on the right.
             Stacked the other way round on a narrow screen, inputs first. */}
         <main className='min-h-150 grid gap-4 py-8 bg-white md:grid-cols-3'>
-          <LocaleSwitch value={locale} onChange={setLocale} active={active}/>
+          <div className='demo-tools md:col-span-3'><LocaleSwitch value={locale} onChange={setLocale}/></div>
           <div className='order-2 md:order-1 md:col-span-2 h-[560px] flex flex-col'>
             {/* The grid is mounted from the start (the hook needs its element) but stays hidden until
                 a file has loaded — empty, it would show the library's "check your configuration"

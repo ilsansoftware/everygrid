@@ -262,12 +262,6 @@ nav button.active .tab-name {
 }
 /* Title, then a demo's own controls (portaled in) right beside it; the code button stays at the
    far end of the row. */
-.demo-heading-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
 .demo-heading-title {
   display: flex;
   flex-direction: column;
@@ -278,14 +272,12 @@ nav button.active .tab-name {
   font-size: 0.8rem;
   color: #64748b;
 }
-/* A demo's own controls (portaled in) sit in a row; the slot vanishes when a tab has none. */
-.demo-heading-slot {
+/* Control row above a demo's first grid — the language toggle, plus whatever the demo adds. The
+   html demos draw the same row themselves (.page-tools), so the toggle is in one place everywhere. */
+.demo-tools {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.demo-heading-slot:empty {
-  display: none;
 }
 .demo-heading h2 {
   margin: 0;
@@ -366,8 +358,7 @@ nav button.active .tab-name {
   background: #fff;
 }
 
-/* Language toggle, one per demo tab. Rendered by the demo (LocaleSwitch) into the title row, so it
-   is a light pill group at the row's 34px control height; inline above the grid on a phone. */
+/* Language toggle, one per demo tab, drawn by the demo (LocaleSwitch) in its control row. */
 .locale-btn-group {
   display: inline-flex;
   align-self: flex-start;
