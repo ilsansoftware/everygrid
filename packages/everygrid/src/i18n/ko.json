@@ -53,7 +53,10 @@
     "diffStatus": "상태",
     "diffKey": "키",
     "diffRow": "행",
-    "diffDiff": "변경 내용"
+    "diffDiff": "변경 내용",
+    "statusInserted": "추가",
+    "statusUpdated": "수정",
+    "statusDeleted": "삭제"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",
