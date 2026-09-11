@@ -1280,6 +1280,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const data = (this.options.data || []) as T[];
     const index = data.indexOf(row);
     if (index === -1) return;
+    // A deleted row is out of every selection: it is unchecked, and stays so if restored.
+    const mapping = this.getCheckboxMapping(containerId);
+    if (mapping) this.setChecked(containerId, [row[mapping]], false);
     if (this._insertedRows.has(row)) {
       this._dropRows(containerId, [row]);
     } else {
@@ -1355,7 +1358,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const mapping = this.getCheckboxMapping(containerId);
     const set = this.checkedValues.get(containerId);
     if (!mapping || !set || set.size === 0) return [];
-    return ((this.options.data || []) as T[]).filter(row => set.has(row[mapping]));
+    return ((this.options.data || []) as T[]).filter(row => set.has(row[mapping]) && !this._deletedRows.has(row));
   }
 
   /**

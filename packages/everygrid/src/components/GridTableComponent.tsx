@@ -62,7 +62,11 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
   // "Select/check all" means "every row rendered right now". Under virtual scrolling that set is
   // whatever happens to be in the viewport, which is not a selection anyone asked for — so the
   // header checkboxes are dropped there rather than given a surprising meaning.
-  const loadedItems = useMemo(() => displayItems.filter((i): i is T => i !== undefined), [displayItems]);
+  // Deleted rows are out of every selection, so the header checkbox neither counts nor checks them.
+  const loadedItems = useMemo(
+    () => displayItems.filter((i): i is T => i !== undefined && !grid.isRowDeleted(i)),
+    [displayItems, grid],
+  );
 
   const isAllChecked = useMemo(() => {
     if (!grid.checkedValues) return false;
