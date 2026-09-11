@@ -113,20 +113,33 @@ nav button:not(.active):hover {
   border-color: rgba(148, 163, 184, 0.45);
 }
 
-/* Inactive state: subtle grayscale and reduced opacity */
+/* Icon tabs: the favicon in colour with the framework's name beside it. Greyed-out 18px icons
+   alone were near invisible on the dark capsule. */
 nav button img {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0; /* never let the icon shrink below 18px when space is tight */
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0; /* never let the icon shrink when space is tight */
   object-fit: contain;
-  opacity: 0.5;
-  filter: grayscale(100%);
-  transition: all 0.2s;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+nav button .tab-name {
+  margin-left: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: #cbd5e1; /* slate-300 on the dark capsule */
+  white-space: nowrap;
+  transition: color 0.2s;
 }
 
 nav button:hover img {
-  opacity: 0.8;
-  filter: grayscale(0%);
+  opacity: 1;
+}
+nav button:hover .tab-name {
+  color: #f1f5f9;
 }
 
 /* Text labels for the React-only heavy demos (no favicon of their own). */
@@ -164,7 +177,9 @@ nav button.active {
 
 nav button.active img {
   opacity: 1;
-  filter: grayscale(0%);
+}
+nav button.active .tab-name {
+  color: #ffffff;
 }
 
 /* Panel that hosts the active demo: the React demo renders inline, while the
@@ -531,6 +546,10 @@ nav button.active img {
   nav button img {
     width: 20px;
     height: 20px;
+  }
+  /* Icon only on a phone; the name would push the bar into scrolling. */
+  nav button .tab-name {
+    display: none;
   }
 
   .header-right {

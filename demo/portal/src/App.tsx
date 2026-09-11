@@ -30,14 +30,15 @@ function compactCount(n: number): string {
   return String(n);
 }
 
-// `icon` tabs show a favicon; `label` tabs (the React-only heavy demos) show text instead.
+// `icon` tabs show a favicon with a short name beside it; `label` tabs (the React-only heavy demos)
+// show text alone.
 // Each `group` is its own capsule in the header: the demos, then the tools that act on your data.
 type TabGroup = 'demo' | 'tool';
 const TAB_GROUPS: TabGroup[] = ['demo', 'tool'];
-const TABS: { id: TabId; title: string; icon?: string; label?: string; group?: TabGroup }[] = [
-  {id: 'react', title: 'React Demo', icon: '/react/favicon.ico'},
-  {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico'},
-  {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/favicon.ico'},
+const TABS: { id: TabId; title: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
+  {id: 'react', title: 'React Demo', icon: '/react/favicon.ico', name: 'React'},
+  {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico', name: 'JS'},
+  {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/favicon.ico', name: 'jQuery'},
   {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large\ndata'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
   {id: 'sandbox', title: 'JSON to Grid — drop a file, get a grid', label: 'json to\ngrid', group: 'tool'},
@@ -297,7 +298,10 @@ export default function App() {
                               </span>
                             )}
                           </span>
-                        : <img src={t.icon} width='100%' height='100%' alt={t.title}/>}
+                        : <>
+                            <img src={t.icon} width='100%' height='100%' alt=''/>
+                            <span className='tab-name'>{t.name}</span>
+                          </>}
                   </button>
                 );
               })}
