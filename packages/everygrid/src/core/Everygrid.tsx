@@ -72,7 +72,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public activePopupTitle: string | null = null;
   public activePopupRow: unknown | null = null;
   public activePopupRowKey: string | null = null;
-  private originalData: T[] = [];
   public currentPage: Map<string, number> = new Map();
   private originalDataMap: Map<T, T> = new Map();
   // Edited rows keyed by their current-value JSON, so WASM-derived page copies (which are new
@@ -182,7 +181,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.options = options;
 
     if (this.options.data) {
-      this.originalData = JSON.parse(JSON.stringify(this.options.data));
       this.initOriginalDataMap();
     }
 
@@ -556,7 +554,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         const declaredLength = contentLength || Number(res.headers.get('Content-Length') ?? NaN);
         // Stream when known-large OR when size is unknown (no comparable length header): a
         // buffered res.json() on an unmeasured-but-large payload spikes memory (whole parse +
-        // deep-copy for originalData + setData clone) and freezes the tab. Streaming is safe
+        // setData clone) and freezes the tab. Streaming is safe
         // for small payloads too — it just shows the indexing UI briefly. contentLength===0
         // makes _streamJsonToWasm fall back to a "rows ingested" count instead of a fake %.
         const isLarge = isNaN(declaredLength) || declaredLength >= Everygrid.LARGE_PAYLOAD_BYTES;
@@ -596,7 +594,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // The rows just fetched are the new baseline — edits made against the previous load no
     // longer have anything to compare to, so drop them rather than leave stale "modified"
     // markers pointing at cells the server may have changed underneath.
-    this.originalData = JSON.parse(JSON.stringify(rows)) as T[];
     this.initOriginalDataMap();
     this.activeEditFields.delete(targetId);
     this._wasmRawTotal.set(targetId, rows.length);
@@ -932,7 +929,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     try {
       const {rows} = await engine.getRawPage(0, total);
       (instance.options as { data: unknown[] }).data = rows;
-      instance.originalData = JSON.parse(JSON.stringify(rows));
       instance.initOriginalDataMap();
     } catch (e) {
       console.warn('Everygrid: could not materialize streamed rows for', targetId, e);
@@ -1196,7 +1192,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const result = await this.options.serverFetcher(params);
       this._serverTotal.set(containerId, result.total);
       (this.options as GridOptions<T>).data = result.data as T[];
-      this.originalData = JSON.parse(JSON.stringify(result.data));
       this.initOriginalDataMap();
       // Server-side: sync current page data to the WASM engine
       const engine = this._wasmEngines.get(containerId);
@@ -2119,13 +2114,15 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const newRow = {...rowData, [field]: parseIfJson(value)} as T;
       data[idx] = newRow;
 
-      // Move the original snapshot onto the new row reference
-      const originalSnapshot = this.originalDataMap.get(rowData as T) ?? this.originalDataMap.get(prevRef);
-      if (originalSnapshot) {
-        this.originalDataMap.delete(rowData as T);
-        this.originalDataMap.delete(prevRef);
-        this.originalDataMap.set(newRow, originalSnapshot);
-      }
+      // The row's original is captured here, on its first edit, rather than for every row at
+      // load: prevRef is still the untouched row at that point. Later edits move the snapshot
+      // onto each new row reference.
+      const originalSnapshot = this.originalDataMap.get(rowData as T)
+        ?? this.originalDataMap.get(prevRef)
+        ?? JSON.parse(JSON.stringify(prevRef)) as T;
+      this.originalDataMap.delete(rowData as T);
+      this.originalDataMap.delete(prevRef);
+      this.originalDataMap.set(newRow, originalSnapshot);
 
       // Track the edited row so getDisplayItems can remap WASM copies to this live reference.
       this._editedKeys.delete(JSON.stringify(rowData));
@@ -2136,7 +2133,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this._syncRowsToEngines([{index: idx, row: newRow}]);
 
       if (this.options.onDataChange) {
-        this.options.onDataChange(this.options.data, this.originalData);
+        this.options.onDataChange(this.options.data, this._originalData());
       }
 
       // Re-render to reflect modifications
@@ -2149,33 +2146,31 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   public reset(container: HTMLElement) {
-    if (this.originalData) {
-      this._editedKeys.clear();
-      const data = (this.options.data || []) as Record<string, unknown>[];
+    this._editedKeys.clear();
+    const data = (this.options.data || []) as Record<string, unknown>[];
 
-      // Replace each modified row with a new object (restored from original) so React.memo re-renders
-      const restored: { index: number; row: unknown }[] = [];
-      data.forEach((item, idx) => {
-        const originalItem = this.originalDataMap.get(item as T) as Record<string, unknown>;
-        if (originalItem) {
-          const restoredRow = JSON.parse(JSON.stringify(originalItem)) as T;
-          data[idx] = restoredRow;
-          this.originalDataMap.delete(item as T);
-          this.originalDataMap.set(restoredRow, originalItem as T);
-          if (JSON.stringify(item) !== JSON.stringify(restoredRow)) {
-            restored.push({index: idx, row: restoredRow});
-          }
+    // Replace each modified row with a new object (restored from original) so React.memo
+    // re-renders. Only edited rows have a snapshot, and once restored they need none.
+    const restored: { index: number; row: unknown }[] = [];
+    data.forEach((item, idx) => {
+      const originalItem = this.originalDataMap.get(item as T) as Record<string, unknown>;
+      if (originalItem) {
+        const restoredRow = JSON.parse(JSON.stringify(originalItem)) as T;
+        data[idx] = restoredRow;
+        this.originalDataMap.delete(item as T);
+        if (JSON.stringify(item) !== JSON.stringify(restoredRow)) {
+          restored.push({index: idx, row: restoredRow});
         }
-      });
-
-      // Sync the restored rows to the WASM engines — see _syncRowsToEngines.
-      this._syncRowsToEngines(restored);
-
-      this.renderGrid(container);
-
-      if (this.options.onDataChange && this.options.data) {
-        this.options.onDataChange(this.options.data, this.originalData);
       }
+    });
+
+    // Sync the restored rows to the WASM engines — see _syncRowsToEngines.
+    this._syncRowsToEngines(restored);
+
+    this.renderGrid(container);
+
+    if (this.options.onDataChange && this.options.data) {
+      this.options.onDataChange(this.options.data, this._originalData());
     }
   }
 
@@ -2217,7 +2212,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this.renderGrid(container);
 
       if (this.options.onDataChange && this.options.data) {
-        this.options.onDataChange(this.options.data, this.originalData);
+        this.options.onDataChange(this.options.data, this._originalData());
       }
     }
   }
@@ -2369,18 +2364,22 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.renderGrid(container);
   }
 
+  /**
+   * A fresh load is a new baseline: edits against the previous rows have nothing to compare to.
+   *
+   * Nothing is copied here. originalDataMap used to hold a deep copy of every row (and a second
+   * full copy sat in a parallel array), which for a million rows meant two JSON round trips of
+   * the whole dataset at load and three times the memory. A row's original is now captured on its
+   * first edit — see the edit path — so the map only ever holds the rows that have changed.
+   */
   private initOriginalDataMap() {
     this.originalDataMap.clear();
     this._editedKeys.clear();
-    const data = (this.options.data || []) as T[];
-    const original = (this.originalData || []) as T[];
+  }
 
-    data.forEach((item, index) => {
-      if (original[index]) {
-        // Deep copy each item to avoid reference sharing
-        this.originalDataMap.set(item, JSON.parse(JSON.stringify(original[index])));
-      }
-    });
+  /** The dataset as it was before any edits, built for onDataChange from the per-row snapshots. */
+  private _originalData(): T[] {
+    return ((this.options.data || []) as T[]).map(row => this.originalDataMap.get(row) ?? row);
   }
 
   private isDate(value: unknown): boolean {
@@ -2452,7 +2451,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         const response = await fetch(dataUrl);
         const fetchedData = await response.json();
         this.options.data = fetchedData;
-        this.originalData = JSON.parse(JSON.stringify(fetchedData));
         this.initOriginalDataMap();
       } catch (error) {
         console.error('Everygrid: Error fetching data:', error);
