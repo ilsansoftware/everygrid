@@ -277,22 +277,24 @@ nav button.active .tab-name {
   font-weight: 700;
   color: #0f172a;
 }
-/* On the light page the code button is a quiet outlined pill — the title row's only control. */
+/* On the light page the code button is a solid pill in the header's navy, so it stands out from
+   the title row instead of fading into it. */
 .demo-heading .show-code-btn {
   margin-left: 0;
   width: auto;
   height: 34px;
-  padding: 0 12px 0 10px;
-  gap: 6px;
-  background: #ffffff;
-  color: #475569;
-  border-color: #cbd5e1;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  padding: 0 14px 0 11px;
+  gap: 7px;
+  background: #1a1b2e;
+  color: #ffffff;
+  border-color: #1a1b2e;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
 }
 .demo-heading .show-code-btn:hover {
-  background: #f8fafc;
-  color: #0f172a;
-  border-color: #94a3b8;
+  background: #2f3150;
+  color: #ffffff;
+  border-color: #2f3150;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
 }
 .demo-heading .show-code-btn svg {
   width: 16px;
