@@ -208,13 +208,15 @@ nav button.active img {
   margin: 1.25rem auto 0.75rem;
   padding: 0 1.5rem;
 }
-/* Controls on the title row: a demo's own (portaled in) then the code button, one height. */
-.demo-heading-right {
+/* Title, then a demo's own controls (portaled in) right beside it; the code button stays at the
+   far end of the row. */
+.demo-heading-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+  min-width: 0;
 }
-.demo-heading-right > div:empty {
+.demo-heading-left > div:empty {
   display: none;
 }
 .demo-heading h2 {

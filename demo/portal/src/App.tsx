@@ -327,11 +327,11 @@ export default function App() {
             would pin to the panel top and cover it. Dropped entirely on mobile to save space. */}
           {!isNarrow && (
             <div className='demo-heading'>
-              <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
-              <div className='demo-heading-right'>
+              <div className='demo-heading-left'>
+                <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
                 <div ref={setHeadingSlot}/>
-                {codeButton}
               </div>
+              {codeButton}
             </div>
           )}
           <div className='demo-scroll'>
