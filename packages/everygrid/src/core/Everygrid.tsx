@@ -1222,8 +1222,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   /** The live reference for a row the grid handed out (a WASM copy is matched by content). */
   private _liveRef(row: T): T {
     const data = (this.options.data || []) as T[];
-    if (data.includes(row)) return row;
-    return this._editedKeys.get(JSON.stringify(row)) ?? row;
+    const i = this._indexOfRow(row);
+    return i === -1 ? row : data[i];
   }
 
   public isRowAdded(row: T): boolean {
