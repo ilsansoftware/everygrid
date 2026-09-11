@@ -54,7 +54,8 @@ Create a JSON file anywhere in your project's `public/` directory, e.g. `public/
 
 ### 4. Register the config path in `everygrid.config.json`
 
-Create `everygrid.config.json` at your **project root**:
+Create `everygrid.config.json` in the same `public/` directory, so it is served at
+`/everygrid.config.json` — the library fetches it from there at runtime, no server setup needed:
 
 ```json
 {
@@ -65,42 +66,10 @@ Create `everygrid.config.json` at your **project root**:
 ```
 
 > Multiple config files are supported. Each file's `targets` arrays are merged automatically.
+> The path is resolved relative to the page, so a sub-app served at `/admin/` reads
+> `/admin/everygrid.config.json`.
 
-### 5. Serve `everygrid.config.json` from the root URL
-
-Since `everygrid.config.json` lives at the project root (not in `public/`), you need to tell your dev server to serve it at `/everygrid.config.json`.
-
-**Vite** — add this plugin to your `vite.config.ts`:
-
-```ts
-import fs from 'fs';
-import { resolve } from 'path';
-
-export default defineConfig({
-  plugins: [
-    {
-      name: 'serve-root-everygrid-config',
-      configureServer(server) {
-        server.middlewares.use('/everygrid.config.json', (_req, res) => {
-          const filePath = resolve(__dirname, 'everygrid.config.json');
-          res.setHeader('Content-Type', 'application/json');
-          res.end(fs.readFileSync(filePath));
-        });
-      },
-      generateBundle() {
-        const filePath = resolve(__dirname, 'everygrid.config.json');
-        this.emitFile({
-          type: 'asset',
-          fileName: 'everygrid.config.json',
-          source: fs.readFileSync(filePath, 'utf-8'),
-        });
-      },
-    },
-  ],
-});
-```
-
-### 6. Mount grids in your app
+### 5. Mount grids in your app
 
 Mount each grid after its container element exists — and unmount it when the screen goes away.
 `mount` reads the root config on demand (cached — one fetch app-wide), so there's no separate
