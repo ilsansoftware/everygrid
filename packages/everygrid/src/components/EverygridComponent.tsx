@@ -478,7 +478,9 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             // header + rows × rowHeight) and only shrinks — and scrolls — once that exceeds the
             // container. Filling the container regardless left a short result as a mostly blank
             // viewport with the row-count band stranded at the bottom.
-            className={`relative w-full ${virtualConf ? 'flex-[0_1_auto]' : 'flex-1'} min-h-0 flex flex-col overflow-hidden isolate ${!isMobile && grid.pinnedColumns.size > 0 ? 'has-pinned' : ''}`}
+            // The 100px floor is only for the no-rows overlay below, which needs room under the
+            // header; with rows on screen the body is exactly as tall as they are.
+            className={`relative w-full ${virtualConf ? 'flex-[0_1_auto]' : 'flex-1'} ${displayItems.length === 0 ? 'min-h-[100px]' : 'min-h-0'} flex flex-col overflow-hidden isolate ${!isMobile && grid.pinnedColumns.size > 0 ? 'has-pinned' : ''}`}
           >
             {/* inert takes the whole table out of the tab order and kills its events, so cell
                 inputs, links and edit buttons go dead with the rest instead of staying reachable

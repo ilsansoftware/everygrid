@@ -612,7 +612,7 @@ button {
 }
 
 .everygrid-table-container {
-  @apply w-full overflow-auto bg-white min-h-[100px];
+  @apply w-full overflow-auto bg-white;
 }
 
 .everygrid-table thead tr {
