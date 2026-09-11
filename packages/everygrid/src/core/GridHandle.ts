@@ -71,7 +71,7 @@ export interface GridEvents<T = Record<string, unknown>> {
 
 /**
  * Coordinates into one grid's data — grid → row → cell — with the same verbs at every level:
- * `get`, `set`, `original`, `isModified`, `changes`, `revert`. Handles are stateless views over
+ * `get`, `set`, `original`, `updated`, `changes`, `revert`. Handles are stateless views over
  * the grid, so they are cheap to make and never go stale; a handle to a row that does not exist
  * reports `exists() === false` and its writes are no-ops, so a chain never has to null-check.
  *
@@ -98,6 +98,11 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
 
   row(index: number): RowHandle<T> {
     return new RowHandle(this.grid, this, index);
+  }
+
+  /** Every row as a handle, in data order — a plain array: index it, filter it, map it. */
+  rows(): RowHandle<T>[] {
+    return this.data().map((_, i) => this.row(i));
   }
 
   rowByKey(key: RowKey): RowHandle<T> {
@@ -131,16 +136,17 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
     return this.grid._changedRows(this.id);
   }
 
-  // Selectors: the changed rows of one kind, as row handles — `g.updated()[0].cell('x').revert()`.
-  inserted(): RowHandle<T>[] {
+  // Selectors: the changed rows of one kind, as plain arrays of handles — what you do with them
+  // is yours: `g.updatedRows()[0].cell('x').revert()`, `g.deletedRows().forEach(r => r.restore())`.
+  insertedRows(): RowHandle<T>[] {
     return this.changes().filter(r => r.status === 'inserted').map(r => this.row(r.index));
   }
 
-  updated(): RowHandle<T>[] {
+  updatedRows(): RowHandle<T>[] {
     return this.changes().filter(r => r.status === 'updated').map(r => this.row(r.index));
   }
 
-  deleted(): RowHandle<T>[] {
+  deletedRows(): RowHandle<T>[] {
     return this.changes().filter(r => r.status === 'deleted').map(r => this.row(r.index));
   }
 
@@ -197,8 +203,8 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
 
   // ---- Checkbox column (needs a `checkbox` config; rows are identified by its `mapping` field)
 
-  /** The checked rows, as row handles, in data order. */
-  checked(): RowHandle<T>[] {
+  /** The checked rows, in data order — `g.checkedRows().forEach(r => r.delete())`. */
+  checkedRows(): RowHandle<T>[] {
     const data = this.data();
     return this.grid.getCheckedRows(this.id).map(row => this.row(data.indexOf(row)));
   }
@@ -266,29 +272,37 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     return row ? this.grid._originalOf(row) : undefined;
   }
 
-  isModified(): boolean {
+  // Predicates, named for `rows().filter(r => r.updated())`.
+
+  /** Edited so that it differs from its original (and neither inserted nor deleted). */
+  updated(): boolean {
     const row = this.get();
-    return !!row && Object.keys(row).some(f => this.grid.isCellModified(row, f));
+    return !!row && !this.inserted() && !this.deleted() && Object.keys(row).some(f => this.grid.isCellModified(row, f));
   }
 
-  isInserted(): boolean {
+  inserted(): boolean {
     const row = this.get();
     return !!row && this.grid.isRowInserted(row);
   }
 
-  isDeleted(): boolean {
+  deleted(): boolean {
     const row = this.get();
     return !!row && this.grid.isRowDeleted(row);
   }
 
   /** `inserted` / `updated` / `deleted`, or null for a row exactly as loaded. */
   status(): RowStatus | null {
-    if (this.isInserted()) return 'inserted';
-    if (this.isDeleted()) return 'deleted';
-    return this.isModified() ? 'updated' : null;
+    if (this.inserted()) return 'inserted';
+    if (this.deleted()) return 'deleted';
+    return this.updated() ? 'updated' : null;
   }
 
-  isChecked(): boolean {
+  /** Changed in any way: inserted, updated or deleted. */
+  changed(): boolean {
+    return this.status() !== null;
+  }
+
+  checked(): boolean {
     const row = this.get();
     const mapping = this.grid.getCheckboxMapping(this.gridId);
     return !!row && !!mapping && this.grid.getCheckedValues(this.gridId).includes(row[mapping]);
@@ -371,7 +385,8 @@ export class CellHandle<T extends Record<string, unknown> = Record<string, unkno
     return this.row.original()?.[this.field];
   }
 
-  isModified(): boolean {
+  /** Differs from the loaded value. */
+  modified(): boolean {
     const row = this.row.get();
     return !!row && this.grid.isCellModified(row, this.field);
   }
@@ -400,7 +415,7 @@ export class CellHandle<T extends Record<string, unknown> = Record<string, unkno
   revert(): void {
     const row = this.row.get();
     const el = document.getElementById(this.row.gridId);
-    if (row && el && this.isModified()) this.grid.resetCell(row, this.field, el);
+    if (row && el && this.modified()) this.grid.resetCell(row, this.field, el);
   }
 }
 

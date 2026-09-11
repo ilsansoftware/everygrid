@@ -470,7 +470,7 @@ push the page around; it scrolls within the cap. Override with `.everygrid-excel
 ## Editing & change tracking
 
 `Everygrid.get(id)` is a cursor into a mounted grid's data — grid → row → cell — with the same verbs
-at every level: `get`, `set`, `original`, `isModified`, `changes`, `revert`. Handles are stateless
+at every level: `get`, `set`, `original`, `changes`, `revert`. Handles are stateless
 views, so they never go stale; a row that does not exist reports `exists() === false` and its
 writes are no-ops, so chains need no null checks. Row indices are positions in the loaded data and
 hold still under sort and filter; `visibleRow(n)` is the n-th row on screen.
@@ -487,38 +487,41 @@ g.row(3);  g.rowByKey('U-1002');  g.find(r => r.email === 'a@b.c');  g.visibleRo
 g.row(3).cell('score').get();        g.cell(3, 'score')          // same thing
 g.row(3).cell('score').set(90);      g.row(3).cell('score').isEditable();
 g.row(3).cell('id').set(7, {force: true});
-g.row(3).cell('score').original();   g.row(3).cell('score').isModified();
+g.row(3).cell('score').original();   g.row(3).cell('score').modified();
 g.row(3).cell('score').revert();
 
 // rows
 g.row(3).set({score: 90, active: false});   // returns how many cells were written
 g.row(3).changes();                  // [{field, from, to}]
-g.row(3).original();  g.row(3).isModified();  g.row(3).revert();  g.row(3).key();
+g.row(3).original();  g.row(3).revert();  g.row(3).key();
 
 // columns
 g.column('score').changes();         // [{index, key, from, to, row}]
 g.column('score').values();  g.column('score').revert();
 
 // rows in and out (rowActions.insertRow / deleteRow must allow it)
-g.insertRow({name: 'New'});             // an empty row at the top, with these values; returns its handle
+g.insertRow({name: 'New'});          // an empty row at the top, with these values; returns its handle
 g.row(3).delete();                   // struck through until commit; g.row(3).restore() undoes it
 g.row(3).status();                   // 'inserted' | 'updated' | 'deleted' | null
+g.row(3).inserted(); g.row(3).updated(); g.row(3).deleted(); g.row(3).checked();   // predicates
+
+// lists — plain arrays of row handles; index, filter, map, forEach them as you like
+g.rows();                            // every row;  g.rows()[0], g.rows().filter(r => r.updated())
+g.insertedRows(); g.updatedRows(); g.deletedRows(); g.checkedRows();
+g.checkedRows().forEach(r => r.delete());
+g.rows().filter(r => r.checked()).map(r => r.get());   // the checked rows as JSON
 
 // the grid
 g.hasChanges();
 g.changes();                         // [{status, index, key, row, original, cells: [{field, from, to}]}]
-g.inserted(); g.updated(); g.deleted(); // the changed rows of one kind, as row handles
 g.diff();                            // {inserted, updated, deleted, cells}
 g.patch();                           // {inserted: [rows], updated: [{key, changes}], deleted: [keys]}
 g.revert();                          // as loaded: edits undone, inserted rows dropped, deleted rows back
 g.commit();                          // after a successful save: current state becomes the baseline
 
 // the checkbox column (needs a `checkbox` config; rows are identified by its `mapping` field)
-g.checked();                         // the checked rows, as row handles
-g.checkedValues();                   // their mapping values
+g.checkedValues();                   // the checked rows' mapping values
 g.check([1, 2]); g.uncheck([1]); g.checkAll(); g.uncheckAll();
-g.row(3).isChecked(); g.row(3).check();
-g.checked().forEach(r => r.delete());   // a bulk action
 
 // events — each returns its unsubscribe function
 g.on('cellChange', ({index, key, field, from, to, row}) => …);

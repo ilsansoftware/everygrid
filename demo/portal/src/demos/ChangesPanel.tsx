@@ -45,7 +45,7 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
   };
 
   // Checked rows as handles — a bulk action is one line.
-  const deleteChecked = () => Everygrid.get(gridId)?.checked().forEach(r => r.delete());
+  const deleteChecked = () => Everygrid.get(gridId)?.checkedRows().forEach(r => r.delete());
 
   const g = Everygrid.get(gridId);
   const patch = g?.patch() ?? {inserted: [], updated: [], deleted: []};
@@ -59,13 +59,16 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
   };
   // What each kind hands you, as plain JSON — how it gets saved (fetch, a form, a queue) is yours.
   const pj = (v: unknown) => JSON.stringify(v, null, 2);
+  // The API hands you the objects — row handles in plain arrays, JSON from patch(). What happens
+  // to them (a save, a form, a queue) is written by you; these are only examples.
   const code: Record<Kind, string> = {
     inserted: `const g = Everygrid.get('${gridId}');
 
-g.insertRow({name: 'New person'});   // an empty row at the top, these fields filled; needs rowActions.insertRow
-g.inserted()                          // RowHandle[]  → ${g?.inserted().map(r => `#${r.index}`).join(' ') || '—'}
-g.inserted()[0]?.cell('age').set(30)  // fill it in; edits on a new row stay "inserted"
-g.inserted()[0]?.revert()             // drop it again
+g.insertRow({name: 'New person'})     // an empty row at the top, these fields filled; needs rowActions.insertRow
+g.insertedRows()                      // RowHandle[]  → ${g?.insertedRows().map(r => `#${r.index}`).join(' ') || '—'}
+g.insertedRows()[0]?.cell('age').set(30)
+g.insertedRows().forEach(r => r.revert())            // drop them again
+g.rows().filter(r => r.inserted())                   // the same rows, as a filter
 
 const {inserted} = g.patch();         // the new rows, whole:
 ${pj(patch.inserted)}
@@ -74,10 +77,11 @@ g.commit();                           // once they are saved`,
     updated: `const g = Everygrid.get('${gridId}');
 
 g.row(0).cell('age').set(31)          // edit exactly as typing would (honours editableCols)
-g.updated()                           // RowHandle[]  → ${g?.updated().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
-g.updated()[0]?.changes()             // [{field, from, to}]
+g.updatedRows()                       // RowHandle[]  → ${g?.updatedRows().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
+g.updatedRows()[0]?.changes()         // [{field, from, to}]
 g.column('age').changes()             // the same seen from a column
-g.updated()[0]?.cell('age').revert()  // one cell back;  g.updated()[0]?.revert() — the whole row
+g.updatedRows().forEach(r => r.cell('age').revert())
+g.rows().filter(r => r.updated())                    // the same rows, as a filter
 
 const {updated} = g.patch();          // per row: its key and only the changed fields:
 ${pj(patch.updated)}
@@ -86,9 +90,10 @@ g.commit();                           // once they are saved`,
     deleted: `const g = Everygrid.get('${gridId}');
 
 g.row(2).delete()                     // struck through until commit; needs rowActions.deleteRow
-g.deleted()                           // RowHandle[]  → ${g?.deleted().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
-g.deleted()[0]?.original()            // the row as loaded
-g.deleted()[0]?.restore()             // undo
+g.deletedRows()                       // RowHandle[]  → ${g?.deletedRows().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
+g.deletedRows()[0]?.original()        // the row as loaded
+g.deletedRows().forEach(r => r.restore())            // undo them all
+g.rows().filter(r => r.deleted())                    // the same rows, as a filter
 
 const {deleted} = g.patch();          // the keys to remove:
 ${pj(patch.deleted)}
@@ -96,16 +101,16 @@ ${pj(patch.deleted)}
 g.commit();                           // once they are gone — now the rows really leave the grid`,
     checked: `const g = Everygrid.get('${gridId}');   // checkbox.mapping = 'id'
 
-g.checked()                           // RowHandle[]  → ${g?.checked().map(r => `#${r.index}`).join(' ') || '—'}
-g.check([1, 2])  g.uncheck([1])  g.checkAll()  g.uncheckAll()
-g.row(0).isChecked()  g.row(0).check()
+g.checkedRows()                       // RowHandle[]  → ${g?.checkedRows().map(r => `#${r.index}`).join(' ') || '—'}
+g.rows().filter(r => r.checked())                    // the same rows, as a filter
+g.rows()[0].check()  g.rows()[0].checked()  g.checkAll()  g.uncheckAll()
 g.on('check', ({values, rows, changed, checked}) => …)
 
-g.checkedValues()                     // the checked rows' mapping values:
-${pj(checked)}
+g.checkedRows().forEach(r => r.delete())             // whatever you need, over the handles
+g.checkedRows().forEach(r => r.cell('active').set(false))
 
-g.checked().map(r => r.get())         // or the rows themselves:
-${pj(g?.checked().map(r => r.get()) ?? [])}`,
+g.checkedRows().map(r => r.get())     // the checked rows as JSON:
+${pj(g?.checkedRows().map(r => r.get()) ?? [])}`,
   };
 
   return (
