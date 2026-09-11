@@ -1,6 +1,9 @@
 import type {Everygrid} from './Everygrid';
 
-/** Identifies a row to the outside world: the `rowKey` field's value, else the row's data index. */
+/**
+ * Identifies a row to the outside world: the `rowKey` field's value, else the row's data index.
+ * Where a key can be missing — an inserted row whose key field is still empty — it is null.
+ */
 export type RowKey = string | number;
 
 /** One cell's change, original → current. */
@@ -20,7 +23,8 @@ export type RowStatus = 'inserted' | 'updated' | 'deleted';
 export interface RowChange<T = Record<string, unknown>> {
   status: RowStatus;
   index: number;
-  key: RowKey;
+  /** Null for an inserted row whose key field is still empty. */
+  key: RowKey | null;
   row: T;
   original: T;
   cells: CellChange[];
@@ -29,7 +33,7 @@ export interface RowChange<T = Record<string, unknown>> {
 /** A change seen from a column: which row, and the value before and after. */
 export interface ColumnChange<T = Record<string, unknown>> extends CellChange {
   index: number;
-  key: RowKey;
+  key: RowKey | null;
   row: T;
 }
 
@@ -180,11 +184,13 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
     const rows = this.changes();
     return {
       inserted: rows.filter(r => r.status === 'inserted').map(r => r.row),
+      // Loaded rows always have a key (the rowKey field, else the index); the index is the
+      // fallback for a row whose key field happens to be empty in the data.
       updated: rows.filter(r => r.status === 'updated').map(r => ({
-        key: r.key,
+        key: r.key ?? r.index,
         changes: Object.fromEntries(r.cells.map(c => [c.field, c.to])),
       })),
-      deleted: rows.filter(r => r.status === 'deleted').map(r => ({key: r.key, row: r.original})),
+      deleted: rows.filter(r => r.status === 'deleted').map(r => ({key: r.key ?? r.index, row: r.original})),
     };
   }
 
@@ -278,10 +284,10 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     return this.index >= 0 && this.index < this.list().length;
   }
 
-  /** The row's key: its `rowKey` field, else its index. */
-  key(): RowKey {
+  /** The row's key: its `rowKey` field, else its index; null while an inserted row's key is empty. */
+  key(): RowKey | null {
     const row = this.get();
-    return row ? this.grid._keyOf(this.parent.id, row, this.index) : this.index;
+    return row ? this.grid._keyOf(this.parent.id, row, this.index) : null;
   }
 
   get(): T | undefined {

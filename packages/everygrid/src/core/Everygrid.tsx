@@ -7,6 +7,7 @@ import {ExcelView} from './ExcelView';
 import {runExcelExport} from '../wasm/ExcelExportClient';
 import {ColumnSelectorComponent} from '../components/ColumnSelectorComponent';
 import {MobileColumnSelectorComponent} from '../components/MobileColumnSelectorComponent';
+import {DiffPopupComponent} from '../components/DiffPopupComponent';
 import {RowDetailComponent} from '../components/RowDetailComponent';
 import {HiddenColumnSelectorComponent} from '../components/HiddenColumnSelectorComponent';
 import {highlightText} from './highlightUtils';
@@ -1416,12 +1417,17 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     if (this._listeners.get('change')?.size) this._emit('change', this._changedRows(containerId));
   }
 
-  /** The row's key per the `rowKey` config, else its index. */
-  public _keyOf(containerId: string, row: T, index: number): RowKey {
+  /**
+   * The row's key per the `rowKey` config, else its index. Null when the key field is empty —
+   * an inserted row whose key has not been filled in yet — rather than the string "null".
+   */
+  public _keyOf(containerId: string, row: T, index: number): RowKey | null {
     const conf = this.options.rowKey?.find(c => c.id === containerId);
-    if (!conf) return index;
+    if (!conf) return this._inserted.includes(row) ? null : index;
     const fields = Array.isArray(conf.field) ? conf.field : [conf.field];
     const parts = fields.map(f => row[f]);
+    const empty = (v: unknown) => v === null || v === undefined || v === '';
+    if (parts.some(empty)) return null;
     if (parts.length === 1) {
       const v = parts[0];
       return typeof v === 'number' ? v : String(v);
@@ -2718,6 +2724,18 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         row={row}
         container={container}
         grid={this}
+        onClose={() => this.closePopup()}
+      />
+    );
+    this.renderGrid(container);
+  }
+
+  /** Opens the read-only diff of every change since load (the toolbar's "diff" button). */
+  public showDiff(container: HTMLElement) {
+    this.activePopup = (
+      <DiffPopupComponent
+        grid={this}
+        containerId={container.id}
         onClose={() => this.closePopup()}
       />
     );

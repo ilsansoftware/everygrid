@@ -18,7 +18,8 @@
     "moreActions": "More",
     "indexingPercent": "Indexing... {percent}%",
     "indexingRows": "Indexing... {count} rows",
-    "suggestNav": "↓ enter · ← → select · Enter apply · ↑ exit"
+    "suggestNav": "↓ enter · ← → select · Enter apply · ↑ exit",
+    "diff": "Changes"
   },
   "grid": {
     "index": "Index",
@@ -46,7 +47,10 @@
     "insertRow": "Insert row",
     "deleteRow": "Delete row",
     "restoreRow": "Restore row",
-    "insertedRows": "New rows"
+    "insertedRows": "New rows",
+    "diffSummary": "{rows} rows · {cells} cells",
+    "noChanges": "No changes.",
+    "newRow": "new row"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",

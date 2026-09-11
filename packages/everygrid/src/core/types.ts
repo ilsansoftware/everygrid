@@ -262,6 +262,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   isRowInserted(row: T): boolean;
   isRowDeleted(row: T): boolean;
   showMobileColumnSelector(allFields: string[], container: HTMLElement): void;
+  showDiff(container: HTMLElement): void;
   showRowDetail(row: T, container: HTMLElement): void;
 
   getDataFields(containerId: string): string[];

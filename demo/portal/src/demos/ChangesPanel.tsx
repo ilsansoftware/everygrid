@@ -51,7 +51,7 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
     inserted: `const g = Everygrid.get('${gridId}');
 
 g.insertRow({name: 'New person'})     // a new row above the data rows; needs rowActions.insertRow
-g.insertedRows()                      // RowHandle[] (their own index space)  → ${g?.insertedRows().map(r => `#${r.index}`).join(' ') || '—'}
+g.insertedRows()                      // RowHandle[] (their own index space; key() is null until the key field is filled)  → ${g?.insertedRows().map(r => `#${r.index}`).join(' ') || '—'}
 g.insertedRows()[0]?.cell('age').set(30)
 g.insertedRows().forEach(r => r.cancel())            // drop them again
 g.rows().filter(r => r.inserted())                   // the same rows, as a filter

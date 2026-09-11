@@ -839,3 +839,48 @@ button {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(300%); }
 }
+
+/* Diff popup (toolbar "diff"): one block per changed row, cells before → after. Long values
+   wrap so the popup never scrolls sideways. */
+.everygrid-diff-popup .everygrid-popup-body {
+  @apply text-sm;
+}
+.everygrid-diff-summary {
+  @apply ml-3 text-sm font-normal text-slate-500;
+}
+.everygrid-diff-row {
+  @apply mb-3 rounded-lg border border-slate-200 overflow-hidden;
+}
+.everygrid-diff-row-head {
+  @apply flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2;
+}
+.everygrid-diff-status {
+  @apply rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase;
+}
+.everygrid-diff-table {
+  @apply w-full table-fixed;
+}
+.everygrid-diff-table tr {
+  @apply border-b border-slate-100;
+}
+.everygrid-diff-table tr:last-child {
+  @apply border-0;
+}
+.everygrid-diff-table td {
+  @apply px-3 py-1.5 font-mono text-xs align-top;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+.everygrid-diff-field {
+  @apply w-36 text-slate-600;
+}
+.everygrid-diff-from {
+  @apply text-red-700 line-through decoration-red-300;
+}
+.everygrid-diff-arrow {
+  @apply w-6 text-center text-slate-400;
+  white-space: nowrap;
+}
+.everygrid-diff-to {
+  @apply text-emerald-700;
+}

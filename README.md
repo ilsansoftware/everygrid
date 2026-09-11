@@ -493,7 +493,7 @@ g.row(3).cell('score').cancel();     // the loaded value back
 // rows
 g.row(3).set({score: 90, active: false});   // returns how many cells were written
 g.row(3).changes();                  // [{field, from, to}]
-g.row(3).original();  g.row(3).cancel();  g.row(3).key();
+g.row(3).original();  g.row(3).cancel();  g.row(3).key();   // key() is null while an inserted row's key field is empty
 
 // columns
 g.column('score').changes();         // [{index, key, from, to, row}]
@@ -514,7 +514,7 @@ g.rows().filter(r => r.checked()).map(r => r.get());   // the checked rows as JS
 
 // the grid
 g.hasChanges();
-g.changes();                         // [{status, index, key, row, original, cells: [{field, from, to}]}]
+g.changes();                         // [{status, index, key, row, original, cells: [{field, from, to}]}]  (key null for an unkeyed new row)
 g.diff();                            // {inserted, updated, deleted, cells}
 g.patch();                           // {inserted: [rows], updated: [{key, changes}], deleted: [{key, row}]}
 g.cancel();                          // every change cancelled: edits undone, inserted rows dropped, deleted rows back

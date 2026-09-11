@@ -41,7 +41,7 @@ export default function DiffModal({gridId, changes, onClose}: {
                 <div key={r.index} className='mb-4 rounded-lg border border-slate-200'>
                   <div className='flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2'>
                     <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase ${STATUS[r.status]}`}>{r.status}</span>
-                    <span className='font-medium text-slate-800'>key {show(r.key)}</span>
+                    <span className={`font-medium ${r.key === null ? 'text-slate-500' : 'text-slate-800'}`}>{r.key === null ? 'new row' : `key ${show(r.key)}`}</span>
                     <span className='text-xs text-slate-500'>row #{r.index}</span>
                   </div>
                   {/* An inserted or deleted row is listed field by field (the values it has); long
