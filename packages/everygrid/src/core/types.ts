@@ -262,6 +262,8 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   isColumnBoolean(field: string): boolean;
   getRowActions(containerId: string): {insertRow: boolean; deleteRow: boolean};
   hasToolbar(containerId: string): boolean;
+  cancelAll(containerId: string): void;
+  cancelCell(containerId: string, rowData: Record<string, unknown>, field: string): void;
   showsConfig(containerId: string): boolean;
   getTargetConfig(containerId: string): Record<string, unknown>;
   showConfig(container: HTMLElement): void;

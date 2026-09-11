@@ -290,6 +290,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * A handle onto a mounted grid's data — `Everygrid.get('users').row(3).cell('score').set(90)`.
    * Null when nothing is mounted under that id. See GridHandle.
    */
+  /** The instance behind a target id (tests and tooling; the handle is the API). */
+  public static instances_get<D extends Record<string, unknown> = Record<string, unknown>>(id: string): Everygrid<D> {
+    const instance = Everygrid.instances.get(id) as Everygrid<D> | undefined;
+    if (!instance) throw new Error(`Everygrid: no grid mounted as "${id}"`);
+    return instance;
+  }
+
   public static get<D extends Record<string, unknown> = Record<string, unknown>>(id: string): GridHandle<D> | null {
     const instance = Everygrid.instances.get(id) as Everygrid<D> | undefined;
     return instance ? new GridHandle<D>(instance, id) : null;
@@ -2565,6 +2572,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   public reset(container: HTMLElement) {
+    this.cancelAll(container.id);
+  }
+
+  /** Cancels every change of the target: edits undone, inserted rows dropped, deleted rows back. */
+  public cancelAll(containerId: string) {
     // Inserted rows go; deleted rows come back.
     this._inserted = [];
     this._deletedRows.clear();
@@ -2590,15 +2602,20 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Sync the restored rows to the WASM engines — see _syncRowsToEngines.
     this._syncRowsToEngines(restored);
 
-    this.renderGrid(container);
+    this._rerender(containerId);
 
     if (this.options.onDataChange && this.options.data) {
       this.options.onDataChange(this.options.data, this._originalData());
     }
-    this._emitChange(container.id);
+    this._emitChange(containerId);
   }
 
   public resetCell(rowData: Record<string, unknown>, field: string, container: HTMLElement) {
+    this.cancelCell(container.id, rowData, field);
+  }
+
+  /** Puts one cell's loaded value back. */
+  public cancelCell(containerId: string, rowData: Record<string, unknown>, field: string) {
     if (!this.options.data) return;
     const data = this.options.data as Record<string, unknown>[];
     const idx = this._indexOfRow(rowData as T);
@@ -2633,12 +2650,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // Sync just the restored row to the WASM engines — see _syncRowsToEngines.
       this._syncRowsToEngines([{index: idx, row: newRow}]);
 
-      this.renderGrid(container);
+      this._rerender(containerId);
 
       if (this.options.onDataChange && this.options.data) {
         this.options.onDataChange(this.options.data, this._originalData());
       }
-      this._emitChange(container.id);
+      this._emitChange(containerId);
     }
   }
 

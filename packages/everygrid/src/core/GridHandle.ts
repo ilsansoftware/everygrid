@@ -209,8 +209,7 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
 
   /** Cancels every change: edits undone, inserted rows dropped, deleted rows back. */
   cancel(): void {
-    const el = document.getElementById(this.id);
-    if (el) this.grid.reset(el);
+    this.grid.cancelAll(this.id);
   }
 
   /**
@@ -436,8 +435,7 @@ export class CellHandle<T extends Record<string, unknown> = Record<string, unkno
   /** Puts the loaded value back. */
   cancel(): void {
     const row = this.row.get();
-    const el = document.getElementById(this.row.gridId);
-    if (row && el && this.modified()) this.grid.resetCell(row, this.field, el);
+    if (row && this.modified()) this.grid.cancelCell(this.row.gridId, row, this.field);
   }
 }
 
