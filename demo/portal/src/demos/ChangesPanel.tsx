@@ -95,7 +95,7 @@ g.deletedRows()[0]?.original()        // the row as loaded
 g.deletedRows().forEach(r => r.restore())            // undo them all
 g.rows().filter(r => r.deleted())                    // the same rows, as a filter
 
-const {deleted} = g.patch();          // the keys to remove:
+const {deleted} = g.patch();          // per row: its key, and the row as loaded:
 ${pj(patch.deleted)}
 
 g.commit();                           // once they are gone — now the rows really leave the grid`,

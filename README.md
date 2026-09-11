@@ -515,7 +515,7 @@ g.rows().filter(r => r.checked()).map(r => r.get());   // the checked rows as JS
 g.hasChanges();
 g.changes();                         // [{status, index, key, row, original, cells: [{field, from, to}]}]
 g.diff();                            // {inserted, updated, deleted, cells}
-g.patch();                           // {inserted: [rows], updated: [{key, changes}], deleted: [keys]}
+g.patch();                           // {inserted: [rows], updated: [{key, changes}], deleted: [{key, row}]}
 g.revert();                          // as loaded: edits undone, inserted rows dropped, deleted rows back
 g.commit();                          // after a successful save: current state becomes the baseline
 
@@ -535,7 +535,7 @@ g.on('check', ({values, rows, changed, checked}) => …);   // any checkbox chan
 const {inserted, updated, deleted} = g.patch();
 // inserted: [{...row}]                 the new rows, whole
 // updated:  [{key, changes: {...}}]    per row, its key and only the changed fields
-// deleted:  [key, ...]                 the keys to remove
+// deleted:  [{key, row}]              per row, its key and the row as loaded
 await save(inserted, updated, deleted);
 g.commit();
 ```

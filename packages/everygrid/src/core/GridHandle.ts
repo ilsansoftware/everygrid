@@ -39,11 +39,17 @@ export interface RowPatch {
   changes: Record<string, unknown>;
 }
 
-/** The minimal payload for a save — what to POST, PATCH and DELETE. */
+/** One deleted row in a patch: its key, and the row as it was loaded. */
+export interface RowDeletion<T = Record<string, unknown>> {
+  key: RowKey;
+  row: T;
+}
+
+/** The minimal payload for a save: new rows whole, updated rows as key + changed fields, deleted rows as key + row. */
 export interface Patch<T = Record<string, unknown>> {
   inserted: T[];
   updated: RowPatch[];
-  deleted: RowKey[];
+  deleted: RowDeletion<T>[];
 }
 
 export type CellChangeEvent<T = Record<string, unknown>> = ColumnChange<T>;
@@ -162,8 +168,8 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
   }
 
   /**
-   * What to send to a server: the inserted rows whole, the modified rows as key + changed fields,
-   * the deleted rows as keys.
+   * What to send to a server: the inserted rows whole, the updated rows as key + changed fields,
+   * the deleted rows as key + the row as loaded.
    */
   patch(): Patch<T> {
     const rows = this.changes();
@@ -173,7 +179,7 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
         key: r.key,
         changes: Object.fromEntries(r.cells.map(c => [c.field, c.to])),
       })),
-      deleted: rows.filter(r => r.status === 'deleted').map(r => r.key),
+      deleted: rows.filter(r => r.status === 'deleted').map(r => ({key: r.key, row: r.original})),
     };
   }
 
