@@ -1,11 +1,12 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {Highlight, themes} from 'prism-react-renderer';
 import {Everygrid, type GridLoadProgress} from '@everygrid/grid';
-import ReactDemo, {type Locale} from './demos/ReactDemo';
+import ReactDemo from './demos/ReactDemo';
 import LargeDataDemo from './demos/LargeDataDemo';
 import VirtualScrollDemo from './demos/VirtualScrollDemo';
 import {HeadingSlotContext} from './headingSlot';
 import SandboxDemo from './demos/SandboxDemo';
+import LocaleSwitch, {type Locale} from './demos/LocaleSwitch';
 import DocsPage from './demos/DocsPage';
 import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
@@ -32,22 +33,17 @@ function compactCount(n: number): string {
 }
 
 // `icon` tabs show a favicon with a short name beside it; `label` tabs (the React-only heavy demos)
-// show text alone.
+// show text alone. `caption` is the one-liner under the page title.
 // Demos share the header capsule; a `tool` (acts on your data) is a standalone button beside it.
 type TabGroup = 'demo' | 'tool';
-const TABS: { id: TabId; title: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
+const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
   {id: 'react', title: 'React Demo', icon: '/react/favicon.ico', name: 'React'},
   {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico', name: 'JS'},
   {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/logo.svg', name: 'jQuery'},
-  {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large\ndata'},
+  {id: 'large', title: 'Large Data', caption: 'streaming 1.6M rows', label: 'large\ndata'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
-  {id: 'sandbox', title: 'JSON to Grid — drop a file, get a grid', label: 'json to\ngrid', group: 'tool'},
+  {id: 'sandbox', title: 'JSON to Grid', caption: 'drop a file, get a grid', label: 'json to\ngrid', group: 'tool'},
   {id: 'docs', title: 'API Docs', label: 'api\ndocs', group: 'tool'},
-];
-
-const LOCALES: { id: Locale; flag: string; title: string }[] = [
-  {id: 'ko', flag: '🇰🇷', title: '한국어'},
-  {id: 'en', flag: '🇺🇸', title: 'English'},
 ];
 
 // Tabs that are tools rather than demos: nothing to show under 'Show Code'.
@@ -83,27 +79,30 @@ function initialTab(): TabId {
   return isNarrowViewport() && MOBILE_HIDDEN_TABS.includes(resolved) ? 'react' : resolved;
 }
 
-function initialLocale(): Locale {
-  const saved = localStorage.getItem('eg-portal-locale');
-  return saved === 'ko' || saved === 'en' ? saved : 'en';
-}
-
 export default function App() {
   const [tab, setTab] = useState<TabId>(initialTab);
-  const [locale, setLocale] = useState<Locale>(initialLocale);
   const [modalOpen, setModalOpen] = useState(false);
   // Title-row slot for a demo's own controls; see HeadingSlotContext.
   const [headingSlot, setHeadingSlot] = useState<HTMLElement | null>(null);
+
+  const frameRefs = useRef<Partial<Record<TabId, HTMLIFrameElement | null>>>({});
+  // The html demos live in iframes, so their language toggle is drawn here on the title row and the
+  // choice is pushed into the page with Everygrid.sendLocale (each page called listenForLocale).
+  // Per tab, like the React demos, which each own their locale.
+  const [frameLocale, setFrameLocale] = useState<Partial<Record<TabId, Locale>>>({});
+  const frameLocaleOf = (id: TabId): Locale => frameLocale[id] ?? 'en';
+  const pushFrameLocale = (id: TabId, locale: Locale) => {
+    const win = frameRefs.current[id]?.contentWindow;
+    if (win) Everygrid.sendLocale(win, locale);
+  };
+  useEffect(() => {
+    if (!REACT_TABS.includes(tab)) pushFrameLocale(tab, frameLocaleOf(tab));
+    // Only the tab switch matters here; a toggle click pushes on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
   // Source of each HTML demo, once fetched. State rather than a ref, so the modal can
   // derive its text during render instead of a ref read + setState round trip.
   const [codeByTab, setCodeByTab] = useState<Partial<Record<TabId, string>>>({});
-
-  const frameRefs = useRef<Partial<Record<TabId, HTMLIFrameElement | null>>>({});
-  // Lets the iframe onLoad handler read the current locale without a stale closure.
-  const localeRef = useRef(locale);
-  useEffect(() => {
-    localeRef.current = locale;
-  }, [locale]);
 
   // Keep-alive: a tab is mounted the first time it is opened and then stays mounted,
   // hidden rather than unmounted. Unmounting tore down the Everygrid instance (via the
@@ -193,25 +192,6 @@ export default function App() {
     return () => import.meta.hot?.off('everygrid:standalone-updated', reload);
   }, []);
 
-  const changeLocale = useCallback((next: Locale) => {
-    setLocale(next);
-    localStorage.setItem('eg-portal-locale', next);
-  }, []);
-
-  // Apply the locale to the in-app (React) grids once, here — not per demo component, which would
-  // run rerenderAll once per mounted React tab. The iframe demos get it via postMessage below.
-  useEffect(() => {
-    Everygrid.setLocale(locale);
-  }, [locale]);
-
-  // Broadcast locale changes to the active iframe demo (its page called Everygrid.listenForLocale()).
-  useEffect(() => {
-    if (!REACT_TABS.includes(tab)) {
-      const win = frameRefs.current[tab]?.contentWindow;
-      if (win) Everygrid.sendLocale(win, locale);
-    }
-  }, [locale, tab]);
-
   // The React demo's source is bundled at build time; the html demos are fetched once and
   // then reused, so the text to show is derived rather than mirrored into state.
   const codeText = tab === 'react' ? reactSrc
@@ -246,6 +226,17 @@ export default function App() {
   }, [modalOpen]);
 
   const meta = CODE_META[tab];
+
+  const frameLocaleSwitch = (active: boolean) => (
+    <LocaleSwitch
+        value={frameLocaleOf(tab)}
+        active={active}
+        onChange={(next) => {
+          setFrameLocale((prev) => ({...prev, [tab]: next}));
+          pushFrameLocale(tab, next);
+        }}
+    />
+  );
 
   const tabsOf = (group: TabGroup) => TABS.filter((t) =>
       (t.group ?? 'demo') === group && !(isNarrow && MOBILE_HIDDEN_TABS.includes(t.id)));
@@ -311,22 +302,8 @@ export default function App() {
           <nav>{tabsOf('demo').map(renderTab)}</nav>
           {/* Tools stand outside the capsule as buttons of their own. */}
           <div className='tool-tabs'>{tabsOf('tool').map(renderTab)}</div>
+          {isNarrow && !REACT_TABS.includes(tab) && frameLocaleSwitch(false)}
           {isNarrow && codeButton}
-          <div className='header-right'>
-            <div className='locale-btn-group'>
-              {LOCALES.map((l) => (
-                  <button
-                      key={l.id}
-                      className={`locale-btn${l.id === locale ? ' active' : ''}`}
-                      data-locale={l.id}
-                      title={l.title}
-                      onClick={() => changeLocale(l.id)}
-                  >
-                    {l.flag}
-                  </button>
-              ))}
-            </div>
-          </div>
         </header>
 
         <div className='demo-panel'>
@@ -335,8 +312,14 @@ export default function App() {
           {!isNarrow && (
             <div className='demo-heading'>
               <div className='demo-heading-left'>
-                <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
-                <div ref={setHeadingSlot}/>
+                <div className='demo-heading-title'>
+                  <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
+                  {TABS.find((t) => t.id === tab)?.caption && (
+                    <p className='demo-caption'>{TABS.find((t) => t.id === tab)?.caption}</p>
+                  )}
+                </div>
+                <div ref={setHeadingSlot} className='demo-heading-slot'/>
+                {!REACT_TABS.includes(tab) && frameLocaleSwitch(false)}
               </div>
               {codeButton}
             </div>
@@ -346,13 +329,13 @@ export default function App() {
                 REACT_TABS.includes(t.id) ? (
                     <div key={t.id} hidden={t.id !== tab}>
                       {t.id === 'react' ? (
-                          <ReactDemo/>
+                          <ReactDemo active={t.id === tab}/>
                       ) : t.id === 'large' ? (
-                          <LargeDataDemo/>
+                          <LargeDataDemo active={t.id === tab}/>
                       ) : t.id === 'virtual' ? (
                           <VirtualScrollDemo active={t.id === tab}/>
                       ) : t.id === 'sandbox' ? (
-                          <SandboxDemo/>
+                          <SandboxDemo active={t.id === tab}/>
                       ) : (
                           <DocsPage/>
                       )}
@@ -365,13 +348,9 @@ export default function App() {
                         }}
                         className='demo-frame'
                         hidden={t.id !== tab}
-                        // Portal-driven locale sync: once the iframe's document (and its
-                        // listenForLocale) has loaded, push the current locale. No 'ready' handshake
-                        // needed — the listener is registered synchronously, before this fires.
-                        onLoad={(e) => {
-                          const win = e.currentTarget.contentWindow;
-                          if (win) Everygrid.sendLocale(win, localeRef.current);
-                        }}
+                        // The page registers listenForLocale synchronously, so once it has loaded the
+                        // current choice can be pushed straight in.
+                        onLoad={() => pushFrameLocale(t.id, frameLocaleOf(t.id))}
                         // Use the explicit file path: the vite dev server does not serve a
                         // nested public/<demo>/index.html for the bare "/<demo>/" directory
                         // URL (it falls back to the SPA root, nesting the whole portal).

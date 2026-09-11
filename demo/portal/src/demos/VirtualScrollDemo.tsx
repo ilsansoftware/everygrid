@@ -1,10 +1,17 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Everygrid, useGrid} from '@everygrid/grid';
+import LocaleSwitch, {type Locale} from './LocaleSwitch';
 import RowCountPicker from './RowCountPicker';
 import {makeVirtualGridData, resolveRowCount} from './virtualGridData';
 
 // Virtual-scroll demo — renders only the rows in view, on its own tab.
 export default function VirtualScrollDemo({active}: { active: boolean }) {
+  // Language is per tab: applied through the API whenever this tab is the one on screen.
+  const [locale, setLocale] = useState<Locale>('en');
+  useEffect(() => {
+    if (active) Everygrid.setLocale(locale);
+  }, [active, locale]);
+
   const [rows, setRows] = useState(resolveRowCount);
   // useGrid runs whichever fetcher was rendered last, so the picked size is simply closed over.
   useGrid('virtual-grid', () => makeVirtualGridData(rows));
@@ -22,6 +29,7 @@ export default function VirtualScrollDemo({active}: { active: boolean }) {
       <div className='max-w-7xl mx-auto'>
         <main className='min-h-150 flex flex-col gap-8 py-8 bg-white'>
           <RowCountPicker value={rows} onChange={choose} active={active}/>
+          <LocaleSwitch value={locale} onChange={setLocale} active={active}/>
           {/* Virtual scrolling needs a bounded height to scroll inside. */}
           <div id='virtual-grid' className='w-full border-slate-200 h-[560px] flex flex-col'/>
         </main>

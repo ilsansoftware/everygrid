@@ -268,7 +268,23 @@ nav button.active .tab-name {
   gap: 14px;
   min-width: 0;
 }
-.demo-heading-left > div:empty {
+.demo-heading-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.demo-caption {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+/* A demo's own controls (portaled in) sit in a row; the slot vanishes when a tab has none. */
+.demo-heading-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.demo-heading-slot:empty {
   display: none;
 }
 .demo-heading h2 {
@@ -350,23 +366,22 @@ nav button.active .tab-name {
   background: #fff;
 }
 
-.header-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
+/* Language toggle, one per demo tab. Rendered by the demo (LocaleSwitch) into the title row, so it
+   is a light pill group at the row's 34px control height; inline above the grid on a phone. */
 .locale-btn-group {
-  display: flex;
-  background: #2a2b3d;
-  padding: 4px;
+  display: inline-flex;
+  align-self: flex-start;
+  height: 34px;
+  box-sizing: border-box;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 3px;
   border-radius: 8px;
 }
 
 .locale-btn {
-  width: 36px;
-  height: 30px;
+  width: 34px;
+  height: 26px;
   border: none;
   background: transparent;
   border-radius: 6px;
@@ -374,7 +389,7 @@ nav button.active .tab-name {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   line-height: 1;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0.45;
@@ -386,7 +401,7 @@ nav button.active .tab-name {
 
 .locale-btn.active {
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15);
   opacity: 1;
 }
 
@@ -589,17 +604,6 @@ nav button.active .tab-name {
   /* Icon only on a phone; the name would push the bar into scrolling. */
   nav button .tab-name {
     display: none;
-  }
-
-  .header-right {
-    margin-left: auto;
-    gap: 6px;
-  }
-
-  .locale-btn {
-    width: 34px;
-    height: 34px;
-    font-size: 1.1rem;
   }
 
   /* Match the nav group's outer height (34px button + 4px×2 group padding = 42px) so the two

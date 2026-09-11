@@ -13,6 +13,7 @@ import init, { GridEngine } from 'everygrid-wasm';
 export type WorkerRequest =
   | { id: string; seq: number; cmd: 'init' }
   | { id: string; seq: number; cmd: 'setData'; bytes: Uint8Array }
+  | { id: string; seq: number; cmd: 'appendChunk'; bytes: Uint8Array }
   | { id: string; seq: number; cmd: 'streamStart' }
   | { id: string; seq: number; cmd: 'streamChunk'; bytes: Uint8Array }
   | { id: string; seq: number; cmd: 'streamEnd' }
@@ -21,7 +22,8 @@ export type WorkerRequest =
   | { id: string; seq: number; cmd: 'getRawPage'; page: number; pageSize: number }
   | { id: string; seq: number; cmd: 'getTotalCount' }
   | { id: string; seq: number; cmd: 'getRawCount' }
-  | { id: string; seq: number; cmd: 'updateRows'; indices: Uint32Array; rowsJson: string };
+  | { id: string; seq: number; cmd: 'updateRows'; indices: Uint32Array; rowsJson: string }
+  | { id: string; seq: number; cmd: 'finalize' };
 
 export type WorkerResponse =
   | { id: string; seq: number; ok: true; result?: unknown }
@@ -199,6 +201,11 @@ function executeCommand(req: WorkerRequest): unknown {
         break;
       }
 
+      case 'appendChunk': {
+        getEngine(id).feed_chunk_bytes(req.bytes);
+        break;
+      }
+
       case 'streamStart': {
         // Clear existing data and reset the streaming scanner for this grid.
         getEngine(id).clear();
@@ -221,6 +228,11 @@ function executeCommand(req: WorkerRequest): unknown {
           _streamState.delete(id);
         }
         // finalize triggers lazy index build via recompute (same as setData's finalize).
+        getEngine(id).finalize();
+        break;
+      }
+
+      case 'finalize': {
         getEngine(id).finalize();
         break;
       }
