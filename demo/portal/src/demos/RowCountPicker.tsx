@@ -12,7 +12,7 @@ export default function RowCountPicker({value, onChange}: {
         <select
             aria-label='Rows'
             title='Rows'
-            className='h-[34px] rounded-lg border border-slate-300 bg-white px-2 text-sm text-slate-700 shadow-sm'
+            className='everygrid-select h-[34px] rounded-lg border border-slate-300 bg-white pl-3 text-sm text-slate-700 shadow-sm'
             value={ROW_CHOICES.includes(value) ? value : ''}
             onChange={(e) => onChange(Number(e.target.value))}
         >

@@ -240,7 +240,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
         return (
           <div className={`flex items-center ${alignRight ? 'justify-end' : ''}`}>
             <select
-              className='w-full px-1 py-0.5 text-sm border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'
+              className='everygrid-select w-full pl-1 py-0.5 text-sm border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'
               // An empty cell (an inserted row) shows as unset — a blank option — rather than
               // reading as "true" when nothing has been chosen yet.
               value={typeof value === 'boolean' ? String(value) : ''}

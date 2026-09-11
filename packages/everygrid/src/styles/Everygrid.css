@@ -230,17 +230,17 @@
   @apply relative w-full h-full;
 }
 
+/* Native <select> chrome, made predictable. The moment a select gets a border/padding/radius,
+   Chrome drops the platform control and draws its own arrow glued to the right edge, ignoring
+   padding-right — so the text is inset and the arrow is not, and the box looks off. Every
+   hand-written select hits this. Fix it once: hide the native arrow and draw our own chevron as a
+   background at a fixed inset, with matching right padding. Box styling (border, height, colors)
+   stays with the caller. */
 .everygrid-select {
-  @apply w-full h-full border-b border-slate-200 px-4 py-2 text-sm outline-none cursor-pointer appearance-none bg-transparent text-slate-600 min-w-max;
-  @apply hover:border-slate-300 focus:border-b-slate-700 focus:bg-slate-50/50 transition-all;
-}
-
-.everygrid-select-container {
-  @apply relative w-full h-full;
-}
-
-.everygrid-select-container::after {
-  @apply content-['▾'] absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs;
+  @apply appearance-none bg-no-repeat pr-8;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394a3b8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M6 8l4 4 4-4'/></svg>");
+  background-position: right 0.5rem center;
+  background-size: 1rem 1rem;
 }
 
 /* Toolbar */
