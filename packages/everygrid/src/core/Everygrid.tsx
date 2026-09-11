@@ -46,7 +46,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // concurrent loadConfig calls, so N screens asking at once still make one network request.
   private static _configCache: Map<string, Promise<string[]>> = new Map();
   // Target id → the config it came from. Populated by loadConfig, consumed by mount.
-  private static _targetRegistry: Map<string, {config: Record<string, unknown>; target: GridTargetConfig}> = new Map();
+  private static _targetRegistry: Map<string, {config: Record<string, unknown>; target: GridTargetConfig; url: string}> = new Map();
   // In-flight mounts, keyed by target id, so concurrent mount() calls for the same id share one
   // creation instead of each running createRoot on the container (React StrictMode double-invoke).
   private static _mounting: Map<string, Promise<Everygrid | null>> = new Map();
@@ -385,7 +385,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
             console.warn('Everygrid.loadConfig: failed to load config at', url);
             return null;
           }
-          return await res.json() as Record<string, unknown>;
+          return {url, config: await res.json() as Record<string, unknown>};
         } catch {
           console.warn('Everygrid.loadConfig: error loading config at', url);
           return null;
@@ -394,10 +394,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     );
 
     const ids: string[] = [];
-    for (const config of configs) {
-      if (!config || !Array.isArray(config.targets)) continue;
-      for (const target of config.targets as GridTargetConfig[]) {
-        Everygrid._targetRegistry.set(target.id, {config, target});
+    for (const loaded of configs) {
+      if (!loaded || !Array.isArray(loaded.config.targets)) continue;
+      for (const target of loaded.config.targets as GridTargetConfig[]) {
+        Everygrid._targetRegistry.set(target.id, {config: loaded.config, target, url: loaded.url});
         ids.push(target.id);
       }
     }
@@ -1249,6 +1249,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    */
   public getTargetConfig(containerId: string): Record<string, unknown> {
     const out: Record<string, unknown> = {};
+    // The file the target came from, first — so the reader knows where to edit.
+    const url = Everygrid._targetRegistry.get(containerId)?.url;
+    if (url) out.file = url;
     const target = this.options.targets?.find(t => (typeof t === 'string' ? t : t.id) === containerId);
     if (target) out.targets = [typeof target === 'string' ? {id: target} : {...target, data: undefined}];
     const skip = new Set(['targets', 'data', 'dataUrl', 'columns', 'columnI18n', 'serverFetcher', 'onDataChange', 'onCellClick', 'dataCache']);
