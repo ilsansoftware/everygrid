@@ -142,14 +142,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
           type='checkbox'
           className='cursor-pointer'
           checked={checked}
-          onChange={(e) => {
-            if (!grid.checkedValues) return;
-            const set = grid.checkedValues.get(containerId) ?? new Set();
-            if (e.target.checked) set.add(value);
-            else set.delete(value);
-            grid.checkedValues.set(containerId, set);
-            grid.renderGrid(container);
-          }}
+          onChange={(e) => grid.setChecked(containerId, [value], e.target.checked)}
         />
       </td>
     );

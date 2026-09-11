@@ -48,11 +48,25 @@ export interface Patch<T = Record<string, unknown>> {
 
 export type CellChangeEvent<T = Record<string, unknown>> = ColumnChange<T>;
 
+/** A checkbox-column change: everything checked now, plus what this change toggled. */
+export interface CheckEvent<T = Record<string, unknown>> {
+  /** The `checkbox.mapping` values of every checked row. */
+  values: unknown[];
+  /** The checked rows themselves, in data order. */
+  rows: T[];
+  /** The mapping values this change toggled. */
+  changed: unknown[];
+  /** Whether `changed` was checked (true) or unchecked (false). */
+  checked: boolean;
+}
+
 export interface GridEvents<T = Record<string, unknown>> {
   /** One cell was edited (through the grid's UI or `set`). */
   cellChange: (e: CellChangeEvent<T>) => void;
   /** The set of changes moved: an edit, a revert, or a commit. */
   change: (changes: RowChange<T>[]) => void;
+  /** Rows were checked or unchecked, from the UI or the API. */
+  check: (e: CheckEvent<T>) => void;
 }
 
 /**
@@ -181,6 +195,37 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
     this.grid.commit(this.id);
   }
 
+  // ---- Checkbox column (needs a `checkbox` config; rows are identified by its `mapping` field)
+
+  /** The checked rows, as row handles, in data order. */
+  checked(): RowHandle<T>[] {
+    const data = this.data();
+    return this.grid.getCheckedRows(this.id).map(row => this.row(data.indexOf(row)));
+  }
+
+  /** The `checkbox.mapping` values of the checked rows. */
+  checkedValues(): unknown[] {
+    return this.grid.getCheckedValues(this.id);
+  }
+
+  /** Checks rows by their mapping values. */
+  check(values: unknown[]): void {
+    this.grid.setChecked(this.id, values, true);
+  }
+
+  uncheck(values: unknown[]): void {
+    this.grid.setChecked(this.id, values, false);
+  }
+
+  checkAll(): void {
+    const mapping = this.grid.getCheckboxMapping(this.id);
+    if (mapping) this.grid.setChecked(this.id, this.data().map(r => r[mapping]), true);
+  }
+
+  uncheckAll(): void {
+    this.grid.clearChecked(this.id);
+  }
+
   /** Subscribe to grid events; returns the unsubscribe function. */
   on<K extends keyof GridEvents<T>>(event: K, handler: GridEvents<T>[K]): () => void {
     return this.grid.on(event, handler);
@@ -241,6 +286,19 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     if (this.isAdded()) return 'added';
     if (this.isDeleted()) return 'deleted';
     return this.isModified() ? 'modified' : null;
+  }
+
+  isChecked(): boolean {
+    const row = this.get();
+    const mapping = this.grid.getCheckboxMapping(this.gridId);
+    return !!row && !!mapping && this.grid.getCheckedValues(this.gridId).includes(row[mapping]);
+  }
+
+  /** Checks (or, with false, unchecks) this row's checkbox. */
+  check(checked = true): void {
+    const row = this.get();
+    const mapping = this.grid.getCheckboxMapping(this.gridId);
+    if (row && mapping) this.grid.setChecked(this.gridId, [row[mapping]], checked);
   }
 
   /** Marks the row deleted (struck through until commit; revert restores it). Needs `rowActions.deleteRow`. */

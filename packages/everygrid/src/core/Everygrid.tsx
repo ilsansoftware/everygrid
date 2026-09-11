@@ -1321,6 +1321,51 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     });
   }
 
+  // ---- Checkbox column --------------------------------------------------------------------------
+
+  /** The field whose value a checked row is remembered by (`checkbox.mapping`), if configured. */
+  public getCheckboxMapping(containerId: string): string | undefined {
+    const confs = Array.isArray(this.options.checkbox) ? this.options.checkbox : [];
+    const conf = confs.find(c => c.id === containerId);
+    return conf && (conf.active ?? true) ? conf.mapping : undefined;
+  }
+
+  public getCheckedValues(containerId: string): unknown[] {
+    return Array.from(this.checkedValues.get(containerId) ?? []);
+  }
+
+  /** The rows currently checked, in data order. */
+  public getCheckedRows(containerId: string): T[] {
+    const mapping = this.getCheckboxMapping(containerId);
+    const set = this.checkedValues.get(containerId);
+    if (!mapping || !set || set.size === 0) return [];
+    return ((this.options.data || []) as T[]).filter(row => set.has(row[mapping]));
+  }
+
+  /**
+   * Checks or unchecks rows by their mapping values — the one path every checkbox change takes,
+   * from the UI or the API, so the `check` event sees all of them.
+   */
+  public setChecked(containerId: string, values: unknown[], checked: boolean): void {
+    const set = this.checkedValues.get(containerId) ?? new Set();
+    const changed: unknown[] = [];
+    for (const v of values) {
+      if (checked ? !set.has(v) : set.has(v)) {
+        if (checked) set.add(v); else set.delete(v);
+        changed.push(v);
+      }
+    }
+    this.checkedValues.set(containerId, set);
+    if (changed.length === 0) return;
+    const el = document.getElementById(containerId);
+    if (el) this.renderGrid(el);
+    this._emit('check', {values: Array.from(set), rows: this.getCheckedRows(containerId), changed, checked});
+  }
+
+  public clearChecked(containerId: string): void {
+    this.setChecked(containerId, this.getCheckedValues(containerId), false);
+  }
+
   // ---- Change tracking (the GridHandle API) --------------------------------------------------
 
   private _listeners: Map<keyof GridEvents<T>, Set<(arg: unknown) => void>> = new Map();

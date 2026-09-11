@@ -247,6 +247,11 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   columnLabel(field: string, containerId: string): string;
   getMobileColumns(containerId: string): string[] | undefined;
   getRowActions(containerId: string): {addRow: boolean; deleteRow: boolean};
+  getCheckboxMapping(containerId: string): string | undefined;
+  getCheckedValues(containerId: string): unknown[];
+  getCheckedRows(containerId: string): T[];
+  setChecked(containerId: string, values: unknown[], checked: boolean): void;
+  clearChecked(containerId: string): void;
   addRow(containerId: string, values?: Partial<T>, at?: number): T;
   deleteRow(containerId: string, rowData: T): void;
   restoreRow(containerId: string, rowData: T): void;

@@ -75,18 +75,10 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
   }, [loadedItems, grid, containerId, columns]);
 
   const handleCheckAll = (checked: boolean) => {
-    if (!grid.checkedValues) return;
     const checkboxCol = columns.find(c => c.type === 'data_checkbox');
     if (!checkboxCol) return;
     const mappingField = checkboxCol.mapping ?? checkboxCol.field;
-    const set = grid.checkedValues.get(containerId) ?? new Set();
-    if (checked) {
-      loadedItems.forEach(item => set.add(item[mappingField]));
-    } else {
-      loadedItems.forEach(item => set.delete(item[mappingField]));
-    }
-    grid.checkedValues.set(containerId, set);
-    grid.renderGrid(container);
+    grid.setChecked(containerId, loadedItems.map(item => item[mappingField]), checked);
   };
 
   const handleToggleColumn = (field: string) => {
