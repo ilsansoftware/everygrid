@@ -655,16 +655,12 @@ nav button.active .tab-name {
   scroll-margin-top: 1rem;
 }
 .docs-highlights h2 {
-  font-size: 1.75rem;
-  font-weight: 800;
-  margin: 0 0 0.35rem;
-  letter-spacing: -0.02em;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.9rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #e2e8f0;
   color: #0f172a;
-}
-.docs-highlights-lead {
-  margin: 0 0 1.25rem;
-  color: #475569;
-  font-size: 0.95rem;
 }
 .docs-highlight-grid {
   display: grid;

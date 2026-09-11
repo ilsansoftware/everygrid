@@ -73,11 +73,19 @@ const HIGHLIGHTS: { title: string; body: string; tag: string }[] = [
 ];
 
 export default function DocsPage() {
-  const {html, toc} = useMemo(() => {
-    const toc = marked.lexer(readme)
+  // The README's title and opening paragraph lead the page; the highlights sit between them and
+  // the rest of the document.
+  const {intro, body, toc} = useMemo(() => {
+    const tokens = marked.lexer(readme);
+    const firstSection = tokens.findIndex(t => t.type === 'heading' && (t as Tokens.Heading).depth === 2);
+    const toc = tokens
         .filter((t): t is Tokens.Heading => t.type === 'heading' && t.depth === 2)
         .map(t => ({id: slug(t.text), text: t.text}));
-    return {html: marked.parse(readme) as string, toc: [{id: 'highlights', text: 'Highlights'}, ...toc]};
+    return {
+      intro: marked.parser(tokens.slice(0, firstSection)),
+      body: marked.parser(tokens.slice(firstSection)),
+      toc: [{id: 'highlights', text: 'Highlights'}, ...toc],
+    };
   }, []);
 
   return (
@@ -89,12 +97,9 @@ export default function DocsPage() {
           }}>{h.text}</a>)}
         </aside>
         <div className='docs-main'>
+          <article className='docs-body' dangerouslySetInnerHTML={{__html: intro}}/>
           <section id='highlights' className='docs-highlights'>
             <h2>Highlights</h2>
-            <p className='docs-highlights-lead'>
-              A data grid whose data work happens off the main thread. Config in, grid out — from a
-              few rows to a few million.
-            </p>
             <div className='docs-highlight-grid'>
               {HIGHLIGHTS.map(h => (
                   <div key={h.tag} className='docs-highlight'>
@@ -112,7 +117,7 @@ export default function DocsPage() {
               <span>Rust engine (WASM)</span>
             </div>
           </section>
-          <article className='docs-body' dangerouslySetInnerHTML={{__html: html}}/>
+          <article className='docs-body' dangerouslySetInnerHTML={{__html: body}}/>
         </div>
       </div>
   );
