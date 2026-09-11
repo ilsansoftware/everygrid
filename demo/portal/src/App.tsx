@@ -37,7 +37,7 @@ const TABS: { id: TabId; title: string; icon?: string; label?: string }[] = [
   {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/favicon.ico'},
   {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large\ndata'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
-  {id: 'sandbox', title: 'JSON Sandbox — drop a file, get a grid', label: 'json\nsandbox'},
+  {id: 'sandbox', title: 'JSON to Grid — drop a file, get a grid', label: 'json to\ngrid'},
 ];
 
 const LOCALES: { id: Locale; flag: string; title: string }[] = [

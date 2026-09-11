@@ -21,26 +21,27 @@ function formatBytes(n: number): string {
 }
 
 /**
- * The rows in a parsed document. Accepts a bare array, or an object whose first array-valued
- * property holds the rows (`{data: [...]}`, `{rows: [...]}`, `{items: [...]}`…), so an API
- * response pasted straight to disk works without editing.
+ * The rows in a parsed document. A bare array is the rows. An object whose first array-valued
+ * property holds objects is unwrapped (`{data: [...]}`, `{rows: [...]}`…), so an API response
+ * saved to disk works without editing. Any other object is one row — the same rule the library
+ * applies to a fetched document — with nested objects and arrays shown as JSON cells.
  */
 function extractRows(doc: unknown): Row[] {
-  const arr = Array.isArray(doc)
-      ? doc
-      : doc && typeof doc === 'object'
-          ? Object.values(doc as Record<string, unknown>).find(Array.isArray)
-          : undefined;
-  if (!arr) throw new Error('No array of rows found — expected a JSON array, or an object containing one.');
-  if (arr.length === 0) throw new Error('The array is empty.');
-  const bad = arr.findIndex(r => !r || typeof r !== 'object' || Array.isArray(r));
-  if (bad !== -1) throw new Error(`Row ${bad} is not an object — every row must be a JSON object.`);
-  return arr as Row[];
+  const isRow = (r: unknown): r is Row => !!r && typeof r === 'object' && !Array.isArray(r);
+  if (Array.isArray(doc)) {
+    if (doc.length === 0) throw new Error('The array is empty.');
+    const bad = doc.findIndex(r => !isRow(r));
+    if (bad !== -1) throw new Error(`Row ${bad} is not an object — every row must be a JSON object.`);
+    return doc as Row[];
+  }
+  if (!isRow(doc)) throw new Error('Expected a JSON array or object at the top level.');
+  const nested = Object.values(doc).find(v => Array.isArray(v) && v.length > 0 && v.every(isRow));
+  return nested ? (nested as Row[]) : [doc];
 }
 
 type FileInfo = { name: string; bytes: number; rows: number; columns: number };
 
-// JSON sandbox — drop any JSON file and the grid renders it, columns inferred from the rows.
+// JSON to grid — drop any JSON file and the grid renders it, columns inferred from the rows.
 export default function SandboxDemo() {
   // The grid re-runs this same fetcher on every reload, so the rows it should show live in a ref.
   const rowsRef = useRef<Row[]>([]);
@@ -117,7 +118,7 @@ export default function SandboxDemo() {
               .
             </p>
             <p className='mt-1 text-xs text-slate-500'>
-              An array of objects, or an object containing one. Up to {formatBytes(maxBytes())}.
+              An array of objects, an object containing one, or a single object. Up to {formatBytes(maxBytes())}.
               Columns are inferred from the rows; nothing leaves your browser.
             </p>
             <input ref={inputRef} type='file' accept='.json,application/json' hidden onChange={onChange}/>
