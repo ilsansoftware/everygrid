@@ -56,6 +56,11 @@ nav {
 nav::-webkit-scrollbar {
   display: none; /* WebKit */
 }
+/* The tool capsule stands apart from the demo tabs: a gap, and no scroll-shrink of its own. */
+nav[data-group='tool'] {
+  margin-left: 12px;
+  flex-shrink: 0;
+}
 
 /* Minimal icon-only button centered */
 nav button {
@@ -314,6 +319,12 @@ nav button.active img {
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
+}
+
+.show-code-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
 }
 
 .show-code-btn:hover {

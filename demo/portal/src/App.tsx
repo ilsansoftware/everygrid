@@ -8,7 +8,6 @@ import SandboxDemo from './demos/SandboxDemo';
 import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
 import virtualSrc from './demos/VirtualScrollDemo.tsx?raw';
-import sandboxSrc from './demos/SandboxDemo.tsx?raw';
 
 type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual' | 'sandbox';
 
@@ -31,19 +30,25 @@ function compactCount(n: number): string {
 }
 
 // `icon` tabs show a favicon; `label` tabs (the React-only heavy demos) show text instead.
-const TABS: { id: TabId; title: string; icon?: string; label?: string }[] = [
+// Each `group` is its own capsule in the header: the demos, then the tools that act on your data.
+type TabGroup = 'demo' | 'tool';
+const TAB_GROUPS: TabGroup[] = ['demo', 'tool'];
+const TABS: { id: TabId; title: string; icon?: string; label?: string; group?: TabGroup }[] = [
   {id: 'react', title: 'React Demo', icon: '/react/favicon.ico'},
   {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico'},
   {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/favicon.ico'},
   {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large\ndata'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
-  {id: 'sandbox', title: 'JSON to Grid — drop a file, get a grid', label: 'json to\ngrid'},
+  {id: 'sandbox', title: 'JSON to Grid — drop a file, get a grid', label: 'json to\ngrid', group: 'tool'},
 ];
 
 const LOCALES: { id: Locale; flag: string; title: string }[] = [
   {id: 'ko', flag: '🇰🇷', title: '한국어'},
   {id: 'en', flag: '🇺🇸', title: 'English'},
 ];
+
+// Tabs that are tools rather than demos: nothing to show under 'Show Code'.
+const NO_CODE_TABS: TabId[] = ['sandbox'];
 
 // Prism language + label used by the 'Show Code' modal per demo. ('markup' is Prism's name for HTML.)
 const CODE_META: Record<TabId, { lang: string; label: string }> = {
@@ -206,8 +211,7 @@ export default function App() {
   const codeText = tab === 'react' ? reactSrc
       : tab === 'large' ? largeSrc
           : tab === 'virtual' ? virtualSrc
-              : tab === 'sandbox' ? sandboxSrc
-                  : (codeByTab[tab] ?? 'Loading...');
+              : (codeByTab[tab] ?? 'Loading...');
 
   // Fetch a html demo's source the first time its modal is opened (React tabs are bundled).
   useEffect(() => {
@@ -241,36 +245,39 @@ export default function App() {
       <>
         <header>
           <h1>everygrid Demo</h1>
-          <nav>
-            {TABS.filter((t) => !(isNarrow && MOBILE_HIDDEN_TABS.includes(t.id))).map((t) => {
-              const gid = PROGRESS_GRID_OF_TAB[t.id];
-              const prog = gid ? loadProgress[gid] : undefined;
-              // Badge is a heads-up for a grid loading on a tab you've left — on the active tab the
-              // grid's own toolbar already shows its progress, so it's redundant there.
-              const loading = !!prog?.active && t.id !== tab;
-              return (
-                <button
-                    key={t.id}
-                    className={t.id === tab ? 'active' : ''}
-                    data-tab={t.id}
-                    title={t.title}
-                    onClick={() => setTab(t.id)}
-                >
-                  {t.label
-                      ? <span className={`tab-label${loading ? ' is-loading' : ''}`}>
-                          <span className='tab-label-text'>{t.label}</span>
-                          {loading && (
-                            <span className='tab-progress-badge'>
-                              {prog!.percent >= 0 ? `${prog!.percent}%` : compactCount(prog!.rowsLoaded)}
-                            </span>
-                          )}
-                        </span>
-                      : <img src={t.icon} width='100%' height='100%' alt={t.title}/>}
-                </button>
-              );
-            })}
-          </nav>
+          {TAB_GROUPS.map((group) => (
+            <nav key={group} data-group={group}>
+              {TABS.filter((t) => (t.group ?? 'demo') === group && !(isNarrow && MOBILE_HIDDEN_TABS.includes(t.id))).map((t) => {
+                const gid = PROGRESS_GRID_OF_TAB[t.id];
+                const prog = gid ? loadProgress[gid] : undefined;
+                // Badge is a heads-up for a grid loading on a tab you've left — on the active tab the
+                // grid's own toolbar already shows its progress, so it's redundant there.
+                const loading = !!prog?.active && t.id !== tab;
+                return (
+                  <button
+                      key={t.id}
+                      className={t.id === tab ? 'active' : ''}
+                      data-tab={t.id}
+                      title={t.title}
+                      onClick={() => setTab(t.id)}
+                  >
+                    {t.label
+                        ? <span className={`tab-label${loading ? ' is-loading' : ''}`}>
+                            <span className='tab-label-text'>{t.label}</span>
+                            {loading && (
+                              <span className='tab-progress-badge'>
+                                {prog!.percent >= 0 ? `${prog!.percent}%` : compactCount(prog!.rowsLoaded)}
+                              </span>
+                            )}
+                          </span>
+                        : <img src={t.icon} width='100%' height='100%' alt={t.title}/>}
+                  </button>
+                );
+              })}
+            </nav>
+          ))}
           <button className='show-code-btn' title='Show source code'
+                  disabled={NO_CODE_TABS.includes(tab)}
                   onClick={() => setModalOpen(true)}>
             <svg
                 xmlns='http://www.w3.org/2000/svg'
