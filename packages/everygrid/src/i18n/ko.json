@@ -53,9 +53,7 @@
     "diffStatus": "상태",
     "diffKey": "키",
     "diffRow": "행",
-    "diffField": "필드",
-    "diffFrom": "변경 전",
-    "diffTo": "변경 후"
+    "diffDiff": "변경 내용"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",

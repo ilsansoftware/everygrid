@@ -840,7 +840,9 @@ button {
   100% { transform: translateX(300%); }
 }
 
-/* Diff popup (toolbar "diff"): a second grid, mounted inside the popup, shows the changes. */
+/* Diff popup (toolbar "diff"): a second grid, mounted inside the popup, shows the changes. The
+   popup supplies the frame, so the grid drops its own outer border, rounding and bottom padding
+   and fills the body edge to edge. */
 .everygrid-diff-popup .everygrid-popup-body {
   @apply p-0;
 }
@@ -848,5 +850,14 @@ button {
   @apply ml-3 text-sm font-normal text-slate-500;
 }
 .everygrid-diff-grid .everygrid-wrapper {
-  @apply h-full;
+  @apply h-full pb-0;
+}
+.everygrid-diff-grid .everygrid-panel {
+  @apply border-x-0;
+}
+.everygrid-diff-grid .everygrid-panel-top {
+  @apply border-t-0 rounded-none;
+}
+.everygrid-diff-grid .everygrid-panel-bottom {
+  @apply border-b-0 rounded-none;
 }

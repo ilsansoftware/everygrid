@@ -8,14 +8,16 @@ interface DiffPopupProps<T extends Record<string, unknown>> {
   onClose: () => void;
 }
 
-/** One line of the diff grid: a changed cell, or one field of an inserted / deleted row. */
+/**
+ * One row of the diff grid — one changed row of the source grid. `diff` is an object the grid
+ * shows through its JSON viewer: for an updated row `{field: {from, to}}` per changed cell, for an
+ * inserted row the row's values, for a deleted row the row as loaded.
+ */
 interface DiffLine extends Record<string, unknown> {
   status: 'inserted' | 'updated' | 'deleted';
   key: string | number | null;
   row: number;
-  field: string;
-  from: unknown;
-  to: unknown;
+  diff: Record<string, unknown>;
 }
 
 /**
@@ -34,19 +36,17 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
   }, [onClose]);
 
   const changes = grid._changedRows(containerId);
-  const lines: DiffLine[] = [];
   const empty = (v: unknown) => v === null || v === undefined || v === '';
-  for (const r of changes) {
-    if (r.status === 'updated') {
-      for (const c of r.cells) lines.push({status: 'updated', key: r.key, row: r.index, field: c.field, from: c.from, to: c.to});
-    } else {
-      const source = r.status === 'deleted' ? r.original : r.row;
-      for (const [field, v] of Object.entries(source)) {
-        if (empty(v)) continue;
-        lines.push({status: r.status, key: r.key, row: r.index, field, from: r.status === 'deleted' ? v : null, to: r.status === 'inserted' ? v : null});
-      }
-    }
-  }
+  const compact = (row: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(row).filter(([, v]) => !empty(v)));
+  const lines: DiffLine[] = changes.map(r => ({
+    status: r.status,
+    key: r.key,
+    row: r.index,
+    diff: r.status === 'updated'
+      ? Object.fromEntries(r.cells.map(c => [c.field, {from: c.from, to: c.to}]))
+      : compact(r.status === 'deleted' ? r.original : r.row),
+  }));
   const cells = changes.reduce((n, r) => n + r.cells.length, 0);
 
   // The diff grid lives for the popup: created once its container exists, destroyed with it.
@@ -54,13 +54,15 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
     const locale = I18n.getLocale();
     const labels: Record<string, string> = {
       status: I18n.t('grid.diffStatus'), key: I18n.t('grid.diffKey'), row: I18n.t('grid.diffRow'),
-      field: I18n.t('grid.diffField'), from: I18n.t('grid.diffFrom'), to: I18n.t('grid.diffTo'),
+      diff: I18n.t('grid.diffDiff'),
     };
+    // Fixed widths that add up to the popup; the diff object shows as a summary that opens the
+    // grid's JSON viewer, so nothing widens the table sideways.
+    const widths: Record<string, number> = {status: 100, key: 110, row: 80, diff: 440};
     const instance = new Everygrid<DiffLine>({
-      targets: [{id: diffId, title: I18n.t('toolbar.diff')}],
+      targets: [{id: diffId}],   // no title: the popup header already says what this is
       data: lines,
-      // The popup has its own header; the grid shows just the rows.
-      toolbar: [{id: diffId, active: false}],
+      columns: Object.keys(widths).map(field => ({field, headerName: labels[field], width: widths[field]})),
       columnI18n: {[locale]: {[diffId]: labels}},
     });
     return () => { instance.destroy(); };
