@@ -474,7 +474,11 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             // the page — including popups, which portal to <body> and so lost to the grid's own
             // chrome. Isolated, the in-body band only orders against itself; see the stacking
             // scale at the top of Everygrid.css.
-            className={`relative w-full flex-1 min-h-0 flex flex-col overflow-hidden isolate ${!isMobile && grid.pinnedColumns.size > 0 ? 'has-pinned' : ''}`}
+            // Virtual mode: the body is as tall as its content (the spacer rows make that exactly
+            // header + rows × rowHeight) and only shrinks — and scrolls — once that exceeds the
+            // container. Filling the container regardless left a short result as a mostly blank
+            // viewport with the row-count band stranded at the bottom.
+            className={`relative w-full ${virtualConf ? 'flex-[0_1_auto]' : 'flex-1'} min-h-0 flex flex-col overflow-hidden isolate ${!isMobile && grid.pinnedColumns.size > 0 ? 'has-pinned' : ''}`}
           >
             {/* inert takes the whole table out of the tab order and kills its events, so cell
                 inputs, links and edit buttons go dead with the rest instead of staying reachable
