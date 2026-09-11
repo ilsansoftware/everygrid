@@ -38,7 +38,7 @@ const TAB_GROUPS: TabGroup[] = ['demo', 'tool'];
 const TABS: { id: TabId; title: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
   {id: 'react', title: 'React Demo', icon: '/react/favicon.ico', name: 'React'},
   {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico', name: 'JS'},
-  {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/favicon.ico', name: 'jQuery'},
+  {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/logo.svg', name: 'jQuery'},
   {id: 'large', title: 'Large Data — streaming 1.6M rows', label: 'large\ndata'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
   {id: 'sandbox', title: 'JSON to Grid — drop a file, get a grid', label: 'json to\ngrid', group: 'tool'},
