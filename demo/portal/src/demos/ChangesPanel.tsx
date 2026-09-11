@@ -128,7 +128,7 @@ ${pj(g?.checkedRows().map(r => r.get()) ?? [])}`,
             )}
           </Highlight>
         </div>
-        {diffOpen && <DiffModal gridId={gridId} onClose={() => setDiffOpen(false)}/>}
+        {diffOpen && <DiffModal gridId={gridId} changes={changes} onClose={() => setDiffOpen(false)}/>}
       </div>
   );
 }
