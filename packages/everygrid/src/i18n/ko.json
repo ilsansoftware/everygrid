@@ -74,6 +74,8 @@
     "cancel": "취소",
     "tableView": "표 보기",
     "jsonView": "JSON 보기",
-    "itemsCount": "{count}개 아이템"
+    "itemsCount": "{count}개 아이템",
+    "copy": "복사",
+    "copied": "복사됨"
   }
 }

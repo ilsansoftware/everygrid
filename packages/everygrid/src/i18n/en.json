@@ -74,6 +74,8 @@
     "cancel": "Cancel",
     "tableView": "Table View",
     "jsonView": "JSON View",
-    "itemsCount": "{count} Items"
+    "itemsCount": "{count} Items",
+    "copy": "Copy",
+    "copied": "Copied"
   }
 }

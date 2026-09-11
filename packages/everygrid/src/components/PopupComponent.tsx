@@ -16,6 +16,13 @@ interface PopupProps {
 
 const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, size = 'm'}) => {
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
+  const [copied, setCopied] = useState(false);
+  const copyJson = () => {
+    void navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
 
   // If data is a string and looks like XML, we might want to show it as is or formatted
   const isXml = typeof data === 'string' && data.trim().startsWith('<') && data.trim().endsWith('>') && data.includes('</');
@@ -56,10 +63,20 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
               children
             )
           ) : (
-            <pre
-              className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full min-h-full'>
-              {JSON.stringify(data, null, 2)}
-            </pre>
+            <div className='relative min-h-full'>
+              <button
+                type='button'
+                className={`everygrid-copy-btn${copied ? ' is-copied' : ''}`}
+                onClick={copyJson}
+                aria-label={I18n.t('popup.copy')}
+              >
+                {I18n.t(copied ? 'popup.copied' : 'popup.copy')}
+              </button>
+              <pre
+                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full min-h-full'>
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            </div>
           )}
         </div>
       </div>
