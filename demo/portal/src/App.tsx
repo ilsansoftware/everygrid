@@ -37,9 +37,9 @@ function compactCount(n: number): string {
 type TabGroup = 'demo' | 'scale' | 'tool';
 const GROUP_LABEL: Partial<Record<TabGroup, string>> = {demo: 'Demo', scale: 'Scale'};
 const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
-  {id: 'react', title: 'React Demo', icon: '/react/favicon.ico', name: 'React'},
-  {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico', name: 'JS'},
-  {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/logo.svg', name: 'jQuery'},
+  {id: 'react', title: 'Demo - React', icon: '/react/favicon.ico', name: 'React'},
+  {id: 'vanilla', title: 'Demo - Vanilla JS', icon: '/vanilla/favicon.ico', name: 'JS'},
+  {id: 'jquery', title: 'Demo - jQuery', icon: '/jquery/logo.svg', name: 'jQuery'},
   {id: 'large', title: 'Large Data', caption: 'streaming 1.6M rows', label: 'large\ndata', group: 'scale'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll', group: 'scale'},
   {id: 'sandbox', title: 'JSON to Grid', caption: 'drop a file, get a grid', label: 'json to grid', group: 'tool'},
