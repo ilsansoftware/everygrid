@@ -5,9 +5,15 @@ const show = (v: unknown) => v === undefined ? '—' : typeof v === 'object' ? J
 
 /**
  * Original vs modified, side by side, straight from `Everygrid.get(id).changes()`: one block per
- * changed row (its key and index), one line per changed cell with the value before and after.
- * Each line and each row can be reverted from here — `g.row(i).cell(f).revert()` / `g.row(i).revert()`.
+ * changed row (its status, key and index) — a modified row lists each changed cell before → after,
+ * an added row its values, a deleted row the row that goes. Each line and each row can be
+ * reverted from here — `g.row(i).cell(f).revert()` / `g.row(i).revert()`.
  */
+const STATUS = {
+  added: 'bg-emerald-100 text-emerald-800',
+  modified: 'bg-amber-100 text-amber-800',
+  deleted: 'bg-red-100 text-red-800',
+};
 export default function DiffModal({gridId, changes, onClose}: {
   gridId: string;
   changes: RowChange[];
@@ -36,11 +42,17 @@ export default function DiffModal({gridId, changes, onClose}: {
             {changes.map((r) => (
                 <div key={r.index} className='mb-4 rounded-lg border border-slate-200'>
                   <div className='flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2'>
+                    <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase ${STATUS[r.status]}`}>{r.status}</span>
                     <span className='font-medium text-slate-800'>key {show(r.key)}</span>
                     <span className='text-xs text-slate-500'>row #{r.index}</span>
                     <button type='button' className='ml-auto text-xs text-slate-500 hover:text-slate-800'
                             onClick={() => g?.row(r.index).revert()}>revert row</button>
                   </div>
+                  {r.status !== 'modified' && (
+                      <div className={`px-3 py-2 font-mono text-xs ${r.status === 'deleted' ? 'text-red-700 line-through decoration-red-300' : 'text-emerald-700'}`}>
+                        {show(r.status === 'deleted' ? r.original : r.row)}
+                      </div>
+                  )}
                   <table className='w-full'>
                     <tbody>
                     {r.cells.map((c) => (

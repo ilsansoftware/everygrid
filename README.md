@@ -170,6 +170,7 @@ are all inlined — exposed as `window.Everygrid`. No stylesheet, no React scrip
 | `targets` | `GridTargetConfig[]` | Grid instances to initialize |
 | `editableCols` | `EditableColConfig[]` | Editable column settings per grid |
 | `rowKey` | `GridRowKeyConfig[]` | Field (or fields) that identify a row — what `patch()` and change events report as `key`. Without it, the row's data index |
+| `rowActions` | `GridRowActionsConfig[]` | `{addRow, deleteRow}` per grid: a "+" that inserts an empty row at the top, and a delete button on every row (deleted rows stay struck through until commit) |
 | `checkbox` | `GridCheckboxConfig[]` | Adds a checkbox column per grid; `mapping` names the field whose value is collected when a row is checked |
 | `pagination` | `GridPaginationConfig[]` | Pagination settings per grid |
 | `virtualScroll` | `GridVirtualScrollConfig[]` | Virtual scrolling settings per grid (replaces pagination for that grid) |
@@ -498,17 +499,33 @@ g.row(3).original();  g.row(3).isModified();  g.row(3).revert();  g.row(3).key()
 g.column('score').changes();         // [{index, key, from, to, row}]
 g.column('score').values();  g.column('score').revert();
 
+// rows in and out (rowActions.addRow / deleteRow must allow it)
+g.addRow({name: 'New'});             // an empty row at the top, with these values; returns its handle
+g.row(3).delete();                   // struck through until commit; g.row(3).restore() undoes it
+g.row(3).status();                   // 'added' | 'modified' | 'deleted' | null
+
 // the grid
 g.hasChanges();
-g.changes();                         // [{index, key, row, original, cells: [{field, from, to}]}]
-g.diff();                            // {rows, cells} — the same, with a cell count
-g.patch();                           // [{key, changes: {score: 90}}] — what to send to a server
-g.revert();                          // every row back to its original
-g.commit();                          // after a successful save: current values become the baseline
+g.changes();                         // [{status, index, key, row, original, cells: [{field, from, to}]}]
+g.added(); g.updated(); g.deleted(); // the changed rows of one kind, as row handles
+g.diff();                            // {added, modified, deleted, cells}
+g.patch();                           // {added: [rows], updated: [{key, changes}], deleted: [keys]}
+g.revert();                          // as loaded: edits undone, added rows dropped, deleted rows back
+g.commit();                          // after a successful save: current state becomes the baseline
 
 // events — each returns its unsubscribe function
 g.on('cellChange', ({index, key, field, from, to, row}) => …);
 g.on('change', changes => …);        // after every edit, revert and commit
+```
+
+A save is one request per kind, then `commit()`:
+
+```ts
+const {added, updated, deleted} = g.patch();
+if (added.length) await fetch('/api/users', {method: 'POST', body: JSON.stringify(added)});
+for (const {key, changes} of updated) await fetch(`/api/users/${key}`, {method: 'PATCH', body: JSON.stringify(changes)});
+for (const key of deleted) await fetch(`/api/users/${key}`, {method: 'DELETE'});
+g.commit();
 ```
 
 `rowKey` names the field that identifies a row (`{"id": "user-grid", "field": "id"}`; an array
