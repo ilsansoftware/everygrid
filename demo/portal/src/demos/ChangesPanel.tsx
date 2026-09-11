@@ -53,11 +53,12 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
   const btn = 'rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-100 disabled:opacity-40';
 
   // One tab per kind: the count, and only the code that deals with rows of that kind — how to
-  // reach them, and what the save does with them — filled in with the live values.
-  const j = (v: unknown) => JSON.stringify(v);
+  // reach them, and the JSON they give you — filled in with the live values.
   const counts: Record<Kind, number> = {
     inserted: patch.inserted.length, updated: patch.updated.length, deleted: patch.deleted.length, checked: checked.length,
   };
+  // What each kind hands you, as plain JSON — how it gets saved (fetch, a form, a queue) is yours.
+  const pj = (v: unknown) => JSON.stringify(v, null, 2);
   const code: Record<Kind, string> = {
     inserted: `const g = Everygrid.get('${gridId}');
 
@@ -66,23 +67,22 @@ g.inserted()                          // RowHandle[]  → ${g?.inserted().map(r 
 g.inserted()[0]?.cell('age').set(30)  // fill it in; edits on a new row stay "inserted"
 g.inserted()[0]?.revert()             // drop it again
 
-// save: POST the whole rows
-const {inserted} = g.patch();         // ${j(patch.inserted.map(r => r.name || '(unnamed)'))}
-if (inserted.length) await fetch('/api/users', {method: 'POST', body: JSON.stringify(inserted)});
-g.commit();`,
+const {inserted} = g.patch();         // the new rows, whole:
+${pj(patch.inserted)}
+
+g.commit();                           // once they are saved`,
     updated: `const g = Everygrid.get('${gridId}');
 
 g.row(0).cell('age').set(31)          // edit exactly as typing would (honours editableCols)
 g.updated()                           // RowHandle[]  → ${g?.updated().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
-g.updated()[0]?.changes()             // [{field, from, to}]  → ${j(g?.updated()[0]?.changes() ?? [])}
+g.updated()[0]?.changes()             // [{field, from, to}]
 g.column('age').changes()             // the same seen from a column
 g.updated()[0]?.cell('age').revert()  // one cell back;  g.updated()[0]?.revert() — the whole row
 
-// save: PATCH each by key with only the changed fields
-const {updated} = g.patch();          // ${j(patch.updated)}
-for (const {key, changes} of updated)
-  await fetch(\`/api/users/\${key}\`, {method: 'PATCH', body: JSON.stringify(changes)});
-g.commit();`,
+const {updated} = g.patch();          // per row: its key and only the changed fields:
+${pj(patch.updated)}
+
+g.commit();                           // once they are saved`,
     deleted: `const g = Everygrid.get('${gridId}');
 
 g.row(2).delete()                     // struck through until commit; needs rowActions.deleteRow
@@ -90,21 +90,22 @@ g.deleted()                           // RowHandle[]  → ${g?.deleted().map(r =
 g.deleted()[0]?.original()            // the row as loaded
 g.deleted()[0]?.restore()             // undo
 
-// save: DELETE by key
-const {deleted} = g.patch();          // ${j(patch.deleted)}
-for (const key of deleted) await fetch(\`/api/users/\${key}\`, {method: 'DELETE'});
-g.commit();                           // now the rows are really gone`,
+const {deleted} = g.patch();          // the keys to remove:
+${pj(patch.deleted)}
+
+g.commit();                           // once they are gone — now the rows really leave the grid`,
     checked: `const g = Everygrid.get('${gridId}');   // checkbox.mapping = 'id'
 
 g.checked()                           // RowHandle[]  → ${g?.checked().map(r => `#${r.index}`).join(' ') || '—'}
-g.checkedValues()                     // ${j(checked)}
 g.check([1, 2])  g.uncheck([1])  g.checkAll()  g.uncheckAll()
 g.row(0).isChecked()  g.row(0).check()
 g.on('check', ({values, rows, changed, checked}) => …)
 
-// a bulk action over the checked rows is one line
-g.checked().forEach(r => r.delete());
-g.checked().forEach(r => r.cell('active').set(false));`,
+g.checkedValues()                     // the checked rows' mapping values:
+${pj(checked)}
+
+g.checked().map(r => r.get())         // or the rows themselves:
+${pj(g?.checked().map(r => r.get()) ?? [])}`,
   };
 
   return (

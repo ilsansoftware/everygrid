@@ -526,13 +526,14 @@ g.on('change', changes => …);        // after every edit, revert and commit
 g.on('check', ({values, rows, changed, checked}) => …);   // any checkbox change, UI or API
 ```
 
-A save is one request per kind, then `commit()`:
+`patch()` is plain JSON per kind — how it is saved (fetch, a form, a queue) is up to you:
 
 ```ts
 const {inserted, updated, deleted} = g.patch();
-if (inserted.length) await fetch('/api/users', {method: 'POST', body: JSON.stringify(inserted)});
-for (const {key, changes} of updated) await fetch(`/api/users/${key}`, {method: 'PATCH', body: JSON.stringify(changes)});
-for (const key of deleted) await fetch(`/api/users/${key}`, {method: 'DELETE'});
+// inserted: [{...row}]                 the new rows, whole
+// updated:  [{key, changes: {...}}]    per row, its key and only the changed fields
+// deleted:  [key, ...]                 the keys to remove
+await save(inserted, updated, deleted);
 g.commit();
 ```
 
