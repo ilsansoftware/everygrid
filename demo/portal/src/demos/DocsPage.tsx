@@ -1,4 +1,4 @@
-import {useMemo} from 'react';
+import {useMemo, type MouseEvent} from 'react';
 import {Marked, type Tokens} from 'marked';
 import readme from '../../../../README.md?raw';
 
@@ -10,19 +10,36 @@ function slug(text: string): string {
 const escapeHtml = (s: string) => s
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// One parser, built once: headings get ids for the table of contents, code blocks a language class.
+// Headings get ids for the table of contents, code blocks a language class.
+const heading = ({tokens, depth, text}: Tokens.Heading, parser: {parseInline: (t: Tokens.Heading['tokens']) => string}) =>
+    // The id comes from the raw heading text, the same input the table of contents slugs.
+    `<h${depth} id="${slug(text)}">${parser.parseInline(tokens)}</h${depth}>\n`;
+const codeBlock = ({text, lang}: Tokens.Code) => {
+  const cls = lang ? ` class="language-${escapeHtml(lang)}"` : '';
+  return `<pre><code${cls}>${escapeHtml(text)}</code></pre>\n`;
+};
+
 const marked = new Marked({
   renderer: {
-    heading({tokens, depth, text}: Tokens.Heading) {
-      // The id comes from the raw heading text, the same input the table of contents slugs.
-      return `<h${depth} id="${slug(text)}">${this.parser.parseInline(tokens)}</h${depth}>\n`;
-    },
-    code({text, lang}: Tokens.Code) {
-      const cls = lang ? ` class="language-${escapeHtml(lang)}"` : '';
-      return `<pre><code${cls}>${escapeHtml(text)}</code></pre>\n`;
+    heading(t: Tokens.Heading) { return heading(t, this.parser); },
+    code: codeBlock,
+  },
+});
+
+// The same, with a copy button on every code block — used for the Installation section only, the
+// one whose commands are meant to be pasted. The click is handled once, on the article (see
+// copyCode below), since this HTML is not React's.
+const markedWithCopy = new Marked({
+  renderer: {
+    heading(t: Tokens.Heading) { return heading(t, this.parser); },
+    code(t: Tokens.Code) {
+      return `<div class="docs-code"><button type="button" class="docs-copy" aria-label="Copy code">Copy</button>${codeBlock(t)}</div>\n`;
     },
   },
 });
+
+/** Sections that get copy buttons on their code blocks. */
+const COPYABLE_SECTIONS = new Set(['Installation', 'Quick Start']);
 
 // The library's README, rendered as the portal's documentation page: a sticky table of contents
 // built from its second-level headings, and the document itself.
@@ -72,6 +89,18 @@ const HIGHLIGHTS: { title: string; body: string; tag: string }[] = [
   },
 ];
 
+/** Copies the code block whose button was clicked; the button reads "Copied" for a moment. */
+function copyCode(e: MouseEvent<HTMLElement>) {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.docs-copy');
+  if (!btn) return;
+  const code = btn.parentElement?.querySelector('code')?.textContent ?? '';
+  void navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'Copied';
+    btn.classList.add('is-copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('is-copied'); }, 1500);
+  });
+}
+
 export default function DocsPage() {
   // The README's title and opening paragraph lead the page; the highlights sit between them and
   // the rest of the document.
@@ -81,9 +110,16 @@ export default function DocsPage() {
     const toc = tokens
         .filter((t): t is Tokens.Heading => t.type === 'heading' && t.depth === 2)
         .map(t => ({id: slug(t.text), text: t.text}));
+    // The body is rendered section by section (each h2 and what follows it), so the copyable
+    // sections can use the renderer with copy buttons.
+    const sections: {heading: string; tokens: typeof tokens}[] = [];
+    for (const t of tokens.slice(firstSection)) {
+      if (t.type === 'heading' && (t as Tokens.Heading).depth === 2) sections.push({heading: (t as Tokens.Heading).text, tokens: [] as unknown as typeof tokens});
+      sections[sections.length - 1].tokens.push(t);
+    }
     return {
       intro: marked.parser(tokens.slice(0, firstSection)),
-      body: marked.parser(tokens.slice(firstSection)),
+      body: sections.map(sec => (COPYABLE_SECTIONS.has(sec.heading) ? markedWithCopy : marked).parser(sec.tokens)).join(''),
       toc: [{id: 'highlights', text: 'Highlights'}, ...toc],
     };
   }, []);
@@ -97,7 +133,7 @@ export default function DocsPage() {
           }}>{h.text}</a>)}
         </aside>
         <div className='docs-main'>
-          <article className='docs-body' dangerouslySetInnerHTML={{__html: intro}}/>
+          <article className='docs-body' onClick={copyCode} dangerouslySetInnerHTML={{__html: intro}}/>
           <section id='highlights' className='docs-highlights'>
             <h2>Highlights</h2>
             <div className='docs-highlight-grid'>
@@ -117,7 +153,7 @@ export default function DocsPage() {
               <span>Rust engine (WASM)</span>
             </div>
           </section>
-          <article className='docs-body' dangerouslySetInnerHTML={{__html: body}}/>
+          <article className='docs-body' onClick={copyCode} dangerouslySetInnerHTML={{__html: body}}/>
         </div>
       </div>
   );

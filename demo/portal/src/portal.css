@@ -747,6 +747,44 @@ nav button.active .tab-name {
      `loadConfig(entryConfigUrl?, opts?)` and `number | 'auto'` mid-way). */
   white-space: nowrap;
 }
+/* A code block with its copy button pinned top-right. */
+.docs-code {
+  position: relative;
+  margin: 0.75rem 0 1rem;
+}
+.docs-code pre {
+  margin: 0;
+}
+.docs-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 6px;
+  background: rgba(30, 32, 55, 0.85);
+  color: #cbd5e1;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.docs-code:hover .docs-copy,
+.docs-copy:focus-visible,
+.docs-copy.is-copied {
+  opacity: 1;
+}
+.docs-copy:hover {
+  background: #3a3c55;
+  color: #fff;
+}
+.docs-copy.is-copied {
+  background: #059669;
+  border-color: #059669;
+  color: #fff;
+}
+
 .docs-body pre {
   margin: 0.75rem 0 1rem;
   padding: 0.9rem 1rem;
