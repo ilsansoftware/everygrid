@@ -111,14 +111,18 @@ export default function SandboxDemo({active}: { active: boolean }) {
     const file = e.dataTransfer.files?.[0];
     if (file) void loadFile(file);
   };
-  // A paste renders straight away — that is the whole gesture. The button covers text typed or
-  // edited in place.
+  // A paste is a normal paste — inserted at the caret, keeping what is already in the box — and
+  // renders straight away when the box then holds valid JSON. Otherwise (a fragment pasted into
+  // a draft) it just lands, and the Render button covers the rest.
   const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const text = e.clipboardData.getData('text');
-    if (!text.trim()) return;
+    const clip = e.clipboardData.getData('text');
+    if (!clip.trim()) return;
+    const el = e.currentTarget;
+    const next = el.value.slice(0, el.selectionStart) + clip + el.value.slice(el.selectionEnd);
+    try { JSON.parse(next); } catch { return; }
     e.preventDefault();
-    setPasted(text);
-    void loadText(text);
+    setPasted(next);
+    void loadText(next);
   };
 
   return (
