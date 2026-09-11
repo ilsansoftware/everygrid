@@ -743,8 +743,11 @@ nav button.active .tab-name {
   background: #f1f5f9;
   padding: 0.1em 0.35em;
   border-radius: 4px;
-  /* An identifier or a signature is one token: never broken across lines (table cells wrapped
-     `loadConfig(entryConfigUrl?, opts?)` and `number | 'auto'` mid-way). */
+}
+/* Inline code only (not the <code> inside a <pre>): an identifier or a signature is one token,
+   never broken across lines — table cells wrapped `loadConfig(entryConfigUrl?, opts?)` and
+   `number | 'auto'` mid-way. */
+.docs-body :not(pre) > code {
   white-space: nowrap;
 }
 /* A code block with its copy button pinned top-right. */
