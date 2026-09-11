@@ -10,6 +10,7 @@ import DiffModal from './DiffModal';
  */
 export default function ChangesPanel({gridId}: { gridId: string }) {
   const [changes, setChanges] = useState<RowChange[]>([]);
+  const [checked, setChecked] = useState<unknown[]>([]);
   const [diffOpen, setDiffOpen] = useState(false);
   const [tab, setTab] = useState<'patch' | 'save' | 'select'>('patch');
 
@@ -21,7 +22,11 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
       if (!g) return;
       clearInterval(timer);
       setChanges(g.changes());
-      off = g.on('change', setChanges);
+      setChecked(g.checkedValues());
+      const offChange = g.on('change', setChanges);
+      // The checkbox column: `values` is every checked row's mapping value (here: id).
+      const offCheck = g.on('check', (e) => setChecked(e.values));
+      off = () => { offChange(); offCheck(); };
     }, 200);
     return () => { clearInterval(timer); off(); };
   }, [gridId]);
@@ -35,6 +40,9 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
     g.addRow({name: 'New person', age: 30});           // a new row at the top (rowActions.addRow)
     g.row(g.data().length - 1).delete();               // the last row (rowActions.deleteRow)
   };
+
+  // Checked rows as handles — a bulk action is one line.
+  const deleteChecked = () => Everygrid.get(gridId)?.checked().forEach(r => r.delete());
 
   const g = Everygrid.get(gridId);
   const patch = g?.patch() ?? {added: [], updated: [], deleted: []};
@@ -79,7 +87,14 @@ g.row(0).cell('age').get() / .original() / .set(31) / .revert()
 g.row(0).delete() / .restore() / .revert()
 
 // a column across all rows
-g.column('age').changes()   // [{index, key, from, to, row}]`;
+g.column('age').changes()   // [{index, key, from, to, row}]
+
+// the checkbox column (checkbox.mapping = 'id')
+g.checked()                 // ${g?.checked().map(r => `#${r.index}`).join(' ') || '—'}  (RowHandle[])
+g.checkedValues()           // ${JSON.stringify(g?.checkedValues() ?? [])}
+g.check([1, 2])  g.uncheck([1])  g.checkAll()  g.uncheckAll()
+g.row(0).isChecked()  g.row(0).check()
+g.on('check', ({values, rows, changed, checked}) => …)`;
 
   return (
       <div className='rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm'>
@@ -88,7 +103,10 @@ g.column('age').changes()   // [{index, key, from, to, row}]`;
           <span className='text-slate-500'>
             {patch.added.length} added · {patch.updated.length} updated · {patch.deleted.length} deleted
           </span>
+          <span className='text-slate-400'>·</span>
+          <span className='text-slate-500'>{checked.length} checked</span>
           <button type='button' className={`ml-auto ${btn}`} onClick={editViaApi}>edit via API</button>
+          <button type='button' className={btn} disabled={checked.length === 0} onClick={deleteChecked}>delete checked</button>
           <button type='button' className={btn} disabled={none} onClick={() => setDiffOpen(true)}>diff</button>
           <button type='button' className={btn} disabled={none} onClick={() => g?.revert()}>revert</button>
           <button type='button' className='rounded bg-slate-800 px-2 py-1 text-white hover:bg-slate-700 disabled:opacity-40'

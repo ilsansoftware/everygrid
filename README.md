@@ -513,9 +513,17 @@ g.patch();                           // {added: [rows], updated: [{key, changes}
 g.revert();                          // as loaded: edits undone, added rows dropped, deleted rows back
 g.commit();                          // after a successful save: current state becomes the baseline
 
+// the checkbox column (needs a `checkbox` config; rows are identified by its `mapping` field)
+g.checked();                         // the checked rows, as row handles
+g.checkedValues();                   // their mapping values
+g.check([1, 2]); g.uncheck([1]); g.checkAll(); g.uncheckAll();
+g.row(3).isChecked(); g.row(3).check();
+g.checked().forEach(r => r.delete());   // a bulk action
+
 // events — each returns its unsubscribe function
 g.on('cellChange', ({index, key, field, from, to, row}) => …);
 g.on('change', changes => …);        // after every edit, revert and commit
+g.on('check', ({values, rows, changed, checked}) => …);   // any checkbox change, UI or API
 ```
 
 A save is one request per kind, then `commit()`:
