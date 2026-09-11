@@ -1308,9 +1308,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return this._inserted.includes(row);
   }
 
-  /** The rows inserted since load, in insertion order — rendered as the insert grid. */
+  /**
+   * The rows inserted since load, in insertion order. A fresh array each call: the table
+   * components are memoised on their props, and the live list keeps its identity across an
+   * insert, so handing it out directly could leave a memoised table one row behind.
+   */
   public getInsertedRows(): T[] {
-    return this._inserted;
+    return [...this._inserted];
   }
 
   /**
