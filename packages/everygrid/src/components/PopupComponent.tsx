@@ -63,17 +63,20 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, children, data, s
               children
             )
           ) : (
-            <div className='relative min-h-full'>
-              <button
-                type='button'
-                className={`everygrid-copy-btn${copied ? ' is-copied' : ''}`}
-                onClick={copyJson}
-                aria-label={I18n.t('popup.copy')}
-              >
-                {I18n.t(copied ? 'popup.copied' : 'popup.copy')}
-              </button>
+            <div className='flex flex-col min-h-full'>
+              {/* Its own row above the text, so it never sits on the first lines of the JSON. */}
+              <div className='flex justify-end mb-2 shrink-0'>
+                <button
+                  type='button'
+                  className={`everygrid-copy-btn${copied ? ' is-copied' : ''}`}
+                  onClick={copyJson}
+                  aria-label={I18n.t('popup.copy')}
+                >
+                  {I18n.t(copied ? 'popup.copied' : 'popup.copy')}
+                </button>
+              </div>
               <pre
-                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full min-h-full'>
+                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto flex-1'>
                 {JSON.stringify(data, null, 2)}
               </pre>
             </div>

@@ -867,9 +867,9 @@ button {
   @apply border-b-0 rounded-none;
 }
 
-/* Copy button pinned to the top-right of the popup's JSON view. */
+/* Copy button on its own row above the popup's JSON view. */
 .everygrid-copy-btn {
-  @apply absolute top-2 right-2 z-10 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 shadow-sm transition-colors;
+  @apply rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 shadow-sm transition-colors;
 }
 .everygrid-copy-btn:hover {
   @apply bg-slate-50 text-slate-900;
