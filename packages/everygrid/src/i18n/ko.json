@@ -1,8 +1,4 @@
 {
-  "app": {
-    "title": "Everygrid 탐색기",
-    "copyright": "Everygrid. All rights reserved."
-  },
   "toolbar": {
     "showExcelPreview": "Excel 미리보기",
     "showGrid": "Grid",
@@ -15,7 +11,6 @@
     "selectColumns": "컬럼",
     "mobileColumns": "컬럼",
     "selectAll": "전체 선택",
-    "deselectAll": "전체 해제",
     "resetAll": "모든 변경사항 초기화",
     "resetSort": "정렬 초기화",
     "filterPlaceholder": "검색...",
@@ -28,8 +23,6 @@
   "grid": {
     "index": "번호",
     "rowDetail": "상세",
-    "mobileColumnsHint": "표시할 컬럼을 최대 {max}개까지 선택하세요.",
-    "column": "컬럼",
     "resetCell": "원래 값으로 복구",
     "reset": "복구",
     "noData": "데이터 또는 설정이 없습니다.",
@@ -39,21 +32,14 @@
     "targetId": "대상 ID",
     "dataPath": "데이터 경로",
     "notSpecified": "지정되지 않음",
-    "limitInfo": "상위 {limit}개 데이터만 표시됩니다. 전체 데이터({total}건)는 다운로드하여 확인하세요.",
-    "hideColumnBtn": "컬럼 숨기기",
     "hiddenColumns": "숨겨진 컬럼 ({count})",
     "showAllColumns": "모든 컬럼 보이기",
     "unhide": "보이기",
-    "exporting": "내보내는 중… {done}/{total}",
     "exportingPercent": "내보내는 중… {percent}%",
     "exportPreparing": "내보내는 중…",
     "processing": "처리 중…",
     "sortAsc": "오름차순 정렬",
     "sortDesc": "내림차순 정렬",
-    "resetSort": "정렬 초기화",
-    "startEdit": "이 컬럼 수정 시작",
-    "finishEdit": "이 컬럼 수정 종료",
-    "pinColumn": "컬럼 고정",
     "edit": "수정",
     "dataLimited": "이 기기 안전 한도로 전체 {total}행 중 상위 {shown}행만 표시합니다.",
     "dataLimitedStream": "이 기기 안전 한도로 상위 {shown}행만 불러왔습니다. 나머지는 로드하지 않았습니다."
@@ -68,19 +54,15 @@
   },
   "popup": {
     "detailTitle": "상세 보기",
-    "editTitle": "데이터 수정",
     "textEditorTitle": "텍스트 에디터: {field}",
     "invalidJson": "유효하지 않은 JSON 형식입니다.",
     "format": "자동 정렬",
     "apply": "적용",
     "close": "닫기",
-    "save": "저장",
     "confirm": "확인",
     "cancel": "취소",
-    "pinConfirmMessage": "⚠️ 주의: 수정된 사항이 있습니다. 컬럼을 고정하면 모든 수정 사항이 초기화됩니다. 계속하시겠습니까?",
     "tableView": "표 보기",
     "jsonView": "JSON 보기",
-    "fieldsCount": "{count}개 항목",
     "itemsCount": "{count}개 아이템"
   }
 }

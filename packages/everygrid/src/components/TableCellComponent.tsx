@@ -74,7 +74,6 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
     visibleFields = [],
     isMobile = false,
   }: TableCellProps<T>) => {
-  const isRowCheckbox = col.type === 'row_checkbox';
   const isIndexCol = col.field === I18n.t('grid.index');
 
   const isNumeric = useMemo(() => grid.isColumnNumeric(col.field), [grid, col.field]);
@@ -129,29 +128,6 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
             else set.delete(value);
             grid.checkedValues.set(containerId, set);
             grid.renderGrid(container);
-          }}
-        />
-      </td>
-    );
-  }
-
-  if (isRowCheckbox) {
-    const isSelected = grid.getSelectedRows(containerId)?.has(item);
-    return (
-      <td className='text-center bg-slate-50/30 w-10'>
-        <input
-          type='checkbox'
-          className='cursor-pointer'
-          checked={isSelected}
-          onChange={(e) => {
-            const selected = grid.getSelectedRows(containerId) || new Set();
-            if (e.target.checked) selected.add(item);
-            else selected.delete(item);
-            grid.setSelectedRows(containerId, selected);
-            grid.renderGrid(container);
-            if (grid.options.onSelectionChange) {
-              grid.options.onSelectionChange(Array.from(selected) as T[]);
-            }
           }}
         />
       </td>
@@ -427,7 +403,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
 
   const value = item[col.field];
   const alignRight = isNumeric || isDate;
-  const isCenter = !alignRight && col.type !== 'row_checkbox';
+  const isCenter = !alignRight;
   return (
     <td
       key={col.field}

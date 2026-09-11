@@ -13,23 +13,15 @@ import init, { GridEngine } from 'everygrid-wasm';
 export type WorkerRequest =
   | { id: string; seq: number; cmd: 'init' }
   | { id: string; seq: number; cmd: 'setData'; bytes: Uint8Array }
-  | { id: string; seq: number; cmd: 'appendChunk'; bytes: Uint8Array }
   | { id: string; seq: number; cmd: 'streamStart' }
   | { id: string; seq: number; cmd: 'streamChunk'; bytes: Uint8Array }
   | { id: string; seq: number; cmd: 'streamEnd' }
-  | { id: string; seq: number; cmd: 'filter'; text: string }
-  | { id: string; seq: number; cmd: 'sort'; col: string; asc: boolean }
-  | { id: string; seq: number; cmd: 'filterAndSort'; text: string; col: string; asc: boolean }
   | { id: string; seq: number; cmd: 'filterSortAndGetPage'; text: string; col: string; asc: boolean; page: number; pageSize: number }
   | { id: string; seq: number; cmd: 'getPage'; page: number; pageSize: number }
   | { id: string; seq: number; cmd: 'getRawPage'; page: number; pageSize: number }
   | { id: string; seq: number; cmd: 'getTotalCount' }
   | { id: string; seq: number; cmd: 'getRawCount' }
-  | { id: string; seq: number; cmd: 'updateRows'; indices: Uint32Array; rowsJson: string }
-  | { id: string; seq: number; cmd: 'buildIndex' }
-  | { id: string; seq: number; cmd: 'clear' }
-  | { id: string; seq: number; cmd: 'finalize' }
-  | { id: string; seq: number; cmd: 'free' };
+  | { id: string; seq: number; cmd: 'updateRows'; indices: Uint32Array; rowsJson: string };
 
 export type WorkerResponse =
   | { id: string; seq: number; ok: true; result?: unknown }
@@ -207,11 +199,6 @@ function executeCommand(req: WorkerRequest): unknown {
         break;
       }
 
-      case 'appendChunk': {
-        getEngine(id).feed_chunk_bytes(req.bytes);
-        break;
-      }
-
       case 'streamStart': {
         // Clear existing data and reset the streaming scanner for this grid.
         getEngine(id).clear();
@@ -240,21 +227,6 @@ function executeCommand(req: WorkerRequest): unknown {
 
       case 'updateRows': {
         getEngine(id).update_rows(req.indices, req.rowsJson);
-        break;
-      }
-
-      case 'filter': {
-        getEngine(id).filter(req.text);
-        break;
-      }
-
-      case 'sort': {
-        getEngine(id).sort(req.col, req.asc);
-        break;
-      }
-
-      case 'filterAndSort': {
-        getEngine(id).filter_and_sort(req.text, req.col, req.asc);
         break;
       }
 
@@ -289,36 +261,6 @@ function executeCommand(req: WorkerRequest): unknown {
 
       case 'getRawCount': {
         result = getEngine(id).get_raw_count();
-        break;
-      }
-
-      case 'buildIndex': {
-        getEngine(id).build_index();
-        break;
-      }
-
-      case 'clear': {
-        getEngine(id).clear();
-        break;
-      }
-
-      case 'finalize': {
-        getEngine(id).finalize();
-        break;
-      }
-
-      case 'free': {
-        const e = engines.get(id);
-        if (e) {
-          e.free();
-          engines.delete(id);
-        }
-        // Drain the queue so no stale commands run after free
-        const q = _gridQueues.get(id);
-        if (q) q.length = 0;
-        _gridQueues.delete(id);
-        _gridProcessing.delete(id);
-        _streamState.delete(id);
         break;
       }
 

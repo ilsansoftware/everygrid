@@ -86,46 +86,6 @@ impl GridEngine {
     // Data loading
     // -----------------------------------------------------------------------
 
-    /// Replaces all rows with the contents of `bytes`. Shared by the three `set_data*`
-    /// entry points, which differ only in how JS hands the payload over.
-    fn load_bytes(&mut self, bytes: &[u8]) -> Result<(), JsError> {
-        self.raw_data.clear();
-        self.interner.clear();
-        self.parse_and_append_bytes(bytes)?;
-        self.invalidate_indices();
-        self.recompute();
-        Ok(())
-    }
-
-    pub fn set_data(&mut self, json_str: &str) -> Result<(), JsError> {
-        self.load_bytes(json_str.as_bytes())
-    }
-
-    pub fn set_data_bytes(&mut self, bytes: Uint8Array) -> Result<(), JsError> {
-        self.load_bytes(&bytes.to_vec())
-    }
-
-    /// # Safety
-    /// `ptr`/`len` must describe a live buffer inside this module's linear memory — i.e. one
-    /// obtained from `alloc` and not yet passed to `dealloc`.
-    pub fn set_data_ptr(&mut self, ptr: u32, len: u32) -> Result<(), JsError> {
-        let bytes: &[u8] = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
-        self.load_bytes(bytes)
-    }
-
-    pub fn alloc(&self, len: u32) -> u32 {
-        let mut buf: Vec<u8> = Vec::with_capacity(len as usize);
-        let ptr = buf.as_mut_ptr() as u32;
-        std::mem::forget(buf);
-        ptr
-    }
-
-    pub fn dealloc(&self, ptr: u32, len: u32) {
-        unsafe {
-            let _ = Vec::from_raw_parts(ptr as *mut u8, 0, len as usize);
-        }
-    }
-
     /// Appends rows without recomputing — the caller drives that via `finalize`, so a
     /// multi-chunk load doesn't pay for a recompute per chunk.
     fn append_bytes(&mut self, bytes: &[u8]) -> Result<(), JsError> {
@@ -134,25 +94,8 @@ impl GridEngine {
         Ok(())
     }
 
-    pub fn append_chunk(&mut self, json_str: &str) -> Result<(), JsError> {
-        self.append_bytes(json_str.as_bytes())?;
-        self.recompute();
-        Ok(())
-    }
-
     pub fn feed_chunk_bytes(&mut self, bytes: Uint8Array) -> Result<(), JsError> {
         self.append_bytes(&bytes.to_vec())
-    }
-
-    /// # Safety
-    /// See `set_data_ptr`.
-    pub fn feed_chunk_ptr(&mut self, ptr: u32, len: u32) -> Result<(), JsError> {
-        let bytes: &[u8] = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
-        self.append_bytes(bytes)
-    }
-
-    pub fn feed_chunk(&mut self, json_str: &str) -> Result<(), JsError> {
-        self.append_bytes(json_str.as_bytes())
     }
 
     pub fn finalize(&mut self) {
@@ -179,56 +122,13 @@ impl GridEngine {
     }
 
     /// Eagerly build all indices (called explicitly if needed).
-    pub fn build_index(&mut self) {
-        // Build col_index for all columns present in first row
-        if let Some(first) = self.raw_data.first() {
-            let cols: Vec<String> = first
-                .fields
-                .iter()
-                .map(|(k, _)| k.as_ref().to_string())
-                .collect();
-            for col in cols {
-                self.ensure_col_index(&col);
-            }
-        }
-    }
-
     // -----------------------------------------------------------------------
-    // Filter
+    // Filter + sort state
     // -----------------------------------------------------------------------
 
-    pub fn filter(&mut self, text: &str) {
-        self.filter_text = text.to_string();
-        if text.trim().is_empty() {
-            self.filter_expr = None;
-        } else {
-            let expr = FilterExpr::parse(text);
-            self.filter_expr = if expr.is_empty() { None } else { Some(expr) };
-        }
-        self.recompute();
-    }
-
-    // -----------------------------------------------------------------------
-    // Sort
-    // -----------------------------------------------------------------------
-
-    pub fn sort(&mut self, col: &str, asc: bool) {
-        if col.is_empty() {
-            self.sort_key = None;
-        } else {
-            self.sort_key = Some(SortKey {
-                col: col.to_string(),
-                asc,
-            });
-        }
-        self.recompute();
-    }
-
-    // -----------------------------------------------------------------------
-    // Combined filter + sort in a single recompute pass
-    // -----------------------------------------------------------------------
-
-    pub fn filter_and_sort(&mut self, text: &str, col: &str, asc: bool) {
+    /// Sets the filter and sort key, then recomputes once. An empty `text` clears the filter and
+    /// an empty `col` clears the sort.
+    fn set_filter_and_sort(&mut self, text: &str, col: &str, asc: bool) {
         self.filter_text = text.to_string();
         if text.trim().is_empty() {
             self.filter_expr = None;
@@ -388,28 +288,6 @@ impl GridEngine {
         Ok(())
     }
 
-    pub fn get_page_indices(&self, page: usize, page_size: usize) -> Vec<usize> {
-        if page_size == 0 {
-            return Vec::new();
-        }
-        let start = page * page_size;
-        if self.is_filtered {
-            let total = self.filtered_indices.len();
-            if start >= total {
-                return Vec::new();
-            }
-            let end = (start + page_size).min(total);
-            self.filtered_indices[start..end].to_vec()
-        } else {
-            let total = self.raw_data.len();
-            if start >= total {
-                return Vec::new();
-            }
-            let end = (start + page_size).min(total);
-            (start..end).collect()
-        }
-    }
-
     pub fn get_total_count(&self) -> usize {
         if self.is_filtered {
             self.filtered_indices.len()
@@ -435,23 +313,7 @@ impl GridEngine {
         page: usize,
         page_size: usize,
     ) -> Result<JsValue, JsError> {
-        // Apply filter + sort state
-        self.filter_text = text.to_string();
-        if text.trim().is_empty() {
-            self.filter_expr = None;
-        } else {
-            let expr = FilterExpr::parse(text);
-            self.filter_expr = if expr.is_empty() { None } else { Some(expr) };
-        }
-        if col.is_empty() {
-            self.sort_key = None;
-        } else {
-            self.sort_key = Some(SortKey {
-                col: col.to_string(),
-                asc,
-            });
-        }
-        self.recompute();
+        self.set_filter_and_sort(text, col, asc);
 
         // Get page rows
         let rows_js = self.get_page(page, page_size)?;

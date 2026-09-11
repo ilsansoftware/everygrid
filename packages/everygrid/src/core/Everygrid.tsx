@@ -53,8 +53,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   readonly options: GridOptions<T>;
   public hiddenFieldsMap: Map<string, Set<string>> = new Map(); // Manages hidden fields per targetId
   public displayColsMap: Map<string, Set<string>> = new Map(); // Column selector whitelist per targetId (empty = show all)
-  /** @deprecated Unused — mobile picks go through displayColsMap like desktop. Kept for the interface. */
-  public mobileColsMap: Map<string, Set<string>> = new Map();
   public exportState: Map<string, {done: number; total: number}> = new Map(); // Excel export progress (files done/total) per targetId
   private _exportControllers: Map<string, AbortController> = new Map(); // aborts in-flight exports (terminates the worker) on re-export or destroy
   public pinnedColumns: Set<string> = new Set(); // Manages pinned columns
@@ -79,7 +77,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // object refs, not keys in originalDataMap) can be remapped back to the live edited reference
   // in getDisplayItems — that reference is what makes isCellModified / resetCell work by identity.
   private _editedKeys: Map<string, T> = new Map();
-  private selectedRows: Map<string, Set<T>> = new Map(); // Manages selected rows per targetId
   public checkedValues: Map<string, Set<unknown>> = new Map(); // Manages checked values per targetId (checkbox config)
   private syncTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private roots: Map<HTMLElement, Root> = new Map();
@@ -1165,14 +1162,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return false;
   }
 
-  public getSelectedRows(containerId: string): Set<T> {
-    return this.selectedRows.get(containerId) || new Set();
-  }
-
-  public setSelectedRows(containerId: string, rows: Set<T>) {
-    this.selectedRows.set(containerId, rows);
-  }
-
   public getGridTitle(containerId: string): string | undefined {
     const config = this.options.targets?.find(c => {
       if (typeof c === 'string') {
@@ -1937,19 +1926,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public getMobileColumns(containerId: string): string[] | undefined {
     const conf = this.options.mobileColumns?.find(c => c.id === containerId);
     return conf?.cols;
-  }
-
-  /**
-   * @deprecated Unused — the mobile layout no longer caps at three columns; `getColumns(…, true)`
-   * applies the desktop whitelist over the `mobileColumns` default. Kept for the interface.
-   */
-  public getMobileFields(containerId: string, available: GridColumn[]): string[] {
-    const has = (f: string) => available.some(c => c.field === f);
-    const picked = this.mobileColsMap.get(containerId);
-    if (picked && picked.size > 0) return Array.from(picked).filter(has).slice(0, 3);
-    const configured = this.getMobileColumns(containerId)?.filter(has);
-    if (configured && configured.length > 0) return configured.slice(0, 3);
-    return available.slice(0, 3).map(c => c.field);
   }
 
   public getColumns(containerId: string, items: T[], isMobile: boolean = false): GridColumn[] {

@@ -30,12 +30,6 @@
       ]
     }
   ],
-  "rowCheckbox": [
-    {
-      "id": "test-grid",
-      "active": true
-    }
-  ],
   "checkbox": [
     {
       "id": "test-grid",

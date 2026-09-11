@@ -1,8 +1,4 @@
 {
-  "app": {
-    "title": "Everygrid Explorer",
-    "copyright": "Everygrid. All rights reserved."
-  },
   "toolbar": {
     "showExcelPreview": "Show Excel Preview",
     "showGrid": "Show Grid",
@@ -15,7 +11,6 @@
     "selectColumns": "Columns",
     "mobileColumns": "Columns",
     "selectAll": "Select All",
-    "deselectAll": "Deselect All",
     "resetAll": "Reset All Changes",
     "resetSort": "Reset Sort",
     "filterPlaceholder": "Search...",
@@ -28,8 +23,6 @@
   "grid": {
     "index": "Index",
     "rowDetail": "Details",
-    "mobileColumnsHint": "Pick up to {max} columns to show.",
-    "column": "Column",
     "resetCell": "Reset to original value",
     "reset": "Reset",
     "noData": "No data or configuration found.",
@@ -39,21 +32,14 @@
     "targetId": "Target ID",
     "dataPath": "Data Path",
     "notSpecified": "Not specified",
-    "limitInfo": "Only the top {limit} items are displayed. Please download to view all {total} items.",
-    "hideColumnBtn": "Hide column",
     "hiddenColumns": "Hidden Columns ({count})",
     "showAllColumns": "Show All Columns",
     "unhide": "Unhide",
-    "exporting": "Exporting… {done}/{total}",
     "exportingPercent": "Exporting… {percent}%",
     "exportPreparing": "Exporting…",
     "processing": "Processing…",
     "sortAsc": "Sort Ascending",
     "sortDesc": "Sort Descending",
-    "resetSort": "Reset Sort",
-    "startEdit": "Start editing this column",
-    "finishEdit": "Finish editing this column",
-    "pinColumn": "Pin Column",
     "edit": "Edit",
     "dataLimited": "Showing the first {shown} of {total} rows — this device's safe limit.",
     "dataLimitedStream": "Showing the first {shown} rows — this device's safe limit; the rest was not loaded."
@@ -68,19 +54,15 @@
   },
   "popup": {
     "detailTitle": "Detail View",
-    "editTitle": "Edit Data",
     "textEditorTitle": "Text Editor: {field}",
     "invalidJson": "Invalid JSON format",
     "format": "Format",
     "apply": "Apply",
     "close": "Close",
-    "save": "Save",
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "pinConfirmMessage": "This column has modified data. Pinning it will reset all modifications. Are you sure?",
     "tableView": "Table View",
     "jsonView": "JSON View",
-    "fieldsCount": "{count} Fields",
     "itemsCount": "{count} Items"
   }
 }

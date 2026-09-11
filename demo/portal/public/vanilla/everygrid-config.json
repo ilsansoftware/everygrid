@@ -119,12 +119,6 @@
       "overscan": 8
     }
   ],
-  "rowCheckbox": [
-    {
-      "id": "demo-grid",
-      "active": true
-    }
-  ],
   "checkbox": [
     {
       "id": "demo-grid",

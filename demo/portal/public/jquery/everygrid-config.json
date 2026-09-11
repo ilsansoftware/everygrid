@@ -7,16 +7,6 @@
       "id": "demo-grid2"
     }
   ],
-  "rowCheckbox": [
-    {
-      "id": "demo-grid",
-      "active": true
-    },
-    {
-      "id": "demo-grid2",
-      "active": true
-    }
-  ],
   "checkbox": [
     {
       "id": "demo-grid",

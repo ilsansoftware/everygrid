@@ -135,13 +135,6 @@ export class GridEngineWasm {
     if (reportProgress && this.progressCallback) this.progressCallback('ready', 100);
   }
 
-  /** Appends a chunk to the existing dataset. */
-  appendChunk(chunk: unknown[]): Promise<void> {
-    const bytes = _encoder.encode(JSON.stringify(chunk));
-    const req = { id: this.engineId, cmd: 'appendChunk' as const, bytes };
-    return this.send(req, [bytes.buffer]) as Promise<void>;
-  }
-
   /**
    * Patches rows in place at their raw (unfiltered, unsorted) positions — the cheap path for
    * an edit. `setData` would re-upload and re-index the whole dataset, and report progress
@@ -151,24 +144,6 @@ export class GridEngineWasm {
     const indices = Uint32Array.from(rows, r => r.index);
     const rowsJson = JSON.stringify(rows.map(r => r.row));
     const req = { id: this.engineId, cmd: 'updateRows' as const, indices, rowsJson };
-    return this.send(req) as Promise<void>;
-  }
-
-  /** Applies a filter expression. */
-  filter(text: string): Promise<void> {
-    const req = { id: this.engineId, cmd: 'filter' as const, text };
-    return this.send(req) as Promise<void>;
-  }
-
-  /** Sorts by a column. */
-  sort(col: string, asc: boolean): Promise<void> {
-    const req = { id: this.engineId, cmd: 'sort' as const, col, asc };
-    return this.send(req) as Promise<void>;
-  }
-
-  /** Applies filter and sort in a single recompute pass (faster than calling filter + sort separately). */
-  filterAndSort(text: string, col: string, asc: boolean): Promise<void> {
-    const req = { id: this.engineId, cmd: 'filterAndSort' as const, text, col, asc };
     return this.send(req) as Promise<void>;
   }
 
@@ -204,21 +179,6 @@ export class GridEngineWasm {
   async getRawCount(): Promise<number> {
     const result = await this.send({ id: this.engineId, cmd: 'getRawCount' });
     return result as number;
-  }
-
-  /** Pre-warms the BTreeMap column index for fast filter/sort. */
-  buildIndex(): Promise<void> {
-    return this.send({ id: this.engineId, cmd: 'buildIndex' }) as Promise<void>;
-  }
-
-  /** Clears all data and resets the engine. */
-  clear(): Promise<void> {
-    return this.send({ id: this.engineId, cmd: 'clear' }) as Promise<void>;
-  }
-
-  /** Frees the engine inside the worker. */
-  free(): Promise<void> {
-    return this.send({ id: this.engineId, cmd: 'free' }) as Promise<void>;
   }
 
   /** Terminates the worker thread, releasing its WASM memory and the thread itself immediately.

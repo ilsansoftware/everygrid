@@ -169,7 +169,7 @@ are all inlined — exposed as `window.Everygrid`. No stylesheet, no React scrip
 |-------|------|-------------|
 | `targets` | `GridTargetConfig[]` | Grid instances to initialize |
 | `editableCols` | `EditableColConfig[]` | Editable column settings per grid |
-| `rowCheckbox` | `GridRowCheckboxConfig[]` | Row checkbox settings per grid |
+| `checkbox` | `GridCheckboxConfig[]` | Adds a checkbox column per grid; `mapping` names the field whose value is collected when a row is checked |
 | `pagination` | `GridPaginationConfig[]` | Pagination settings per grid |
 | `virtualScroll` | `GridVirtualScrollConfig[]` | Virtual scrolling settings per grid (replaces pagination for that grid) |
 | `dataLimit` | `GridDataLimitConfig[]` | Cap on rows loaded per grid — a safety net against out-of-memory tab crashes |

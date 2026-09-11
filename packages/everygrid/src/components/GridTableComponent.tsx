@@ -63,10 +63,6 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
   // header checkboxes are dropped there rather than given a surprising meaning.
   const loadedItems = useMemo(() => displayItems.filter((i): i is T => i !== undefined), [displayItems]);
 
-  const isAllSelected = useMemo(() => {
-    return loadedItems.length > 0 && loadedItems.every(item => grid.getSelectedRows(containerId)?.has(item));
-  }, [loadedItems, grid, containerId]);
-
   const isAllChecked = useMemo(() => {
     if (!grid.checkedValues) return false;
     const checkedSet = grid.checkedValues.get(containerId);
@@ -90,20 +86,6 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
     }
     grid.checkedValues.set(containerId, set);
     grid.renderGrid(container);
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    const selected = new Set(grid.getSelectedRows(containerId));
-    if (checked) {
-      loadedItems.forEach(item => selected.add(item));
-    } else {
-      loadedItems.forEach(item => selected.delete(item));
-    }
-    grid.setSelectedRows(containerId, selected);
-    grid.renderGrid(container);
-    if (grid.options.onSelectionChange) {
-      grid.options.onSelectionChange(Array.from(selected) as T[]);
-    }
   };
 
   const handleToggleColumn = (field: string) => {
@@ -239,7 +221,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
         <tr>
           {gridColumns.map((col) => (
             <th key={col.field} data-field={col.field} style={getColumnStyle(col)}
-                className={`${col.type === 'row_detail' ? 'everygrid-detail-cell ' : ''}${col.type === 'row_checkbox' || col.type === 'data_checkbox' ? 'w-10' : ''} text-left`}>
+                className={`${col.type === 'row_detail' ? 'everygrid-detail-cell ' : ''}${col.type === 'data_checkbox' ? 'w-10' : ''} text-left`}>
               <div
                 className='everygrid-header-content px-2 py-2'
               >
@@ -256,14 +238,6 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                       }}>
                       <MobileColumnsIcon className='w-5 h-5'/>
                     </button>
-                  </div>
-                ) : col.type === 'row_checkbox' ? (
-                  <div className='flex justify-center w-full'>
-                    {!virtual && (
-                      <input type='checkbox' className='cursor-pointer' checked={isAllSelected}
-                             disabled={isIndexing || isExporting}
-                             onChange={(e) => handleSelectAll(e.target.checked)}/>
-                    )}
                   </div>
                 ) : col.type === 'data_checkbox' ? (
                   <div className='flex justify-center w-full'>

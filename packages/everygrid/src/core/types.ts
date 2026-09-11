@@ -146,11 +146,6 @@ export interface GridDataLimitConfig {
   active?: boolean;
 }
 
-export interface GridRowCheckboxConfig {
-  id: string;
-  active: boolean;
-}
-
 export interface GridCheckboxConfig {
   id: string;
   mapping: string;
@@ -168,8 +163,6 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   activeEditFields: Map<string, Set<string>>;
   sortConfig: Map<string, { field: string; direction: 'asc' | 'desc' | null }>;
   hiddenFieldsMap: Map<string, Set<string>>;
-  /** @deprecated Unused since the mobile layout adopted the desktop column whitelist (`displayColsMap`). */
-  mobileColsMap: Map<string, Set<string>>;
   exportState: Map<string, {done: number; total: number}>;
   commaSeparatedFields: Set<string>;
   linkFields: Set<string>;
@@ -197,10 +190,6 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   _wasStreaming: Set<string>;
   /** Targets with a data load in flight, on any load path. */
   _loading: Set<string>;
-
-  getSelectedRows(containerId: string): Set<T>;
-
-  setSelectedRows(containerId: string, rows: Set<T>): void;
 
   renderGrid(container: HTMLElement, _updatePinned?: boolean): void;
 
@@ -235,8 +224,6 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   getColumns(containerId: string, items: T[], isMobile?: boolean): GridColumn[];
   columnLabel(field: string, containerId: string): string;
   getMobileColumns(containerId: string): string[] | undefined;
-  /** @deprecated Unused since the mobile layout adopted the desktop column whitelist; see `getColumns`. */
-  getMobileFields(containerId: string, available: GridColumn[]): string[];
   showMobileColumnSelector(allFields: string[], container: HTMLElement): void;
   showRowDetail(row: T, container: HTMLElement): void;
 
@@ -317,7 +304,6 @@ export interface GridOptions<T = Record<string, unknown>> {
   columnI18n?: ColumnI18n;
   mobileColumns?: GridMobileColumnsConfig[];
   editableCols?: EditableColConfig[];
-  rowCheckbox?: GridRowCheckboxConfig[];
   colors?: GridColorConfig[];
   links?: GridLinkConfig[];
   checkbox?: GridCheckboxConfig[];
@@ -333,6 +319,5 @@ export interface GridOptions<T = Record<string, unknown>> {
    */
   dataCache?: RequestCache;
   onDataChange?: (data: Record<string, unknown>[], originalData: Record<string, unknown>[]) => void;
-  onSelectionChange?: (selectedData: Record<string, unknown>[]) => void;
   onCellClick?: (rowData: Record<string, unknown>, field: string) => void;
 }
