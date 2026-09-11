@@ -173,7 +173,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
     const isEditing = isEditableField && activeEdits.has(col.field);
 
     // Use JSON editor if column type is object, current value is object, value is a JSON string, or any row in the column has an object/JSON value
-    const isObjectColumn = col.type === 'object' || typeof value === 'object' || isJsonString(value) || grid.isColumnObject(col.field);
+    const isObjectColumn = col.type === 'object' || (value !== null && typeof value === 'object') || isJsonString(value) || grid.isColumnObject(col.field);
 
     if (isEditing) {
       if (isObjectColumn) {
@@ -225,7 +225,8 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
         }
       }
 
-      const isBoolean = typeof value === 'boolean' || col.type === 'boolean';
+      // An empty cell (an inserted row, a cleared value) takes its editor from the column's type.
+      const isBoolean = typeof value === 'boolean' || col.type === 'boolean' || grid.isColumnBoolean(col.field);
 
       if (isBoolean) {
         return (
@@ -255,10 +256,11 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
         );
       }
 
+      const empty = value === null || value === undefined || value === '';
       let inputType = 'text';
-      if (col.type === 'number' || typeof value === 'number') {
+      if (col.type === 'number' || typeof value === 'number' || (isNumeric && empty)) {
         inputType = 'number';
-      } else if (col.type === 'date') {
+      } else if (col.type === 'date' || (isDate && empty)) {
         inputType = 'date';
       } else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
         inputType = 'date';

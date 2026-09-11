@@ -1141,6 +1141,20 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return foundNumeric;
   }
 
+  /** True when every non-empty value in the sampled rows is a boolean. */
+  public isColumnBoolean(field: string): boolean {
+    const data = (this.options.data || []) as T[];
+    const sampleSize = Math.min(data.length, 100);
+    let found = false;
+    for (let i = 0; i < sampleSize; i++) {
+      const value = data[i][field];
+      if (value === null || value === undefined || value === '') continue;
+      if (typeof value !== 'boolean') return false;
+      found = true;
+    }
+    return found;
+  }
+
   public isColumnDate(field: string): boolean {
     const data = (this.options.data || []) as T[];
     if (data.length === 0) {
@@ -1240,8 +1254,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    */
   public insertRow(containerId: string, values: Partial<T> = {}, at = 0): T {
     const data = (this.options.data || []) as T[];
+    // Empty cells are null — what clearing a cell in the editor produces — so the row reads as
+    // "unset" everywhere (type detection skips it, the patch carries null, not "").
     const row = {} as Record<string, unknown>;
-    for (const f of this.getDataFields(containerId)) row[f] = '';
+    for (const f of this.getDataFields(containerId)) row[f] = null;
     Object.assign(row, values);
     const index = Math.max(0, Math.min(at, data.length));
     data.splice(index, 0, row as T);
@@ -2289,6 +2305,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   public isCellModified(rowData: T, field: string): boolean {
+    // An inserted row is new as a whole; none of its cells is "modified from the original".
+    if (this._insertedRows.has(rowData)) return false;
     const originalRow = this.originalDataMap.get(rowData);
     if (!originalRow) {
       return false;
@@ -2434,13 +2452,18 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // The row's original is captured here, on its first edit, rather than for every row at
       // load: prevRef is still the untouched row at that point. Later edits move the snapshot
       // onto each new row reference.
-      const originalSnapshot = this.originalDataMap.get(rowData as T)
-        ?? this.originalDataMap.get(prevRef)
-        ?? JSON.parse(JSON.stringify(prevRef)) as T;
-      this.originalDataMap.delete(rowData as T);
-      this.originalDataMap.delete(prevRef);
-      this.originalDataMap.set(newRow, originalSnapshot);
-      if (this._insertedRows.delete(prevRef)) this._insertedRows.add(newRow);
+      // An inserted row has no original to snapshot: it is new as a whole.
+      const inserted = this._insertedRows.delete(prevRef);
+      if (inserted) {
+        this._insertedRows.add(newRow);
+      } else {
+        const originalSnapshot = this.originalDataMap.get(rowData as T)
+          ?? this.originalDataMap.get(prevRef)
+          ?? JSON.parse(JSON.stringify(prevRef)) as T;
+        this.originalDataMap.delete(rowData as T);
+        this.originalDataMap.delete(prevRef);
+        this.originalDataMap.set(newRow, originalSnapshot);
+      }
       if (this._deletedRows.delete(prevRef)) this._deletedRows.add(newRow);
 
       // Track the edited row so getDisplayItems can remap WASM copies to this live reference.

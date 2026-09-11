@@ -246,6 +246,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   getColumns(containerId: string, items: T[], isMobile?: boolean): GridColumn[];
   columnLabel(field: string, containerId: string): string;
   getMobileColumns(containerId: string): string[] | undefined;
+  isColumnBoolean(field: string): boolean;
   getRowActions(containerId: string): {insertRow: boolean; deleteRow: boolean};
   getCheckboxMapping(containerId: string): string | undefined;
   getCheckedValues(containerId: string): unknown[];
