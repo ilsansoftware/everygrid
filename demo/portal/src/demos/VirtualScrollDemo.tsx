@@ -28,8 +28,8 @@ export default function VirtualScrollDemo({active}: { active: boolean }) {
   return (
       <div className='max-w-7xl mx-auto'>
         <main className='min-h-150 flex flex-col gap-8 py-8 bg-white'>
-          <RowCountPicker value={rows} onChange={choose} active={active}/>
           <LocaleSwitch value={locale} onChange={setLocale} active={active}/>
+          <RowCountPicker value={rows} onChange={choose} active={active}/>
           {/* Virtual scrolling needs a bounded height to scroll inside. */}
           <div id='virtual-grid' className='w-full border-slate-200 h-[560px] flex flex-col'/>
         </main>
