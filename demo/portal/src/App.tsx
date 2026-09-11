@@ -40,8 +40,8 @@ const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: 
   {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/logo.svg', name: 'jQuery'},
   {id: 'large', title: 'Large Data', caption: 'streaming 1.6M rows', label: 'large\ndata'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
-  {id: 'sandbox', title: 'JSON to Grid', caption: 'drop a file, get a grid', label: 'json to\ngrid', group: 'tool'},
-  {id: 'docs', title: 'API Docs', label: 'api\ndocs', group: 'tool'},
+  {id: 'sandbox', title: 'JSON to Grid', caption: 'drop a file, get a grid', label: 'json to grid', group: 'tool'},
+  {id: 'docs', title: 'API Docs', label: 'api docs', group: 'tool'},
 ];
 
 // Tabs that are tools rather than demos: nothing to show under 'Show Code'.

@@ -87,7 +87,7 @@ nav::-webkit-scrollbar {
 }
 .tool-tabs button .tab-label {
   position: relative;
-  white-space: pre-line;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.1;
