@@ -531,6 +531,81 @@ g.on('change', changes => …);        // after every edit, cancel and commit
 g.on('check', ({values, rows, changed, checked}) => …);   // any checkbox change, UI or API
 ```
 
+### Handle reference
+
+`Everygrid.get(id)` returns a `GridHandle`; `g.row(i)` a `RowHandle`; `row.cell(field)` a `CellHandle`;
+`g.column(field)` a `ColumnHandle`. Handles are stateless views over the grid — make them freely.
+`RowKey` is `string | number`; `RowChange` is `{status, index, key, row, original, cells}`.
+
+**GridHandle** — `Everygrid.get(id)`
+
+| Method | Returns | What it does |
+|---|---|---|
+| `exists()` | `boolean` | The grid is still mounted |
+| `data()` | `T[]` | The loaded rows, in data order (live objects — read only; write through `set`) |
+| `row(index)` | `RowHandle` | The row at a data index |
+| `rowByKey(key)` | `RowHandle` | The row whose `rowKey` field equals `key` |
+| `find(pred)` | `RowHandle` | The first row matching `pred(row, index)` |
+| `visibleRow(n)` | `RowHandle` | The n-th row on screen (after filter and sort) |
+| `insertedRow(i)` | `RowHandle` | The i-th inserted row (their own index space) |
+| `cell(index, field)` | `CellHandle` | Shorthand for `row(index).cell(field)` |
+| `column(field)` | `ColumnHandle` | One column across all rows |
+| `rows()` | `RowHandle[]` | Every loaded row; a plain array |
+| `insertedRows()` / `updatedRows()` / `deletedRows()` | `RowHandle[]` | The changed rows of one kind |
+| `checkedRows()` | `RowHandle[]` | The rows whose checkbox is checked (never a deleted row) |
+| `checkedValues()` | `unknown[]` | Their `checkbox.mapping` values |
+| `check(values)` / `uncheck(values)` | — | Check / uncheck rows by mapping value |
+| `checkAll()` / `uncheckAll()` | — | Every row / none |
+| `hasChanges()` | `boolean` | Anything inserted, updated or deleted |
+| `changes()` | `RowChange[]` | Every changed row, in data order |
+| `diff()` | `{inserted, updated, deleted, cells}` | `changes()` grouped by kind, with a cell count |
+| `patch()` | `{inserted, updated, deleted}` | What to save: rows whole, `{key, changes}`, `{key, row}` |
+| `insertRow(values?)` | `RowHandle` | A new row above the data (needs `rowActions.insertRow`) |
+| `cancel()` | — | Every change cancelled: edits undone, inserted rows dropped, deleted rows back |
+| `commit()` | — | Current state becomes the baseline; inserted rows join the data at the end, deleted rows go |
+| `on(event, fn)` | `() => void` | Subscribe to `cellChange` / `change` / `check`; returns the unsubscribe |
+
+**RowHandle** — `g.row(i)`, `g.rowByKey(k)`, `g.rows()[i]`, …
+
+| Method | Returns | What it does |
+|---|---|---|
+| `index` / `kind` / `gridId` | fields | Position; `'data'` or `'inserted'`; the grid's id |
+| `exists()` | `boolean` | There is a row at this index |
+| `get()` | `T \| undefined` | The row as it is now |
+| `original()` | `T \| undefined` | The row as loaded (the row itself if never edited) |
+| `key()` | `RowKey \| null` | The `rowKey` field's value, else the index; null while an inserted row's key is empty |
+| `cell(field)` | `CellHandle` | One cell |
+| `set(values, {force?})` | `number` | Edit several cells; returns how many were written |
+| `changes()` | `CellChange[]` | `[{field, from, to}]` for the cells that differ from the original |
+| `status()` | `'inserted' \| 'updated' \| 'deleted' \| null` | The row's state |
+| `inserted()` / `updated()` / `deleted()` / `changed()` | `boolean` | Predicates, for `rows().filter(...)` |
+| `checked()` | `boolean` | The checkbox is checked |
+| `check(checked = true)` | — | Check / uncheck this row |
+| `delete()` | `boolean` | Mark deleted (needs `rowActions.deleteRow`); an inserted row is simply dropped |
+| `cancel()` | — | Un-edit / un-insert / un-delete this row |
+
+**CellHandle** — `g.row(i).cell(field)`, `g.cell(i, field)`
+
+| Method | Returns | What it does |
+|---|---|---|
+| `row` / `field` | fields | The row handle; the column name |
+| `exists()` | `boolean` | The row exists |
+| `get()` | `unknown` | The current value |
+| `original()` | `unknown` | The loaded value |
+| `modified()` | `boolean` | Differs from the loaded value |
+| `isEditable()` | `boolean` | Any cell of an inserted row; else what `editableCols` allows |
+| `set(value, {force?})` | `boolean` | Edit exactly as typing would; refused (false + warning) outside `editableCols` unless `force` |
+| `cancel()` | — | The loaded value back |
+
+**ColumnHandle** — `g.column(field)`
+
+| Method | Returns | What it does |
+|---|---|---|
+| `field` | field | The column name |
+| `values()` | `unknown[]` | Current values down the column, in data order |
+| `changes()` | `ColumnChange[]` | `[{index, key, from, to, row}]` for the rows whose value changed |
+| `cancel()` | — | Every change in this column undone |
+
 `patch()` is plain JSON per kind — how it is saved (fetch, a form, a queue) is up to you:
 
 ```ts
