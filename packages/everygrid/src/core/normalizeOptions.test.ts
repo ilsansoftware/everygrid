@@ -52,11 +52,11 @@ describe('targetConfigOf', () => {
   it('rebuilds the config-file shape for one grid', () => {
     const o = normalizeOptions({...nested, targets: [...nested.targets, {id: 'other', pagination: {pageSize: 1}}]});
     const {targets, ...rest} = nested;
-    expect(targetConfigOf(o, 'g')).toEqual({...rest, targets: [{...targets[0]}]});
+    expect(targetConfigOf(o, 'g')).toEqual({...rest, targets: [targets[0]]});
   });
 
   it('is the identity on a normalized nested config', () => {
     const o = normalizeOptions(nested);
-    expect(normalizeOptions(targetConfigOf(o, 'g') as GridOptions)).toEqual(o);
+    expect(normalizeOptions(targetConfigOf(o, 'g') as unknown as GridOptions)).toEqual(o);
   });
 });
