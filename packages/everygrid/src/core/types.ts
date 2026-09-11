@@ -56,14 +56,14 @@ export interface GridRowKeyConfig {
 }
 
 /**
- * Row-level editing per grid. `addRow` puts a "+" in the actions column header that inserts an
+ * Row-level editing per grid. `insertRow` puts a "+" in the actions column header that inserts an
  * empty row at the top; `deleteRow` puts a delete button on every row. A deleted row stays on
- * screen, struck through, until commit removes it or revert brings it back; an added row is
+ * screen, struck through, until commit removes it or revert brings it back; an inserted row is
  * simply dropped by revert. Both show up in `GridHandle.changes()` / `patch()`.
  */
 export interface GridRowActionsConfig {
   id: string;
-  addRow?: boolean;
+  insertRow?: boolean;
   deleteRow?: boolean;
 }
 
@@ -246,16 +246,16 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   getColumns(containerId: string, items: T[], isMobile?: boolean): GridColumn[];
   columnLabel(field: string, containerId: string): string;
   getMobileColumns(containerId: string): string[] | undefined;
-  getRowActions(containerId: string): {addRow: boolean; deleteRow: boolean};
+  getRowActions(containerId: string): {insertRow: boolean; deleteRow: boolean};
   getCheckboxMapping(containerId: string): string | undefined;
   getCheckedValues(containerId: string): unknown[];
   getCheckedRows(containerId: string): T[];
   setChecked(containerId: string, values: unknown[], checked: boolean): void;
   clearChecked(containerId: string): void;
-  addRow(containerId: string, values?: Partial<T>, at?: number): T;
+  insertRow(containerId: string, values?: Partial<T>, at?: number): T;
   deleteRow(containerId: string, rowData: T): void;
   restoreRow(containerId: string, rowData: T): void;
-  isRowAdded(row: T): boolean;
+  isRowInserted(row: T): boolean;
   isRowDeleted(row: T): boolean;
   showMobileColumnSelector(allFields: string[], container: HTMLElement): void;
   showRowDetail(row: T, container: HTMLElement): void;

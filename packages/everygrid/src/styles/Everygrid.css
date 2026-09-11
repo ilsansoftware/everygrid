@@ -144,7 +144,7 @@
   @apply text-center bg-slate-50/30 align-middle;
 }
 
-/* Row actions column: "+" in the header (rowActions.addRow), delete / restore per row
+/* Row actions column: "+" in the header (rowActions.insertRow), delete / restore per row
    (rowActions.deleteRow). Narrow, centred, and it never gets a pointer-events lock — a deleted
    row's restore button must stay clickable. */
 .everygrid-actions-cell {
@@ -167,8 +167,8 @@
 .everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) * {
   @apply text-slate-400;
 }
-/* An added row reads as new until commit. */
-.everygrid-table tbody tr.everygrid-row-added td:not(.everygrid-actions-cell) {
+/* An inserted row reads as new until commit. */
+.everygrid-table tbody tr.everygrid-row-inserted td:not(.everygrid-actions-cell) {
   @apply bg-emerald-50/60;
 }
 
@@ -311,7 +311,7 @@
 }
 
 /* Modification Indicators */
-.modified-marker {
+.updated-marker {
   @apply absolute! top-0! right-0! w-3! h-3! bg-orange-500! z-20! block! [clip-path:polygon(100%_0,0_0,100%_100%)]! cursor-pointer;
 }
 

@@ -10,11 +10,11 @@ export interface CellChange {
   to: unknown;
 }
 
-export type RowStatus = 'added' | 'modified' | 'deleted';
+export type RowStatus = 'inserted' | 'updated' | 'deleted';
 
 /**
  * One row's change. `modified`: the row as it is now and as it was loaded, with the cells that
- * differ. `added`: `row` is the new row (`original` is the same object, `cells` empty).
+ * differ. `inserted`: `row` is the new row (`original` is the same object, `cells` empty).
  * `deleted`: `original` is the row as loaded (`cells` empty).
  */
 export interface RowChange<T = Record<string, unknown>> {
@@ -41,7 +41,7 @@ export interface RowPatch {
 
 /** The minimal payload for a save — what to POST, PATCH and DELETE. */
 export interface Patch<T = Record<string, unknown>> {
-  added: T[];
+  inserted: T[];
   updated: RowPatch[];
   deleted: RowKey[];
 }
@@ -126,18 +126,18 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
     return this.grid.checkHasChanges();
   }
 
-  /** Every changed row — added, modified (with its changed cells) or deleted — in data order. */
+  /** Every changed row — inserted, updated (with its changed cells) or deleted — in data order. */
   changes(): RowChange<T>[] {
     return this.grid._changedRows(this.id);
   }
 
   // Selectors: the changed rows of one kind, as row handles — `g.updated()[0].cell('x').revert()`.
-  added(): RowHandle<T>[] {
-    return this.changes().filter(r => r.status === 'added').map(r => this.row(r.index));
+  inserted(): RowHandle<T>[] {
+    return this.changes().filter(r => r.status === 'inserted').map(r => this.row(r.index));
   }
 
   updated(): RowHandle<T>[] {
-    return this.changes().filter(r => r.status === 'modified').map(r => this.row(r.index));
+    return this.changes().filter(r => r.status === 'updated').map(r => this.row(r.index));
   }
 
   deleted(): RowHandle<T>[] {
@@ -145,25 +145,25 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
   }
 
   /** Original vs current, summarised by kind. */
-  diff(): {added: RowChange<T>[]; modified: RowChange<T>[]; deleted: RowChange<T>[]; cells: number} {
+  diff(): {inserted: RowChange<T>[]; updated: RowChange<T>[]; deleted: RowChange<T>[]; cells: number} {
     const rows = this.changes();
     return {
-      added: rows.filter(r => r.status === 'added'),
-      modified: rows.filter(r => r.status === 'modified'),
+      inserted: rows.filter(r => r.status === 'inserted'),
+      updated: rows.filter(r => r.status === 'updated'),
       deleted: rows.filter(r => r.status === 'deleted'),
       cells: rows.reduce((n, r) => n + r.cells.length, 0),
     };
   }
 
   /**
-   * What to send to a server: the added rows whole, the modified rows as key + changed fields,
+   * What to send to a server: the inserted rows whole, the modified rows as key + changed fields,
    * the deleted rows as keys.
    */
   patch(): Patch<T> {
     const rows = this.changes();
     return {
-      added: rows.filter(r => r.status === 'added').map(r => r.row),
-      updated: rows.filter(r => r.status === 'modified').map(r => ({
+      inserted: rows.filter(r => r.status === 'inserted').map(r => r.row),
+      updated: rows.filter(r => r.status === 'updated').map(r => ({
         key: r.key,
         changes: Object.fromEntries(r.cells.map(c => [c.field, c.to])),
       })),
@@ -171,17 +171,17 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
     };
   }
 
-  /** Inserts a row (at the top by default) and returns its handle. Needs `rowActions.addRow`. */
-  addRow(values: Partial<T> = {}, at = 0): RowHandle<T> {
-    if (!this.grid.getRowActions(this.id).addRow) {
-      console.warn(`Everygrid: "${this.id}" has no rowActions.addRow — rows cannot be added.`);
+  /** Inserts a row (at the top by default) and returns its handle. Needs `rowActions.insertRow`. */
+  insertRow(values: Partial<T> = {}, at = 0): RowHandle<T> {
+    if (!this.grid.getRowActions(this.id).insertRow) {
+      console.warn(`Everygrid: "${this.id}" has no rowActions.insertRow — rows cannot be inserted.`);
       return this.row(-1);
     }
-    const row = this.grid.addRow(this.id, values, at);
+    const row = this.grid.insertRow(this.id, values, at);
     return this.row(this.data().indexOf(row));
   }
 
-  /** Puts every row back as loaded: edits undone, added rows dropped, deleted rows restored. */
+  /** Puts every row back as loaded: edits undone, inserted rows dropped, deleted rows restored. */
   revert(): void {
     const el = document.getElementById(this.id);
     if (el) this.grid.reset(el);
@@ -189,7 +189,7 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
 
   /**
    * Accepts the current state as the new baseline — after a successful save, typically: deleted
-   * rows are removed for good, added rows become ordinary rows, edits are no longer marked.
+   * rows are removed for good, inserted rows become ordinary rows, edits are no longer marked.
    */
   commit(): void {
     this.grid.commit(this.id);
@@ -271,9 +271,9 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     return !!row && Object.keys(row).some(f => this.grid.isCellModified(row, f));
   }
 
-  isAdded(): boolean {
+  isInserted(): boolean {
     const row = this.get();
-    return !!row && this.grid.isRowAdded(row);
+    return !!row && this.grid.isRowInserted(row);
   }
 
   isDeleted(): boolean {
@@ -281,11 +281,11 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     return !!row && this.grid.isRowDeleted(row);
   }
 
-  /** `added` / `deleted` / `modified`, or null for a row exactly as loaded. */
+  /** `inserted` / `updated` / `deleted`, or null for a row exactly as loaded. */
   status(): RowStatus | null {
-    if (this.isAdded()) return 'added';
+    if (this.isInserted()) return 'inserted';
     if (this.isDeleted()) return 'deleted';
-    return this.isModified() ? 'modified' : null;
+    return this.isModified() ? 'updated' : null;
   }
 
   isChecked(): boolean {
@@ -338,11 +338,11 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     return n;
   }
 
-  /** Back as loaded: an added row is dropped, a deleted one restored, edits undone. */
+  /** Back as loaded: an inserted row is dropped, a deleted one restored, edits undone. */
   revert(): void {
     const row = this.get();
     if (!row) return;
-    if (this.grid.isRowAdded(row)) { this.grid.deleteRow(this.gridId, row); return; }
+    if (this.grid.isRowInserted(row)) { this.grid.deleteRow(this.gridId, row); return; }
     if (this.grid.isRowDeleted(row)) this.grid.restoreRow(this.gridId, row);
     for (const c of this.changes()) this.cell(c.field).revert();
   }

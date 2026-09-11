@@ -110,7 +110,7 @@
   "rowActions": [
     {
       "id": "test-grid",
-      "addRow": true,
+      "insertRow": true,
       "deleteRow": true
     }
   ]

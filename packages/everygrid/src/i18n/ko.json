@@ -43,7 +43,7 @@
     "edit": "수정",
     "dataLimited": "이 기기 안전 한도로 전체 {total}행 중 상위 {shown}행만 표시합니다.",
     "dataLimitedStream": "이 기기 안전 한도로 상위 {shown}행만 불러왔습니다. 나머지는 로드하지 않았습니다.",
-    "addRow": "행 추가",
+    "insertRow": "행 추가",
     "deleteRow": "행 삭제",
     "restoreRow": "삭제 취소"
   },

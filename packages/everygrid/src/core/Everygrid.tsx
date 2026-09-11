@@ -78,10 +78,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // object refs, not keys in originalDataMap) can be remapped back to the live edited reference
   // in getDisplayItems — that reference is what makes isCellModified / resetCell work by identity.
   private _editedKeys: Map<string, T> = new Map();
-  // Rows added / deleted since load, by live reference (migrated along with the reference on
+  // Rows inserted / deleted since load, by live reference (migrated along with the reference on
   // edit, like originalDataMap). A deleted row stays in the data and the engine, struck through,
-  // until commit removes it; an added row is in both from the moment it is added.
-  private _addedRows: Set<T> = new Set();
+  // until commit removes it; an inserted row is in both from the moment it is inserted.
+  private _insertedRows: Set<T> = new Set();
   private _deletedRows: Set<T> = new Set();
   public checkedValues: Map<string, Set<unknown>> = new Map(); // Manages checked values per targetId (checkbox config)
   private syncTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -1214,9 +1214,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   // ---- Row add / delete ------------------------------------------------------------------------
 
-  public getRowActions(containerId: string): {addRow: boolean; deleteRow: boolean} {
+  public getRowActions(containerId: string): {insertRow: boolean; deleteRow: boolean} {
     const conf = this.options.rowActions?.find(c => c.id === containerId);
-    return {addRow: !!conf?.addRow, deleteRow: !!conf?.deleteRow};
+    return {insertRow: !!conf?.insertRow, deleteRow: !!conf?.deleteRow};
   }
 
   /** The live reference for a row the grid handed out (a WASM copy is matched by content). */
@@ -1226,8 +1226,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return i === -1 ? row : data[i];
   }
 
-  public isRowAdded(row: T): boolean {
-    return this._addedRows.has(this._liveRef(row));
+  public isRowInserted(row: T): boolean {
+    return this._insertedRows.has(this._liveRef(row));
   }
 
   public isRowDeleted(row: T): boolean {
@@ -1236,16 +1236,16 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /**
    * Inserts a new row at `at` (default: the top) and returns it. Every data field starts empty
-   * unless `values` supplies it. The row is tracked as added: revert drops it, commit keeps it.
+   * unless `values` supplies it. The row is tracked as inserted: revert drops it, commit keeps it.
    */
-  public addRow(containerId: string, values: Partial<T> = {}, at = 0): T {
+  public insertRow(containerId: string, values: Partial<T> = {}, at = 0): T {
     const data = (this.options.data || []) as T[];
     const row = {} as Record<string, unknown>;
     for (const f of this.getDataFields(containerId)) row[f] = '';
     Object.assign(row, values);
     const index = Math.max(0, Math.min(at, data.length));
     data.splice(index, 0, row as T);
-    this._addedRows.add(row as T);
+    this._insertedRows.add(row as T);
     // Registered so the render path maps the engine's copy of it back to this reference.
     this._editedKeys.set(JSON.stringify(row), row as T);
     this._insertRowsToEngines(index, [row]);
@@ -1257,14 +1257,14 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /**
    * Marks a row deleted. It stays on screen struck through and can be restored; commit removes
-   * it. Deleting a row that was only just added simply drops it.
+   * it. Deleting a row that was only just inserted simply drops it.
    */
   public deleteRow(containerId: string, rowData: T): void {
     const row = this._liveRef(rowData);
     const data = (this.options.data || []) as T[];
     const index = data.indexOf(row);
     if (index === -1) return;
-    if (this._addedRows.has(row)) {
+    if (this._insertedRows.has(row)) {
       this._dropRows(containerId, [row]);
     } else {
       this._deletedRows.add(row);
@@ -1291,7 +1291,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const indices = rows.map(r => data.indexOf(r)).filter(i => i !== -1).sort((a, b) => b - a);
     for (const i of indices) data.splice(i, 1);
     for (const r of rows) {
-      this._addedRows.delete(r);
+      this._insertedRows.delete(r);
       this._deletedRows.delete(r);
       this.originalDataMap.delete(r);
       this._editedKeys.delete(JSON.stringify(r));
@@ -1437,8 +1437,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   /**
-   * Every row that differs from the loaded data: added, deleted, or edited so that it still
-   * differs from its original. Added rows carry their current values and no cell list; deleted
+   * Every row that differs from the loaded data: inserted, deleted, or edited so that it still
+   * differs from its original. Inserted rows carry their current values and no cell list; deleted
    * rows their original and no cell list.
    */
   public _changedRows(containerId: string): RowChange<T>[] {
@@ -1451,25 +1451,25 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // has to find the record by the key the server knows.
       const original = this._originalOf(row);
       const key = this._keyOf(containerId, original, index);
-      if (this._addedRows.has(row)) {
-        out.push({status: 'added', index, key, row, original: row, cells: []});
+      if (this._insertedRows.has(row)) {
+        out.push({status: 'inserted', index, key, row, original: row, cells: []});
       } else if (this._deletedRows.has(row)) {
         out.push({status: 'deleted', index, key, row, original, cells: []});
       } else {
         const cells = this._cellChanges(row);
-        if (cells.length > 0) out.push({status: 'modified', index, key, row, original, cells});
+        if (cells.length > 0) out.push({status: 'updated', index, key, row, original, cells});
       }
     }
     return out.sort((a, b) => a.index - b.index);
   }
 
   /**
-   * Accepts the current state as the new baseline: deleted rows are removed for good, added rows
+   * Accepts the current state as the new baseline: deleted rows are removed for good, inserted row
    * become ordinary rows, and no row is modified any more.
    */
   public commit(containerId: string): void {
     this._dropRows(containerId, Array.from(this._deletedRows));
-    this._addedRows.clear();
+    this._insertedRows.clear();
     this.originalDataMap.clear();
     this._editedKeys.clear();
     const el = document.getElementById(containerId);
@@ -1484,7 +1484,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * band during a scroll actually was. _editedKeys is maintained by every path that mutates a row.
    */
   public checkHasChanges(): boolean {
-    if (this._addedRows.size > 0 || this._deletedRows.size > 0) return true;
+    if (this._insertedRows.size > 0 || this._deletedRows.size > 0) return true;
     for (const item of this._editedKeys.values()) {
       if (!this.originalDataMap.has(item)) continue;
       if (Object.keys(item).some(field => this.isCellModified(item, field))) return true;
@@ -2269,8 +2269,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /** The row-actions column (add in the header, delete per row), when the config asks for it. */
   private _actionsColumn(containerId: string): GridColumn[] {
-    const {addRow, deleteRow} = this.getRowActions(containerId);
-    return addRow || deleteRow ? [{headerName: '', field: '__actions__', type: 'row_actions'}] : [];
+    const {insertRow, deleteRow} = this.getRowActions(containerId);
+    return insertRow || deleteRow ? [{headerName: '', field: '__actions__', type: 'row_actions'}] : [];
   }
 
   public subscribe(callback: () => void): () => void {
@@ -2440,7 +2440,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this.originalDataMap.delete(rowData as T);
       this.originalDataMap.delete(prevRef);
       this.originalDataMap.set(newRow, originalSnapshot);
-      if (this._addedRows.delete(prevRef)) this._addedRows.add(newRow);
+      if (this._insertedRows.delete(prevRef)) this._insertedRows.add(newRow);
       if (this._deletedRows.delete(prevRef)) this._deletedRows.add(newRow);
 
       // Track the edited row so getDisplayItems can remap WASM copies to this live reference.
@@ -2475,8 +2475,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   public reset(container: HTMLElement) {
-    // Added rows go; deleted rows come back.
-    this._dropRows(container.id, Array.from(this._addedRows));
+    // Inserted rows go; deleted rows come back.
+    this._dropRows(container.id, Array.from(this._insertedRows));
     this._deletedRows.clear();
     this._editedKeys.clear();
     const data = (this.options.data || []) as Record<string, unknown>[];
@@ -2533,15 +2533,15 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this.originalDataMap.delete(rowData as T);
       this.originalDataMap.delete(prevRef);
       this.originalDataMap.set(newRow, originalRow);
-      const added = this._addedRows.delete(prevRef);
-      if (added) this._addedRows.add(newRow);
+      const inserted = this._insertedRows.delete(prevRef);
+      if (inserted) this._insertedRows.add(newRow);
       const deleted = this._deletedRows.delete(prevRef);
       if (deleted) this._deletedRows.add(newRow);
 
       // Update the edited-row remap: keep it only if the row still matters — modified elsewhere,
       // or added / deleted.
       this._editedKeys.delete(JSON.stringify(rowData));
-      if (added || deleted || Object.keys(newRow as Record<string, unknown>).some(f => this.isCellModified(newRow, f))) {
+      if (inserted || deleted || Object.keys(newRow as Record<string, unknown>).some(f => this.isCellModified(newRow, f))) {
         this._editedKeys.set(JSON.stringify(newRow), newRow);
       }
       // Sync just the restored row to the WASM engines — see _syncRowsToEngines.

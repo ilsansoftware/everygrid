@@ -220,16 +220,16 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
               >
                 {col.type === 'row_actions' ? (
                   <div className='flex w-full justify-center'>
-                    {grid.getRowActions(containerId).addRow && (
+                    {grid.getRowActions(containerId).insertRow && (
                       <button
                         type='button'
                         className='everygrid-action-btn'
-                        aria-label={I18n.t('grid.addRow')}
-                        title={I18n.t('grid.addRow')}
+                        aria-label={I18n.t('grid.insertRow')}
+                        title={I18n.t('grid.insertRow')}
                         disabled={isIndexing || isExporting}
                         onClick={(e) => {
                           e.stopPropagation();
-                          grid.addRow(containerId);
+                          grid.insertRow(containerId);
                         }}>
                         <PlusIcon className='w-4 h-4'/>
                       </button>
@@ -373,7 +373,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
             );
           }
           const isActiveRow = grid.activePopupRowKey != null && grid.activePopupRowKey === JSON.stringify(item);
-          const rowState = grid.isRowDeleted(item) ? ' everygrid-row-deleted' : grid.isRowAdded(item) ? ' everygrid-row-added' : '';
+          const rowState = grid.isRowDeleted(item) ? ' everygrid-row-deleted' : grid.isRowInserted(item) ? ' everygrid-row-inserted' : '';
           return (
             <tr key={rowIndex}
                 style={virtual ? {height: `${virtual.rowHeight}px`} : undefined}

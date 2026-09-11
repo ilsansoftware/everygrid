@@ -4,8 +4,8 @@ import DiffModal from './DiffModal';
 
 /**
  * Change tracking through the handle API. `Everygrid.get(id)` is a grid → row → cell cursor;
- * `changes()` is every added / modified / deleted row, and `patch()` what a save would send.
- * Edit, add or delete rows in the grid above (or press "edit via API") and watch the patch turn
+ * `changes()` is every inserted / updated / deleted row, and `patch()` what a save would send.
+ * Edit, insert or delete rows in the grid above (or press "edit via API") and watch the patch turn
  * into the save calls below; open the diff, revert or commit from here.
  */
 export default function ChangesPanel({gridId}: { gridId: string }) {
@@ -37,7 +37,7 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
     const age = g.row(0).cell('age');                 // first row, "age" column
     age.set(Number(age.get() || 0) + 1);
     g.rowByKey(2).set({category: 'Ops'});              // the row whose rowKey (id) is 2
-    g.addRow({name: 'New person', age: 30});           // a new row at the top (rowActions.addRow)
+    g.insertRow({name: 'New person', age: 30});           // a new row at the top (rowActions.insertRow)
     g.row(g.data().length - 1).delete();               // the last row (rowActions.deleteRow)
   };
 
@@ -45,7 +45,7 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
   const deleteChecked = () => Everygrid.get(gridId)?.checked().forEach(r => r.delete());
 
   const g = Everygrid.get(gridId);
-  const patch = g?.patch() ?? {added: [], updated: [], deleted: []};
+  const patch = g?.patch() ?? {inserted: [], updated: [], deleted: []};
   const none = changes.length === 0;
   const btn = 'rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-100 disabled:opacity-40';
   const tabBtn = (id: typeof tab, label: string) => (
@@ -57,10 +57,10 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
 
   // What a save looks like for exactly this patch: one request per kind, then commit.
   const saveExample = `const g = Everygrid.get('${gridId}');
-const {added, updated, deleted} = g.patch();
+const {inserted, updated, deleted} = g.patch();
 
-// ${patch.added.length} added → POST the whole rows
-if (added.length) await fetch('/api/users', {method: 'POST', body: JSON.stringify(added)});
+// ${patch.inserted.length} inserted → POST the whole rows
+if (inserted.length) await fetch('/api/users', {method: 'POST', body: JSON.stringify(inserted)});
 // ${patch.updated.length} updated → PATCH each by key with only the changed fields
 for (const {key, changes} of updated)   // ${patch.updated.map(u => `${u.key}: ${JSON.stringify(u.changes)}`).join(', ') || '—'}
   await fetch(\`/api/users/\${key}\`, {method: 'PATCH', body: JSON.stringify(changes)});
@@ -73,7 +73,7 @@ g.commit();   // saved: current state becomes the baseline`;
   const selectors = `const g = Everygrid.get('${gridId}');
 
 // changed rows by kind — each is a RowHandle
-g.added()      // ${g?.added().map(r => `#${r.index}`).join(' ') || '—'}
+g.inserted()      // ${g?.inserted().map(r => `#${r.index}`).join(' ') || '—'}
 g.updated()    // ${g?.updated().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
 g.deleted()    // ${g?.deleted().map(r => `#${r.index} key ${r.key()}`).join(' ') || '—'}
 
@@ -81,7 +81,7 @@ g.deleted()    // ${g?.deleted().map(r => `#${r.index} key ${r.key()}`).join(' '
 g.row(0)  g.rowByKey(2)  g.find(r => r.name === 'Kim')  g.visibleRow(0)
 
 // a row's state and its cells
-g.row(0).status()      // 'added' | 'modified' | 'deleted' | null
+g.row(0).status()      // 'inserted' | 'updated' | 'deleted' | null
 g.row(0).changes()     // [{field, from, to}]
 g.row(0).cell('age').get() / .original() / .set(31) / .revert()
 g.row(0).delete() / .restore() / .revert()
@@ -101,7 +101,7 @@ g.on('check', ({values, rows, changed, checked}) => …)`;
         <div className='flex items-center gap-3'>
           <span className='font-medium text-slate-800'>Changes</span>
           <span className='text-slate-500'>
-            {patch.added.length} added · {patch.updated.length} updated · {patch.deleted.length} deleted
+            {patch.inserted.length} inserted · {patch.updated.length} updated · {patch.deleted.length} deleted
           </span>
           <span className='text-slate-400'>·</span>
           <span className='text-slate-500'>{checked.length} checked</span>

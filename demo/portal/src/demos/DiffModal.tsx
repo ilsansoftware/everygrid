@@ -6,12 +6,12 @@ const show = (v: unknown) => v === undefined ? '—' : typeof v === 'object' ? J
 /**
  * Original vs modified, side by side, straight from `Everygrid.get(id).changes()`: one block per
  * changed row (its status, key and index) — a modified row lists each changed cell before → after,
- * an added row its values, a deleted row the row that goes. Each line and each row can be
+ * an inserted row its values, a deleted row the row that goes. Each line and each row can be
  * reverted from here — `g.row(i).cell(f).revert()` / `g.row(i).revert()`.
  */
 const STATUS = {
-  added: 'bg-emerald-100 text-emerald-800',
-  modified: 'bg-amber-100 text-amber-800',
+  inserted: 'bg-emerald-100 text-emerald-800',
+  updated: 'bg-amber-100 text-amber-800',
   deleted: 'bg-red-100 text-red-800',
 };
 export default function DiffModal({gridId, changes, onClose}: {
@@ -48,7 +48,7 @@ export default function DiffModal({gridId, changes, onClose}: {
                     <button type='button' className='ml-auto text-xs text-slate-500 hover:text-slate-800'
                             onClick={() => g?.row(r.index).revert()}>revert row</button>
                   </div>
-                  {r.status !== 'modified' && (
+                  {r.status !== 'updated' && (
                       <div className={`px-3 py-2 font-mono text-xs ${r.status === 'deleted' ? 'text-red-700 line-through decoration-red-300' : 'text-emerald-700'}`}>
                         {show(r.status === 'deleted' ? r.original : r.row)}
                       </div>
