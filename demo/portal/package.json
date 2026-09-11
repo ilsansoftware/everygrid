@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@everygrid/grid": "https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.5-d87716234d0e.tgz",
+    "@everygrid/grid": "https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.6-197b8c4991f7.tgz",
     "marked": "^18.0.12",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.5",
