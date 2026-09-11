@@ -36,7 +36,7 @@ function compactCount(n: number): string {
 // a divider. `tool` tabs are standalone buttons outside a capsule.
 // Demos share a labelled capsule each: the framework demos, then the scale demos.
 type TabGroup = 'demo' | 'scale' | 'tool' | 'docs';
-const GROUP_LABEL: Partial<Record<TabGroup, string>> = {demo: 'Demo', scale: 'Scale'};
+const GROUP_LABEL: Partial<Record<TabGroup, string>> = {demo: 'Demo', scale: 'Performance'};
 const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
   {id: 'react', title: 'Demo - React', icon: '/react/favicon.ico', name: 'React'},
   {id: 'vanilla', title: 'Demo - Vanilla JS', icon: '/vanilla/favicon.ico', name: 'JS'},
