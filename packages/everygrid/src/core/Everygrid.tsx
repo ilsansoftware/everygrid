@@ -3,6 +3,8 @@ import {GridEngineWasm} from '../wasm/GridEngineWasm';
 import {EverygridComponent} from '../components/EverygridComponent';
 import {isJsonString, parseIfJson} from './utils';
 import {GridHandle, type GridEvents, type RowKey, type CellChange, type RowChange} from './GridHandle';
+
+type ColumnKinds = {numeric: boolean; boolean: boolean; date: boolean; object: boolean};
 import {ExcelView} from './ExcelView';
 import {runExcelExport} from '../wasm/ExcelExportClient';
 import {ColumnSelectorComponent} from '../components/ColumnSelectorComponent';
@@ -1114,84 +1116,67 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     });
   }
 
-  public isColumnNumeric(field: string): boolean {
+  // Column kinds — numeric / boolean / date / object — sampled from the first 100 rows. Every cell
+  // asks for its column's kind on every render, so the answer is cached per field and recomputed
+  // only when the data changes: a new array, a new length, or an in-place edit (see _dataVersion).
+  private _kindsCache: {data: unknown; len: number; version: number; byField: Map<string, ColumnKinds>} | null = null;
+  private _dataVersion = 0;
+
+  /** Marks the loaded data as changed in place (an edit, a reset, a commit). */
+  private _touchData(): void {
+    this._dataVersion++;
+  }
+
+  private _columnKinds(field: string): ColumnKinds {
     const data = (this.options.data || []) as T[];
-    if (data.length === 0) {
-      return false;
+    const c = this._kindsCache;
+    if (!c || c.data !== data || c.len !== data.length || c.version !== this._dataVersion) {
+      this._kindsCache = {data, len: data.length, version: this._dataVersion, byField: new Map()};
     }
+    const cache = this._kindsCache!;
+    let kinds = cache.byField.get(field);
+    if (kinds) return kinds;
 
-    // Use first 100 rows for sampling to improve performance on large datasets
+    // One pass over the sample for all four kinds. Empty cells (null / undefined / '') count for
+    // nothing, so a blank row — an inserted one, a cleared value — never changes a column's kind.
+    // A kind holds when every non-empty sampled value is of it.
+    let seen = false, sawBool = false, sawDate = false, sawNumber = false, sawOther = false, object = false;
     const sampleSize = Math.min(data.length, 100);
-    let foundNumeric = false;
     for (let i = 0; i < sampleSize; i++) {
-      const item = data[i];
-      const value = item[field];
-
-      if (typeof value === 'boolean') {
-        return false;
-      }
-
-      if (value !== null && value !== undefined && String(value).trim() !== '') {
-        if (this.isDate(value)) {
-          return false;
-        }
-        if (isNaN(Number(value))) {
-          return false;
-        }
-        foundNumeric = true;
-      }
+      const value = data[i][field];
+      if ((typeof value === 'object' && value !== null) || isJsonString(value)) object = true;
+      if (value === null || value === undefined || String(value).trim() === '') continue;
+      seen = true;
+      if (typeof value === 'boolean') sawBool = true;
+      else if (this.isDate(value)) sawDate = true;
+      else if (typeof value !== 'object' && !isNaN(Number(value))) sawNumber = true;
+      else sawOther = true;
     }
-    return foundNumeric;
+    kinds = {
+      numeric: seen && sawNumber && !sawBool && !sawDate && !sawOther,
+      boolean: seen && sawBool && !sawNumber && !sawDate && !sawOther,
+      date: seen && sawDate && !sawBool && !sawNumber && !sawOther,
+      object,
+    };
+    cache.byField.set(field, kinds);
+    return kinds;
+  }
+
+  public isColumnNumeric(field: string): boolean {
+    return this._columnKinds(field).numeric;
   }
 
   /** True when every non-empty value in the sampled rows is a boolean. */
   public isColumnBoolean(field: string): boolean {
-    const data = (this.options.data || []) as T[];
-    const sampleSize = Math.min(data.length, 100);
-    let found = false;
-    for (let i = 0; i < sampleSize; i++) {
-      const value = data[i][field];
-      if (value === null || value === undefined || value === '') continue;
-      if (typeof value !== 'boolean') return false;
-      found = true;
-    }
-    return found;
+    return this._columnKinds(field).boolean;
   }
 
   public isColumnDate(field: string): boolean {
-    const data = (this.options.data || []) as T[];
-    if (data.length === 0) {
-      return false;
-    }
-
-    const sampleSize = Math.min(data.length, 100);
-    let foundDate = false;
-    for (let i = 0; i < sampleSize; i++) {
-      const item = data[i];
-      const value = item[field];
-      if (value !== null && value !== undefined && String(value).trim() !== '') {
-        if (!this.isDate(value)) {
-          return false;
-        }
-        foundDate = true;
-      }
-    }
-    return foundDate;
+    return this._columnKinds(field).date;
   }
 
   public isColumnObject(field: string): boolean {
-    const data = (this.options.data || []) as T[];
-    if (data.length === 0) {
-      return false;
-    }
-    const sampleSize = Math.min(data.length, 100);
-    for (let i = 0; i < sampleSize; i++) {
-      const val = data[i][field];
-      if ((typeof val === 'object' && val !== null) || isJsonString(val)) {
-        return true;
-      }
-    }
-    return false;
+    return this._columnKinds(field).object;
   }
 
   public getGridTitle(containerId: string): string | undefined {
@@ -1297,8 +1282,16 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return this._inserted;
   }
 
+  /**
+   * Cheap on purpose — every rendered row asks. A deleted row is registered in _editedKeys, so
+   * the engine's copy of it maps to the live reference by content in one step; nothing scans the
+   * data.
+   */
   public isRowDeleted(row: T): boolean {
-    return this._deletedRows.has(this._liveRef(row));
+    if (this._deletedRows.size === 0) return false;
+    if (this._deletedRows.has(row)) return true;
+    const live = this._editedKeys.get(JSON.stringify(row));
+    return live !== undefined && this._deletedRows.has(live);
   }
 
   /**
@@ -1363,6 +1356,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const data = (this.options.data || []) as T[];
     const indices = rows.map(r => data.indexOf(r)).filter(i => i !== -1).sort((a, b) => b - a);
     for (const i of indices) data.splice(i, 1);
+    this._touchData();
     for (const r of rows) {
       this._deletedRows.delete(r);
       this.originalDataMap.delete(r);
@@ -1557,6 +1551,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const rows = this._inserted;
       this._inserted = [];
       data.push(...rows);
+      this._touchData();
       this._insertRowsToEngines(at, rows);
     }
     this.originalDataMap.clear();
@@ -2534,6 +2529,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // Create a new object so React.memo detects the change and re-renders
       const newRow = {...rowData, [field]: parseIfJson(value)} as T;
       data[idx] = newRow;
+      this._touchData();
 
       // The row's original is captured here, on its first edit, rather than for every row at
       // load: prevRef is still the untouched row at that point. Later edits move the snapshot
@@ -2599,6 +2595,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       }
     });
 
+    this._touchData();
     // Sync the restored rows to the WASM engines — see _syncRowsToEngines.
     this._syncRowsToEngines(restored);
 
@@ -2633,6 +2630,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         (newRow as Record<string, unknown>)[field] = JSON.parse(JSON.stringify(originalValue));
       }
       data[idx] = newRow;
+      this._touchData();
       this.originalDataMap.delete(rowData as T);
       this.originalDataMap.delete(prevRef);
       this.originalDataMap.set(newRow, originalRow);
