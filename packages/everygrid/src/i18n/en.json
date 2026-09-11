@@ -19,7 +19,7 @@
     "indexingPercent": "Indexing... {percent}%",
     "indexingRows": "Indexing... {count} rows",
     "suggestNav": "↓ enter · ← → select · Enter apply · ↑ exit",
-    "changes": "Changes"
+    "diff": "Diff"
   },
   "grid": {
     "index": "Index",
@@ -49,13 +49,13 @@
     "restoreRow": "Restore row",
     "insertedRows": "New rows",
     "noChanges": "No changes.",
-    "changesSummary": "{rows} rows · {cells} cells",
-    "changesStatus": "Status",
-    "changesKey": "Key",
-    "changesRow": "Row",
-    "changesField": "Field",
-    "changesFrom": "Before",
-    "changesTo": "After"
+    "diffSummary": "{rows} rows · {cells} cells",
+    "diffStatus": "Status",
+    "diffKey": "Key",
+    "diffRow": "Row",
+    "diffField": "Field",
+    "diffFrom": "Before",
+    "diffTo": "After"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",

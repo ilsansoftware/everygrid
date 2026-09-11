@@ -1,5 +1,5 @@
-/** Toolbar "changes": the code brackets, in the toolbar's stroke weight and box. */
-export const ChangesIcon = ({className}: {className?: string}) => (
+/** Toolbar "diff": the code brackets, in the toolbar's stroke weight and box. */
+export const DiffIcon = ({className}: {className?: string}) => (
   <svg
     viewBox='-1.5 -1.5 27 27'
     fill='none'

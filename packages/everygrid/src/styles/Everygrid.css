@@ -840,13 +840,13 @@ button {
   100% { transform: translateX(300%); }
 }
 
-/* Diff popup (toolbar "changes"): a second grid, mounted inside the popup, shows the changes. */
-.everygrid-changes-popup .everygrid-popup-body {
+/* Diff popup (toolbar "diff"): a second grid, mounted inside the popup, shows the changes. */
+.everygrid-diff-popup .everygrid-popup-body {
   @apply p-0;
 }
-.everygrid-changes-summary {
+.everygrid-diff-summary {
   @apply ml-3 text-sm font-normal text-slate-500;
 }
-.everygrid-changes-grid .everygrid-wrapper {
+.everygrid-diff-grid .everygrid-wrapper {
   @apply h-full;
 }

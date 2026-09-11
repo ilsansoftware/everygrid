@@ -31,7 +31,7 @@ export default function DiffModal({gridId, changes, onClose}: {
         <div className='flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl'
              onClick={(e) => e.stopPropagation()}>
           <div className='flex items-center gap-3 border-b border-slate-200 px-5 py-3'>
-            <span className='font-semibold text-slate-800'>Changes · {gridId}</span>
+            <span className='font-semibold text-slate-800'>Diff · {gridId}</span>
             <span className='text-sm text-slate-500'>{changes.length} rows · {cells} cells</span>
             <button type='button' className='ml-auto text-slate-400 hover:text-slate-700' onClick={onClose} aria-label='Close'>✕</button>
           </div>

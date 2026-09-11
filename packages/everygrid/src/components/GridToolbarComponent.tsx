@@ -11,7 +11,7 @@ import {DownloadIcon} from '../icons/DownloadIcon';
 import {SearchIcon} from '../icons/SearchIcon';
 import {SortResetIcon} from '../icons/SortResetIcon';
 import {InsertRowIcon} from '../icons/InsertRowIcon';
-import {ChangesIcon} from '../icons/ChangesIcon';
+import {DiffIcon} from '../icons/DiffIcon';
 
 /** Hard cap on the search box: it grows to this many rows, and edits past it are rejected. */
 const MAX_FILTER_ROWS = 10;
@@ -137,7 +137,7 @@ export interface GridToolbarProps {
  /** Set when the grid's rowActions allow inserting; the toolbar then ends with a "+ row" button. */
   onInsertRow?: () => void;
   /** Opens the read-only list of every change since load; enabled while there are changes. */
-  onShowChanges?: () => void;
+  onShowDiff?: () => void;
   onReloadData?: () => void;
   isReloading?: boolean;
   onReset: () => void;
@@ -172,7 +172,7 @@ export const GridToolbarComponent = ({
                                        allCount,
                                        onReloadData,
                                        onInsertRow,
-                                       onShowChanges,
+                                       onShowDiff,
                                        isReloading = false,
                                        onReset,
                                        onResetSort,
@@ -829,7 +829,7 @@ export const GridToolbarComponent = ({
         {onInsertRow && segmentButton(InsertRowIcon, 'row', I18n.t('grid.insertRow'), onInsertRow, {
           disabled: gridActionsDisabled || isExporting,
         })}
-        {onShowChanges && segmentButton(ChangesIcon, 'changes', I18n.t('toolbar.changes'), onShowChanges, {
+        {onShowDiff && segmentButton(DiffIcon, 'diff', I18n.t('toolbar.diff'), onShowDiff, {
           disabled: !hasChanges || gridActionsDisabled || isExporting,
         })}
       </div>
