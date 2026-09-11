@@ -487,16 +487,21 @@
   @apply max-h-[60vh];
 }
 
+/* The preview table also carries .everygrid-table, whose rules give the table a border on all
+   four sides and every cell a left + bottom border. With border-separate that stacked: cell right
+   + next cell left, table right + last cell right, table bottom + last row bottom — double lines.
+   Here the table draws only the top and left edge and every cell only its right and bottom, so
+   each grid line is drawn exactly once. */
 .excel-format-table {
-  @apply border-separate border-spacing-0 border-t border-l border-slate-200 w-full;
+  @apply border-separate border-spacing-0 border-t border-l border-r-0 border-b-0 border-slate-200 w-full;
 }
 
 .excel-format-table thead th {
-  @apply border-b border-r border-slate-200;
+  @apply border-l-0 border-t-0 border-b border-r border-slate-200;
 }
 
 .excel-format-table tbody td {
-  @apply border-b border-r border-slate-200;
+  @apply border-l-0 border-t-0 border-b border-r border-slate-200;
 }
 
 .everygrid-text-editor {
