@@ -674,13 +674,44 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    */
   private _syncRowsToEngines(rows: { index: number; row: unknown }[]): void {
     if (rows.length === 0) return;
-    this.options.targets?.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+    this._forEachReadyEngine((eng) => eng.updateRows(rows));
+  }
+
+  /**
+   * Runs one engine operation on every ready engine of this instance, then re-applies the filter
+   * so the page on screen reflects it. All row mutations — edit, insert, remove — go through here.
+   */
+  private _forEachReadyEngine(op: (engine: GridEngineWasm) => Promise<void>): void {
+    for (const id of this._targetIds()) {
       const eng = this._wasmEngines.get(id);
       if (eng && this._wasmEngineReady.get(id)) {
-        void eng.updateRows(rows).then(() => this.applyWasmFilter(id)).catch(console.error);
+        void op(eng).then(() => this.applyWasmFilter(id)).catch(console.error);
       }
-    });
+    }
+  }
+
+  /** The ids this instance renders into. */
+  private _targetIds(): string[] {
+    return (this.options.targets ?? []).map(t => (typeof t === 'string' ? t : t.id));
+  }
+
+  /** Re-renders this instance's targets that are in the DOM. */
+  private _rerenderTargets(pinnedChanged = false): void {
+    for (const id of this._targetIds()) {
+      const el = document.getElementById(id);
+      if (el) this.renderGrid(el, pinnedChanged);
+    }
+  }
+
+  /** Re-renders one target if it is in the DOM. */
+  private _rerender(containerId: string): void {
+    this._rerender(containerId);
+  }
+
+  /** After a change to the change set: repaint the grid and tell listeners. */
+  private _afterChange(containerId: string): void {
+    this._rerender(containerId);
+    this._emitChange(containerId);
   }
 
   /** Resolves with the target's engine once it exists, or null if it never shows up. */
@@ -810,8 +841,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     } else {
       this._processing.set(containerId, true);
     }
-    const el = document.getElementById(containerId);
-    if (el) this.renderGrid(el);
+    this._rerender(containerId);
 
     try {
       if (typeof source === 'string') {
@@ -1307,9 +1337,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     Object.assign(row, values);
     const index = Math.max(0, Math.min(at, this._inserted.length));
     this._inserted.splice(index, 0, row as T);
-    const el = document.getElementById(containerId);
-    if (el) this.renderGrid(el);
-    this._emitChange(containerId);
+    this._afterChange(containerId);
     return row as T;
   }
 
@@ -1322,9 +1350,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const insertedAt = this._inserted.indexOf(rowData);
     if (insertedAt !== -1) {
       this._inserted.splice(insertedAt, 1);
-      const el = document.getElementById(containerId);
-      if (el) this.renderGrid(el);
-      this._emitChange(containerId);
+      this._afterChange(containerId);
       return;
     }
     const row = this._liveRef(rowData);
@@ -1336,9 +1362,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     if (mapping) this.setChecked(containerId, [row[mapping]], false);
     this._deletedRows.add(row);
     this._editedKeys.set(JSON.stringify(row), row);
-    const el = document.getElementById(containerId);
-    if (el) this.renderGrid(el);
-    this._emitChange(containerId);
+    this._afterChange(containerId);
   }
 
   /** Undoes a delete. */
@@ -1346,13 +1370,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const row = this._liveRef(rowData);
     if (!this._deletedRows.delete(row)) return;
     if (!this.originalDataMap.has(row)) this._editedKeys.delete(JSON.stringify(row));
-    const el = document.getElementById(containerId);
-    if (el) this.renderGrid(el);
-    this._emitChange(containerId);
+    this._afterChange(containerId);
   }
 
   /** Physically removes rows from the data and the engine, and forgets everything about them. */
-  private _dropRows(containerId: string, rows: T[]): void {
+  private _dropRows(rows: T[]): void {
     const data = (this.options.data || []) as T[];
     const indices = rows.map(r => data.indexOf(r)).filter(i => i !== -1).sort((a, b) => b - a);
     for (const i of indices) data.splice(i, 1);
@@ -1363,28 +1385,15 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this._editedKeys.delete(JSON.stringify(r));
     }
     this._removeRowsFromEngines(indices);
-    void containerId;
   }
 
   private _insertRowsToEngines(index: number, rows: unknown[]): void {
-    this.options.targets?.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
-      const eng = this._wasmEngines.get(id);
-      if (eng && this._wasmEngineReady.get(id)) {
-        void eng.insertRows(index, rows).then(() => this.applyWasmFilter(id)).catch(console.error);
-      }
-    });
+    this._forEachReadyEngine((eng) => eng.insertRows(index, rows));
   }
 
   private _removeRowsFromEngines(indices: number[]): void {
     if (indices.length === 0) return;
-    this.options.targets?.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
-      const eng = this._wasmEngines.get(id);
-      if (eng && this._wasmEngineReady.get(id)) {
-        void eng.removeRows(indices).then(() => this.applyWasmFilter(id)).catch(console.error);
-      }
-    });
+    this._forEachReadyEngine((eng) => eng.removeRows(indices));
   }
 
   // ---- Checkbox column --------------------------------------------------------------------------
@@ -1423,8 +1432,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     }
     this.checkedValues.set(containerId, set);
     if (changed.length === 0) return;
-    const el = document.getElementById(containerId);
-    if (el) this.renderGrid(el);
+    this._rerender(containerId);
     this._emit('check', {values: Array.from(set), rows: this.getCheckedRows(containerId), changed, checked});
   }
 
@@ -1542,7 +1550,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * become ordinary rows, and no row is modified any more.
    */
   public commit(containerId: string): void {
-    this._dropRows(containerId, Array.from(this._deletedRows));
+    this._dropRows(Array.from(this._deletedRows));
     // Inserted rows join the loaded data at the end — existing indices keep their meaning — and
     // the engine, so they filter, sort and page like every other row from here on.
     if (this._inserted.length > 0) {
@@ -1556,9 +1564,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     }
     this.originalDataMap.clear();
     this._editedKeys.clear();
-    const el = document.getElementById(containerId);
-    if (el) this.renderGrid(el);
-    this._emitChange(containerId);
+    this._afterChange(containerId);
   }
 
   /**
@@ -1607,8 +1613,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           this.applyWasmFilter(containerId).catch(console.error);
         }).catch(console.error);
       }
-      const el = document.getElementById(containerId);
-      if (el) this.renderGrid(el);
+      this._rerender(containerId);
     } catch (err) {
       console.error('Everygrid: serverFetcher failed:', err);
     } finally {
@@ -1621,8 +1626,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const engine = this._wasmEngines.get(containerId);
     if (!engine || !this._wasmEngineReady.get(containerId)) {
       // No WASM engine yet — just render with JS data
-      const el = document.getElementById(containerId);
-      if (el) this.renderGrid(el);
+      this._rerender(containerId);
       return;
     }
     // Sequence number to detect stale (superseded) calls
@@ -1675,8 +1679,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         const timer = this._processingTimer.get(containerId);
         if (timer !== undefined) { clearTimeout(timer); this._processingTimer.delete(containerId); }
         this._processing.delete(containerId);
-        const el = document.getElementById(containerId);
-        if (el) this.renderGrid(el);
+        this._rerender(containerId);
       }
     }
   }
@@ -1689,8 +1692,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public async fetchWasmPage(containerId: string): Promise<void> {
     const engine = this._wasmEngines.get(containerId);
     if (!engine || !this._wasmEngineReady.get(containerId)) {
-      const el = document.getElementById(containerId);
-      if (el) this.renderGrid(el);
+      this._rerender(containerId);
       return;
     }
     // Share the filter sequence so a concurrent filter/sort supersedes this page fetch.
@@ -1708,8 +1710,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this._wasmPageCache.set(containerId, { rows: result.rows, total: result.total });
     } finally {
       if (this._filterSeq.get(containerId) === seq) {
-        const el = document.getElementById(containerId);
-        if (el) this.renderGrid(el);
+        this._rerender(containerId);
       }
     }
   }
@@ -2066,8 +2067,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     setTimeout(() => {
       this._blockRenderScheduled.delete(containerId);
       if (this._destroyed) return;
-      const el = document.getElementById(containerId);
-      if (el) this.renderGrid(el);
+      this._rerender(containerId);
     }, 0);
   }
 
@@ -2134,7 +2134,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const SMALL_MAX = 50000;
     const CHUNK = 50000;
 
-    const render = () => { const el = document.getElementById(containerId); if (el) this.renderGrid(el); };
+    const render = () => this._rerender(containerId);
     // The heavy work (xlsx build + zip) runs in the export worker, so the main thread stays free —
     // just update the overlay; React can paint because we're not blocking.
     const onProgress = (done: number, total: number) => {
@@ -2505,20 +2505,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const newRow = {...rowData, [field]: parseIfJson(value)} as T;
       this._inserted[insertedAt] = newRow;
       const gridId = this._firstTargetId();
-      const el = document.getElementById(gridId);
-      if (el) this.renderGrid(el);
       this._emit('cellChange', {index: insertedAt, key: this._keyOf(gridId, newRow, insertedAt), field, from, to: newRow[field], row: newRow});
-      this._emitChange(gridId);
+      this._afterChange(gridId);
       return;
     }
     if (rowData && this.options.data) {
       const data = this.options.data as Record<string, unknown>[];
-      let idx = data.indexOf(rowData as T & Record<string, unknown>);
-      // Fallback: find by JSON key if reference lookup fails (e.g. stale closure)
-      if (idx === -1) {
-        const key = JSON.stringify(rowData);
-        idx = data.findIndex(d => JSON.stringify(d) === key);
-      }
+      const idx = this._indexOfRow(rowData as T);
       if (idx === -1) return;
 
       // The live reference currently at this index owns the original snapshot. rowData may be a
@@ -2547,19 +2540,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this._editedKeys.set(JSON.stringify(newRow), newRow);
 
       // Sync just the edited row to the WASM engines — see _syncRowsToEngines.
-      const {targets} = this.options;
       this._syncRowsToEngines([{index: idx, row: newRow}]);
 
       if (this.options.onDataChange) {
         this.options.onDataChange(this.options.data, this._originalData());
       }
 
-      // Re-render to reflect modifications
-      targets?.forEach(idConfig => {
-        const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
-        const container = document.getElementById(id);
-        if (container) this.renderGrid(container, this.pinnedColumns.has(field));
-      });
+      this._rerenderTargets(this.pinnedColumns.has(field));
 
       const gridId = this._firstTargetId();
       this._emit('cellChange', {index: idx, key: this._keyOf(gridId, newRow, idx), field, from, to: newRow[field], row: newRow});
@@ -2569,8 +2556,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /** The id this instance renders into — one instance serves one target under createGrid/mount. */
   private _firstTargetId(): string {
-    const t = this.options.targets?.[0];
-    return typeof t === 'string' ? t : (t?.id ?? '');
+    return this._targetIds()[0] ?? '';
   }
 
   public reset(container: HTMLElement) {
@@ -2610,11 +2596,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public resetCell(rowData: Record<string, unknown>, field: string, container: HTMLElement) {
     if (!this.options.data) return;
     const data = this.options.data as Record<string, unknown>[];
-    let idx = data.indexOf(rowData as T & Record<string, unknown>);
-    if (idx === -1) {
-      const key = JSON.stringify(rowData);
-      idx = data.findIndex(d => JSON.stringify(d) === key);
-    }
+    const idx = this._indexOfRow(rowData as T);
     if (idx === -1) return;
 
     // rowData may be a WASM-derived copy; the snapshot is keyed by the live ref at this index.
