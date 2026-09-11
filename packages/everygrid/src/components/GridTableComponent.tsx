@@ -5,7 +5,6 @@ import {I18n} from '../i18n/I18n';
 import {TableCellComponent} from './TableCellComponent';
 import {PinEmptyIcon} from '../icons/PinEmptyIcon.tsx';
 import {EditIcon} from '../icons/EditIcon.tsx';
-import {PlusIcon} from '../icons/PlusIcon.tsx';
 import {CommaIcon} from '../icons/CommaIcon.tsx';
 import {SortDownIcon} from '../icons/SortDownIcon.tsx';
 import {HideIcon} from '../icons/HideIcon.tsx';
@@ -219,22 +218,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                 className='everygrid-header-content px-2 py-2'
               >
                 {col.type === 'row_actions' ? (
-                  <div className='flex w-full justify-center'>
-                    {grid.getRowActions(containerId).insertRow && (
-                      <button
-                        type='button'
-                        className='everygrid-action-btn'
-                        aria-label={I18n.t('grid.insertRow')}
-                        title={I18n.t('grid.insertRow')}
-                        disabled={isIndexing || isExporting}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          grid.insertRow(containerId);
-                        }}>
-                        <PlusIcon className='w-4 h-4'/>
-                      </button>
-                    )}
-                  </div>
+                  <div className='w-full'/>
                 ) : col.type === 'row_detail' ? (
                   <div className='flex w-full justify-center'>
                     <button

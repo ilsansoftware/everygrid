@@ -144,9 +144,9 @@
   @apply text-center bg-slate-50/30 align-middle;
 }
 
-/* Row actions column: "+" in the header (rowActions.insertRow), delete / restore per row
-   (rowActions.deleteRow). Narrow, centred, and it never gets a pointer-events lock — a deleted
-   row's restore button must stay clickable. */
+/* Row actions column: delete / restore per row (rowActions.deleteRow); insert is a toolbar button.
+   Narrow, centred, and it never gets a pointer-events lock — a deleted row's restore button must
+   stay clickable. */
 .everygrid-actions-cell {
   @apply text-center align-middle w-10;
 }

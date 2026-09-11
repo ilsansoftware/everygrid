@@ -56,7 +56,7 @@ export interface GridRowKeyConfig {
 }
 
 /**
- * Row-level editing per grid. `insertRow` puts a "+" in the actions column header that inserts an
+ * Row-level editing per grid. `insertRow` puts a "+ row" button in the toolbar that inserts an
  * empty row at the top; `deleteRow` puts a delete button on every row. A deleted row stays on
  * screen, struck through, until commit removes it or revert brings it back; an inserted row is
  * simply dropped by revert. Both show up in `GridHandle.changes()` / `patch()`.

@@ -2283,10 +2283,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return [...columns.filter(col => !hiddenFields.has(col.field)), ...this._actionsColumn(containerId)];
   }
 
-  /** The row-actions column (add in the header, delete per row), when the config asks for it. */
+  /** The row-actions column (delete / restore per row), when the config asks for it. Insert lives in the toolbar. */
   private _actionsColumn(containerId: string): GridColumn[] {
-    const {insertRow, deleteRow} = this.getRowActions(containerId);
-    return insertRow || deleteRow ? [{headerName: '', field: '__actions__', type: 'row_actions'}] : [];
+    return this.getRowActions(containerId).deleteRow ? [{headerName: '', field: '__actions__', type: 'row_actions'}] : [];
   }
 
   public subscribe(callback: () => void): () => void {

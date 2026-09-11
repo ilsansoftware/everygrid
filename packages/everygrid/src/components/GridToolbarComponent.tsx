@@ -10,6 +10,7 @@ import {ExcelIcon} from '../icons/ExcelIcon';
 import {DownloadIcon} from '../icons/DownloadIcon';
 import {SearchIcon} from '../icons/SearchIcon';
 import {SortResetIcon} from '../icons/SortResetIcon';
+import {InsertRowIcon} from '../icons/InsertRowIcon';
 
 /** Hard cap on the search box: it grows to this many rows, and edits past it are rejected. */
 const MAX_FILTER_ROWS = 10;
@@ -132,6 +133,8 @@ export interface GridToolbarProps {
   filteredCount?: number;
   allCount?: number;
   /** Omitted when the grid has no re-fetchable source, which hides the reload button. */
+ /** Set when the grid's rowActions allow inserting; the toolbar then leads with a "+ row" button. */
+  onInsertRow?: () => void;
   onReloadData?: () => void;
   isReloading?: boolean;
   onReset: () => void;
@@ -165,6 +168,7 @@ export const GridToolbarComponent = ({
                                        filteredCount,
                                        allCount,
                                        onReloadData,
+                                       onInsertRow,
                                        isReloading = false,
                                        onReset,
                                        onResetSort,
@@ -799,6 +803,9 @@ export const GridToolbarComponent = ({
   const iconGroup = (
       <div
           className='inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 divide-x divide-slate-200'>
+        {onInsertRow && segmentButton(InsertRowIcon, 'row', I18n.t('grid.insertRow'), onInsertRow, {
+          disabled: gridActionsDisabled || isExporting,
+        })}
         {onReloadData && segmentButton(ReloadIcon, 'reload', reloadBtnText, onReloadData, {
           disabled: isReloading || gridActionsDisabled || isExporting,
           spinning: isReloading
