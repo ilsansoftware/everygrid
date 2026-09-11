@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Highlight, themes} from 'prism-react-renderer';
 import {Everygrid, type GridLoadProgress} from '@everygrid/grid';
 import ReactDemo from './demos/ReactDemo';
@@ -32,9 +32,10 @@ function compactCount(n: number): string {
 
 // `icon` tabs show a favicon with a short name beside it; `label` tabs (the React-only heavy demos)
 // show text alone. `caption` is the one-liner under the page title.
-// Demos share the header capsule; a `tool` (acts on your data) is a standalone button beside it.
+// Header order: docs first, then the demo capsules, then the sandbox tool — each section parted by
+// a divider. `tool` tabs are standalone buttons outside a capsule.
 // Demos share a labelled capsule each: the framework demos, then the scale demos.
-type TabGroup = 'demo' | 'scale' | 'tool';
+type TabGroup = 'demo' | 'scale' | 'tool' | 'docs';
 const GROUP_LABEL: Partial<Record<TabGroup, string>> = {demo: 'Demo', scale: 'Scale'};
 const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
   {id: 'react', title: 'Demo - React', icon: '/react/favicon.ico', name: 'React'},
@@ -43,7 +44,7 @@ const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: 
   {id: 'large', title: 'Large Data', caption: 'streaming 1.6M rows', label: 'large\ndata', group: 'scale'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll', group: 'scale'},
   {id: 'sandbox', title: 'JSON to Grid', caption: 'drop a file, get a grid', label: 'json to grid', group: 'tool'},
-  {id: 'docs', title: 'API Docs', label: 'api docs', group: 'tool'},
+  {id: 'docs', title: 'API Docs', label: 'api docs', group: 'docs'},
 ];
 
 // Tabs that are tools rather than demos: nothing to show under 'Show Code'.
@@ -273,12 +274,17 @@ export default function App() {
       <>
         <header>
           <h1>everygrid</h1>
+          <div className='tool-tabs'>{tabsOf('docs').map(renderTab)}</div>
           {(['demo', 'scale'] as TabGroup[]).map((group) => (
-            <nav key={group} aria-label={GROUP_LABEL[group]}>
-              <span className='nav-group-label'>{GROUP_LABEL[group]}</span>
-              {tabsOf(group).map(renderTab)}
-            </nav>
+            <React.Fragment key={group}>
+              <span className='nav-divider' aria-hidden='true'/>
+              <nav aria-label={GROUP_LABEL[group]}>
+                <span className='nav-group-label'>{GROUP_LABEL[group]}</span>
+                {tabsOf(group).map(renderTab)}
+              </nav>
+            </React.Fragment>
           ))}
+          <span className='nav-divider' aria-hidden='true'/>
           {/* Tools stand outside the capsule as buttons of their own. */}
           <div className='tool-tabs'>{tabsOf('tool').map(renderTab)}</div>
           {isNarrow && codeButton}
