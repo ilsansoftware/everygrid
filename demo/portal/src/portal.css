@@ -662,6 +662,23 @@ nav button.active .tab-name {
   color: #0f172a;
   background: #f1f5f9;
 }
+/* README title with the library version beside it. */
+.docs-intro {
+  position: relative;
+}
+.docs-version {
+  position: absolute;
+  top: 0.35rem;
+  right: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #1a1b2e;
+  color: #c7d2fe;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 /* Highlights: the technical case, as a card grid above the README. */
 .docs-main {
   min-width: 0;

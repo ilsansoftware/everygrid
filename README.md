@@ -654,6 +654,24 @@ I18n.setLocale('en');   // 'en' | 'ko'
 
 ---
 
+## Versioning
+
+Every deploy publishes immutable, hash-named artifacts (`/packages/everygrid-grid-<version>-<hash>.tgz`
+and `/packages/everygrid.standalone-<version>-<hash>.js`), so the exact bytes are always
+addressable; `/latest/everygrid.standalone.js` is a mutable pointer at the newest build. The version
+is a compatibility promise, not a build id — it moves only when the public API does, and several
+deploys may share one version.
+
+The public API is the exports of `@everygrid/grid`, the config schema (`types.ts`), the
+`everygrid.config.json` contract and the `window.Everygrid` global. While at `0.x`, npm's caret makes
+**minor the breaking slot** (`^0.4.2` resolves `>=0.4.2 <0.5.0`):
+
+| Bump | When |
+|---|---|
+| minor (`0.5.0`) | Breaking: an export or config key removed or renamed, a changed meaning, a changed signature |
+| patch (`0.4.3`) | Everything else — bug fixes **and** backward-compatible additions |
+| `1.0.0` | The API is declared frozen |
+
 ## License
 
 MIT

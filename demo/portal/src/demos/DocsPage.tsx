@@ -1,6 +1,7 @@
 import {useMemo, type MouseEvent} from 'react';
 import {Marked, type Tokens} from 'marked';
 import readme from '../../../../README.md?raw';
+import {version} from '../../../../packages/everygrid/package.json';
 
 /** Heading text → anchor id, the way GitHub does it, so links in the README keep working. */
 function slug(text: string): string {
@@ -133,7 +134,10 @@ export default function DocsPage() {
           }}>{h.text}</a>)}
         </aside>
         <div className='docs-main'>
-          <article className='docs-body' onClick={copyCode} dangerouslySetInnerHTML={{__html: intro}}/>
+          <div className='docs-intro'>
+            <article className='docs-body' onClick={copyCode} dangerouslySetInnerHTML={{__html: intro}}/>
+            <span className='docs-version' title='@everygrid/grid'>v{version}</span>
+          </div>
           <section id='highlights' className='docs-highlights'>
             <h2>Highlights</h2>
             <div className='docs-highlight-grid'>
