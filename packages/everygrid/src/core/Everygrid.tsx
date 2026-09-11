@@ -14,6 +14,7 @@ import {RowDetailComponent} from '../components/RowDetailComponent';
 import {HiddenColumnSelectorComponent} from '../components/HiddenColumnSelectorComponent';
 import {highlightText} from './highlightUtils';
 import {I18n} from '../i18n/I18n';
+import {normalizeOptions, targetConfigOf} from './normalizeOptions';
 import React from 'react';
 import {PopupComponent} from '../components/PopupComponent';
 import {TextEditorPopupComponent} from '../components/TextEditorPopupComponent';
@@ -195,7 +196,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private _discarding: Set<string> = new Set();
 
   constructor(options: GridOptions<T>) {
-    this.options = options;
+    this.options = normalizeOptions(options);
 
     if (this.options.data) {
       this.initOriginalDataMap();
@@ -1271,29 +1272,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   /**
-   * The grid's effective configuration: the target entry plus, from every per-target option, the
-   * entry that names this grid — the same shape the config file uses, reduced to one grid. Data,
-   * callbacks and fetchers are left out.
+   * The grid's effective configuration in the config-file shape, reduced to this one grid: its
+   * target entry with every per-grid option folded in, plus root-only options. Data, callbacks
+   * and fetchers are left out.
    */
   public getTargetConfig(containerId: string): Record<string, unknown> {
-    const out: Record<string, unknown> = {};
-    const target = this.options.targets?.find(t => (typeof t === 'string' ? t : t.id) === containerId);
-    if (target) out.targets = [typeof target === 'string' ? {id: target} : {...target, data: undefined}];
-    const skip = new Set(['targets', 'data', 'dataUrl', 'columns', 'columnI18n', 'serverFetcher', 'onDataChange', 'onCellClick', 'dataCache']);
-    for (const [key, value] of Object.entries(this.options)) {
-      if (skip.has(key) || value === undefined) continue;
-      const list = Array.isArray(value) ? value : [value];
-      const mine = list.filter(v => v && typeof v === 'object' && (v as {id?: string}).id === containerId);
-      if (mine.length > 0) out[key] = mine;
-    }
-    if (this.options.columnI18n) {
-      const i18n: Record<string, Record<string, Record<string, string>>> = {};
-      for (const [locale, byGrid] of Object.entries(this.options.columnI18n)) {
-        if (byGrid[containerId]) i18n[locale] = {[containerId]: byGrid[containerId]};
-      }
-      if (Object.keys(i18n).length > 0) out.columnI18n = i18n;
-    }
-    return JSON.parse(JSON.stringify(out));
+    return targetConfigOf(this.options, containerId);
   }
 
   /** Opens the grid's effective configuration in the popup viewer (the toolbar's "config" button). */

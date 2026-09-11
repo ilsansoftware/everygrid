@@ -38,15 +38,8 @@ Create a JSON file anywhere in your project's `public/` directory, e.g. `public/
   "targets": [
     {
       "id": "user-grid",
-      "title": "Users"
-    }
-  ],
-  "pagination": [
-    {
-      "id": "user-grid",
-      "pageSize": 10,
-      "active": true,
-      "position": "bottom"
+      "title": "Users",
+      "pagination": { "pageSize": 10, "position": "bottom" }
     }
   ]
 }
@@ -165,21 +158,36 @@ are all inlined — exposed as `window.Everygrid`. No stylesheet, no React scrip
 
 ### Grid Config File
 
+A grid is configured in one place: its entry in `targets`. Root-level fields are the few that
+apply to every grid in the file.
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `targets` | `GridTargetConfig[]` | Grid instances to initialize |
-| `editableCols` | `EditableColConfig[]` | Editable column settings per grid |
-| `rowKey` | `GridRowKeyConfig[]` | Field (or fields) that identify a row — what `patch()` and change events report as `key`. Without it, the row's data index |
-| `rowActions` | `GridRowActionsConfig[]` | `{insertRow, deleteRow}` per grid: a "+ row" toolbar button that adds an empty row above the data rows (kept apart from the loaded data — its rows and their indices stay put until commit), and a delete button on every row (deleted rows stay struck through until commit) |
-| `toolbar` | `GridToolbarConfig[]` | `{id, active: false}` hides a grid's toolbar (search box and action buttons); `{id, showConfig: true}` adds a "config" button that opens the grid's effective configuration in the popup viewer |
-| `checkbox` | `GridCheckboxConfig[]` | Adds a checkbox column per grid; `mapping` names the field whose value is collected when a row is checked |
-| `pagination` | `GridPaginationConfig[]` | Pagination settings per grid |
-| `virtualScroll` | `GridVirtualScrollConfig[]` | Virtual scrolling settings per grid (replaces pagination for that grid) |
-| `dataLimit` | `GridDataLimitConfig[]` | Cap on rows loaded per grid — a safety net against out-of-memory tab crashes |
-| `colors` | `GridColorConfig[]` | Header/body color settings per grid |
-| `columnI18n` | `ColumnI18n` | Localized column display names — see [Column i18n](#column-i18n) |
-| `mobileColumns` | `GridMobileColumnsConfig[]` | Which columns the narrow (mobile) layout shows — see [Mobile layout](#mobile-layout) |
+| `targets` | `GridTargetConfig[]` | The grids — one entry per grid, carrying all of its options (below) |
+| `columnI18n` | `ColumnI18n` | Labels shared by every grid, under `common` — see [Column i18n](#column-i18n) |
 | `dataCache` | `RequestCache` | `cache` mode for URL data loads. Defaults to `'no-store'` (always re-fetch). Use `'default'` for large, rarely-changing datasets so a reload revalidates instead of re-downloading. |
+
+#### `GridTargetConfig`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | The DOM element id the grid mounts into |
+| `title` | `string` | Heading shown above the grid |
+| `links` | `string[]` | Fields rendered as links |
+| `editableCols` | `string[]` | Fields the reader may edit |
+| `rowKey` | `string \| string[]` | Field (or fields) that identify a row — what `patch()` and change events report as `key`. Without it, the row's data index |
+| `rowActions` | `{insertRow?, deleteRow?}` | A "+ row" toolbar button that adds an empty row above the data rows (kept apart from the loaded data — its rows and their indices stay put until commit), and a delete button on every row (deleted rows stay struck through until commit) |
+| `toolbar` | `{active?, showConfig?}` | `active: false` hides the toolbar (search box and action buttons); `showConfig: true` adds a "config" button that opens this entry in the popup viewer |
+| `checkbox` | `string \| {mapping, active?}` | Adds a checkbox column; the field named is what `checkedValues()` collects |
+| `pagination` | `{pageSize?, active?, position?, rowCount?}` | Pagination — see [Row count placement](#row-count-placement) |
+| `virtualScroll` | `{active?, rowHeight?, overscan?, blockSize?}` | Virtual scrolling (replaces pagination for the grid) — see [Virtual scrolling](#virtual-scrolling) |
+| `dataLimit` | `{maxRows?, active?}` | Cap on rows loaded — a safety net against out-of-memory tab crashes — see [Data limit](#data-limit-memory-guard) |
+| `colors` | `{font?, bg?}` | Header/body colors: `{font: {header, body}, bg: {header, body}}` |
+| `mobileColumns` | `string[]` | Which columns the narrow (mobile) layout shows — see [Mobile layout](#mobile-layout) |
+| `columnI18n` | `Record<locale, Record<field, label>>` | Column labels for this grid — see [Column i18n](#column-i18n) |
+
+> The older per-feature form — `"pagination": [{"id": "user-grid", …}]` at the root — is still
+> read, and a target's own entry wins where both name the same grid.
 
 ### Lifecycle API
 
@@ -219,8 +227,8 @@ table**, always, whether or not it has pagination. `rowCount` only decides who d
 
 ```json
 {
-  "pagination": [
-    { "id": "user-grid", "pageSize": 10, "position": "bottom", "rowCount": "inline" }
+  "targets": [
+    { "id": "user-grid", "pagination": { "pageSize": 10, "position": "bottom", "rowCount": "inline" } }
   ]
 }
 ```
@@ -245,15 +253,14 @@ banner instead of crashing.
 
 ```json
 {
-  "dataLimit": [
-    { "id": "user-grid", "maxRows": "auto" }
+  "targets": [
+    { "id": "user-grid", "dataLimit": { "maxRows": "auto" } }
   ]
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | `string` | Target grid id |
 | `maxRows` | `number \| 'auto'` | Hard cap. A number caps at exactly that; `'auto'` derives a device-appropriate cap from reported RAM (`navigator.deviceMemory`) and whether the device looks mobile — a roomy desktop gets no cap. |
 | `active` | `boolean` | Set `false` to disable without removing the entry |
 
@@ -279,12 +286,10 @@ hasn't arrived yet shows a placeholder row rather than shifting the scrollbar.
 
 ```json
 {
-  "virtualScroll": [
+  "targets": [
     {
       "id": "user-grid",
-      "active": true,
-      "rowHeight": 34,
-      "overscan": 8
+      "virtualScroll": { "rowHeight": 34, "overscan": 8 }
     }
   ]
 }
@@ -292,7 +297,6 @@ hasn't arrived yet shows a placeholder row rather than shifting the scrollbar.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `id` | `string` | — | Target grid id |
 | `active` | `boolean` | `true` | Set `false` to turn it off without removing the entry |
 | `rowHeight` | `number` | `36` | Row height in px. Every row is forced to exactly this |
 | `overscan` | `number` | `6` | Extra rows rendered above and below the viewport |
@@ -385,19 +389,20 @@ Notes:
 ## Column i18n
 
 `columnI18n` gives columns localized display names without touching the data. It maps
-`locale → ('common' | gridId) → field → label`; a grid id's entry overrides `common`, and any field
-with no label falls back to its raw key. Locale is the global `I18n` locale, so `I18n.setLocale(l)`
+A grid's own labels go on its target as `locale → field → label`; labels shared by every grid in
+the file go at the root under `common`. A grid's entry overrides `common`, and any field with no
+label falls back to its raw key. Locale is the global `I18n` locale, so `I18n.setLocale(l)`
 followed by `Everygrid.refreshAll()` relabels every grid.
 
 ```json
-"columnI18n": {
-  "ko": {
-    "common": { "id": "아이디", "name": "이름", "age": "나이" },
-    "orders": { "name": "주문자" }
+{
+  "columnI18n": {
+    "ko": { "common": { "id": "아이디", "name": "이름", "age": "나이" } },
+    "en": { "common": { "id": "ID", "name": "Name", "age": "Age" } }
   },
-  "en": {
-    "common": { "id": "ID", "name": "Name", "age": "Age" }
-  }
+  "targets": [
+    { "id": "orders", "columnI18n": { "ko": { "name": "주문자" } } }
+  ]
 }
 ```
 
@@ -420,12 +425,10 @@ Which columns show, in priority order:
 3. Every column (default).
 
 ```json
-"mobileColumns": [
-  { "id": "orders", "cols": ["name", "status", "total"] }
-]
+{ "id": "orders", "mobileColumns": ["name", "status", "total"] }
 ```
 
-`cols` are field keys, shown in the grid's column order; any that don't exist are skipped. Column
+The entries are field keys, shown in the grid's column order; any that don't exist are skipped. Column
 labels follow [Column i18n](#column-i18n) like everywhere else.
 
 ## Excel export
@@ -617,7 +620,7 @@ await save(inserted, updated, deleted);
 g.commit();
 ```
 
-`rowKey` names the field that identifies a row (`{"id": "user-grid", "field": "id"}`; an array
+`rowKey` names the field that identifies a row (`"rowKey": "id"` on the target; an array
 makes a composite key joined with `|`). Without it `key` is the row's data index. In `changes()`
 and `patch()` the key is read from the row's *original*, so a save can still find the record when
 the key field itself was edited.

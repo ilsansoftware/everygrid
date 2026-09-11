@@ -2,45 +2,35 @@
   "targets": [
     {
       "id": "virtual-grid",
-      "title": "Virtual scroll"
-    }
-  ],
-  "virtualScroll": [
-    {
-      "id": "virtual-grid",
-      "active": true,
-      "rowHeight": 34,
-      "overscan": 8
-    }
-  ],
-  "columnI18n": {
-    "ko": {
-      "virtual-grid": {
-        "id": "아이디",
-        "name": "이름",
-        "team": "팀",
-        "city": "도시",
-        "score": "점수",
-        "joinedDate": "가입일",
-        "active": "활성화"
+      "title": "Virtual scroll",
+      "toolbar": {
+        "showConfig": true
+      },
+      "virtualScroll": {
+        "active": true,
+        "rowHeight": 34,
+        "overscan": 8
+      },
+      "columnI18n": {
+        "ko": {
+          "id": "아이디",
+          "name": "이름",
+          "team": "팀",
+          "city": "도시",
+          "score": "점수",
+          "joinedDate": "가입일",
+          "active": "활성화"
+        },
+        "en": {
+          "id": "ID",
+          "name": "Name",
+          "team": "Team",
+          "city": "City",
+          "score": "Score",
+          "joinedDate": "Joined",
+          "active": "Active"
+        }
       }
-    },
-    "en": {
-      "virtual-grid": {
-        "id": "ID",
-        "name": "Name",
-        "team": "Team",
-        "city": "City",
-        "score": "Score",
-        "joinedDate": "Joined",
-        "active": "Active"
-      }
-    }
-  },
-  "toolbar": [
-    {
-      "id": "virtual-grid",
-      "showConfig": true
     }
   ]
 }

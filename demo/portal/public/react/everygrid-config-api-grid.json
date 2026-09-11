@@ -2,40 +2,29 @@
   "targets": [
     {
       "id": "api-grid",
-      "title": "Remote API Grid"
-    }
-  ],
-  "pagination": [
-    {
-      "id": "api-grid",
-      "pageSize": 5,
-      "active": true,
-      "position": "bottom",
-      "rowCount": "inline"
-    }
-  ],
-  "columnI18n": {
-    "ko": {
-      "api-grid": {
-        "userId": "사용자 ID",
-        "id": "아이디",
-        "title": "제목",
-        "body": "내용"
+      "title": "Remote API Grid",
+      "toolbar": {
+        "showConfig": true
+      },
+      "pagination": {
+        "pageSize": 5,
+        "position": "bottom",
+        "rowCount": "inline"
+      },
+      "columnI18n": {
+        "ko": {
+          "userId": "사용자 ID",
+          "id": "아이디",
+          "title": "제목",
+          "body": "내용"
+        },
+        "en": {
+          "userId": "User ID",
+          "id": "ID",
+          "title": "Title",
+          "body": "Body"
+        }
       }
-    },
-    "en": {
-      "api-grid": {
-        "userId": "User ID",
-        "id": "ID",
-        "title": "Title",
-        "body": "Body"
-      }
-    }
-  },
-  "toolbar": [
-    {
-      "id": "api-grid",
-      "showConfig": true
     }
   ]
 }

@@ -2,21 +2,15 @@
   "targets": [
     {
       "id": "sandbox-grid",
-      "title": "JSON to Grid"
-    }
-  ],
-  "virtualScroll": [
-    {
-      "id": "sandbox-grid",
-      "active": true,
-      "rowHeight": 34,
-      "overscan": 8
-    }
-  ],
-  "toolbar": [
-    {
-      "id": "sandbox-grid",
-      "showConfig": true
+      "title": "JSON to Grid",
+      "toolbar": {
+        "showConfig": true
+      },
+      "virtualScroll": {
+        "active": true,
+        "rowHeight": 34,
+        "overscan": 8
+      }
     }
   ]
 }

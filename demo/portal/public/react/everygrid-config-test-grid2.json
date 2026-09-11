@@ -4,71 +4,60 @@
       "id": "test-grid2",
       "links": [
         "email"
-      ]
-    }
-  ],
-  "pagination": [
-    {
-      "id": "test-grid2",
-      "pageSize": 10,
-      "active": true,
-      "position": "all"
-    }
-  ],
-  "columnI18n": {
-    "ko": {
-      "test-grid2": {
-        "id": "아이디",
-        "name": "이름",
-        "age": "나이",
-        "joinedDate": "가입일",
-        "role": "역할",
-        "active": "활성화",
-        "category": "카테고리",
-        "tags": "태그",
-        "phoneNumber": "전화번호",
-        "email": "이메일",
-        "department": "부서",
-        "salary": "급여",
-        "location": "지역",
-        "experience": "경력",
-        "bio": "소개",
-        "github": "깃허브",
-        "blog": "블로그",
-        "hobby": "취미",
-        "nationality": "국적",
-        "language": "언어"
+      ],
+      "toolbar": {
+        "showConfig": true
+      },
+      "pagination": {
+        "pageSize": 10,
+        "position": "all"
+      },
+      "columnI18n": {
+        "ko": {
+          "id": "아이디",
+          "name": "이름",
+          "age": "나이",
+          "joinedDate": "가입일",
+          "role": "역할",
+          "active": "활성화",
+          "category": "카테고리",
+          "tags": "태그",
+          "phoneNumber": "전화번호",
+          "email": "이메일",
+          "department": "부서",
+          "salary": "급여",
+          "location": "지역",
+          "experience": "경력",
+          "bio": "소개",
+          "github": "깃허브",
+          "blog": "블로그",
+          "hobby": "취미",
+          "nationality": "국적",
+          "language": "언어"
+        },
+        "en": {
+          "id": "ID",
+          "name": "Name",
+          "age": "Age",
+          "joinedDate": "Joined",
+          "role": "Role",
+          "active": "Active",
+          "category": "Category",
+          "tags": "Tags",
+          "phoneNumber": "Phone",
+          "email": "Email",
+          "department": "Department",
+          "salary": "Salary",
+          "location": "Location",
+          "experience": "Experience",
+          "bio": "Bio",
+          "github": "GitHub",
+          "blog": "Blog",
+          "hobby": "Hobby",
+          "nationality": "Nationality",
+          "language": "Language"
+        }
       }
-    },
-    "en": {
-      "test-grid2": {
-        "id": "ID",
-        "name": "Name",
-        "age": "Age",
-        "joinedDate": "Joined",
-        "role": "Role",
-        "active": "Active",
-        "category": "Category",
-        "tags": "Tags",
-        "phoneNumber": "Phone",
-        "email": "Email",
-        "department": "Department",
-        "salary": "Salary",
-        "location": "Location",
-        "experience": "Experience",
-        "bio": "Bio",
-        "github": "GitHub",
-        "blog": "Blog",
-        "hobby": "Hobby",
-        "nationality": "Nationality",
-        "language": "Language"
-      }
-    }
-  },
-  "toolbar": [
-    {
-      "id": "test-grid2",
-      "showConfig": true
     }
   ]
 }

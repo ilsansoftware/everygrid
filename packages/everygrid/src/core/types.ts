@@ -16,11 +16,37 @@ export interface GridLoadProgress {
   stage?: 'indexing' | 'ready';
 }
 
+/**
+ * One grid. Besides its identity (`id`, `title`) a target carries every per-grid option, so a
+ * grid is configured in one place instead of naming its id under each feature. Single-value
+ * options take a shorthand (`rowKey: "id"`, `checkbox: "id"`, `editableCols: [...]`).
+ *
+ * The older per-feature form (`pagination: [{id, …}]` at the root) is still accepted; the two are
+ * merged at construction with the target's own entry winning — see `normalizeOptions`.
+ */
 export interface GridTargetConfig {
   id: string;
   title?: string;
   data?: Record<string, unknown>[];
+  /** Fields rendered as links. */
   links?: string[];
+  /** Field (or fields) that identify a row to the outside world — see `GridRowKeyConfig`. */
+  rowKey?: string | string[];
+  rowActions?: Omit<GridRowActionsConfig, 'id'>;
+  toolbar?: Omit<GridToolbarConfig, 'id'>;
+  /** Fields the reader may edit. */
+  editableCols?: string[];
+  /** Checkbox column: the field whose values `checkedValues()` reports, or the full config. */
+  checkbox?: string | Omit<GridCheckboxConfig, 'id'>;
+  colors?: Omit<GridColorConfig, 'id'>;
+  /** Fields the narrow (mobile) layout shows by default. */
+  mobileColumns?: string[];
+  pagination?: Omit<GridPaginationConfig, 'id'>;
+  virtualScroll?: Omit<GridVirtualScrollConfig, 'id'>;
+  dataLimit?: Omit<GridDataLimitConfig, 'id'>;
+  /** Column labels for this grid only: `locale → field → label` (the root `columnI18n` also
+   *  holds `common` entries shared by every grid). */
+  columnI18n?: Record<string, Record<string, string>>;
 }
 
 /**

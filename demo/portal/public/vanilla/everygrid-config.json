@@ -1,149 +1,11 @@
 {
-  "columnI18n": {
-    "ko": {
-      "demo-grid": {
-        "id": "아이디",
-        "name": "이름",
-        "age": "나이",
-        "joinedDate": "가입일",
-        "role": "역할",
-        "examResults": "성적",
-        "active": "활성화",
-        "category": "카테고리",
-        "tags": "태그",
-        "phoneNumber": "전화번호",
-        "email": "이메일",
-        "department": "부서",
-        "salary": "급여",
-        "location": "지역",
-        "experience": "경력",
-        "bio": "소개",
-        "github": "깃허브",
-        "blog": "블로그",
-        "hobby": "취미",
-        "nationality": "국적",
-        "language": "언어"
-      },
-      "users": {
-        "id": "아이디",
-        "name": "이름",
-        "username": "사용자명",
-        "email": "이메일",
-        "address": "주소",
-        "phone": "전화",
-        "website": "웹사이트",
-        "company": "회사"
-      },
-      "virtual-grid": {
-        "id": "아이디",
-        "name": "이름",
-        "team": "팀",
-        "city": "도시",
-        "score": "점수",
-        "joinedDate": "가입일",
-        "active": "활성화"
-      }
-    },
-    "en": {
-      "demo-grid": {
-        "id": "ID",
-        "name": "Name",
-        "age": "Age",
-        "joinedDate": "Joined",
-        "role": "Role",
-        "examResults": "Exam Results",
-        "active": "Active",
-        "category": "Category",
-        "tags": "Tags",
-        "phoneNumber": "Phone",
-        "email": "Email",
-        "department": "Department",
-        "salary": "Salary",
-        "location": "Location",
-        "experience": "Experience",
-        "bio": "Bio",
-        "github": "GitHub",
-        "blog": "Blog",
-        "hobby": "Hobby",
-        "nationality": "Nationality",
-        "language": "Language"
-      },
-      "users": {
-        "id": "ID",
-        "name": "Name",
-        "username": "Username",
-        "email": "Email",
-        "address": "Address",
-        "phone": "Phone",
-        "website": "Website",
-        "company": "Company"
-      },
-      "virtual-grid": {
-        "id": "ID",
-        "name": "Name",
-        "team": "Team",
-        "city": "City",
-        "score": "Score",
-        "joinedDate": "Joined",
-        "active": "Active"
-      }
-    }
-  },
-  "mobileColumns": [
-    {
-      "id": "demo-grid",
-      "cols": [
-        "name",
-        "role",
-        "age"
-      ]
-    }
-  ],
   "targets": [
     {
-      "id": "demo-grid"
-    },
-    {
-      "id": "users"
-    },
-    {
-      "id": "virtual-grid",
-      "title": "Virtual scroll — 100,000 rows"
-    }
-  ],
-  "virtualScroll": [
-    {
-      "id": "virtual-grid",
-      "active": true,
-      "rowHeight": 34,
-      "overscan": 8
-    }
-  ],
-  "checkbox": [
-    {
       "id": "demo-grid",
-      "mapping": "id"
-    }
-  ],
-  "pagination": [
-    {
-      "id": "demo-grid",
-      "pageSize": 2,
-      "active": true,
-      "position": "bottom"
-    },
-    {
-      "id": "users",
-      "pageSize": 5,
-      "active": true,
-      "position": "all",
-      "rowCount": "inline"
-    }
-  ],
-  "editableCols": [
-    {
-      "id": "demo-grid",
-      "cols": [
+      "toolbar": {
+        "showConfig": true
+      },
+      "editableCols": [
         "name",
         "age",
         "email",
@@ -153,21 +15,130 @@
         "examResults",
         "tags",
         "bio"
-      ]
-    }
-  ],
-  "toolbar": [
-    {
-      "id": "demo-grid",
-      "showConfig": true
+      ],
+      "checkbox": "id",
+      "mobileColumns": [
+        "name",
+        "role",
+        "age"
+      ],
+      "pagination": {
+        "pageSize": 2,
+        "position": "bottom"
+      },
+      "columnI18n": {
+        "ko": {
+          "id": "아이디",
+          "name": "이름",
+          "age": "나이",
+          "joinedDate": "가입일",
+          "role": "역할",
+          "examResults": "성적",
+          "active": "활성화",
+          "category": "카테고리",
+          "tags": "태그",
+          "phoneNumber": "전화번호",
+          "email": "이메일",
+          "department": "부서",
+          "salary": "급여",
+          "location": "지역",
+          "experience": "경력",
+          "bio": "소개",
+          "github": "깃허브",
+          "blog": "블로그",
+          "hobby": "취미",
+          "nationality": "국적",
+          "language": "언어"
+        },
+        "en": {
+          "id": "ID",
+          "name": "Name",
+          "age": "Age",
+          "joinedDate": "Joined",
+          "role": "Role",
+          "examResults": "Exam Results",
+          "active": "Active",
+          "category": "Category",
+          "tags": "Tags",
+          "phoneNumber": "Phone",
+          "email": "Email",
+          "department": "Department",
+          "salary": "Salary",
+          "location": "Location",
+          "experience": "Experience",
+          "bio": "Bio",
+          "github": "GitHub",
+          "blog": "Blog",
+          "hobby": "Hobby",
+          "nationality": "Nationality",
+          "language": "Language"
+        }
+      }
     },
     {
       "id": "users",
-      "showConfig": true
+      "toolbar": {
+        "showConfig": true
+      },
+      "pagination": {
+        "pageSize": 5,
+        "position": "all",
+        "rowCount": "inline"
+      },
+      "columnI18n": {
+        "ko": {
+          "id": "아이디",
+          "name": "이름",
+          "username": "사용자명",
+          "email": "이메일",
+          "address": "주소",
+          "phone": "전화",
+          "website": "웹사이트",
+          "company": "회사"
+        },
+        "en": {
+          "id": "ID",
+          "name": "Name",
+          "username": "Username",
+          "email": "Email",
+          "address": "Address",
+          "phone": "Phone",
+          "website": "Website",
+          "company": "Company"
+        }
+      }
     },
     {
       "id": "virtual-grid",
-      "showConfig": true
+      "title": "Virtual scroll — 100,000 rows",
+      "toolbar": {
+        "showConfig": true
+      },
+      "virtualScroll": {
+        "active": true,
+        "rowHeight": 34,
+        "overscan": 8
+      },
+      "columnI18n": {
+        "ko": {
+          "id": "아이디",
+          "name": "이름",
+          "team": "팀",
+          "city": "도시",
+          "score": "점수",
+          "joinedDate": "가입일",
+          "active": "활성화"
+        },
+        "en": {
+          "id": "ID",
+          "name": "Name",
+          "team": "Team",
+          "city": "City",
+          "score": "Score",
+          "joinedDate": "Joined",
+          "active": "Active"
+        }
+      }
     }
   ]
 }

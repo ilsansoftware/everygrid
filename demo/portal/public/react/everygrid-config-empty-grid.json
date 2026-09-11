@@ -1,13 +1,10 @@
 {
   "targets": [
     {
-      "id": "empty-grid"
-    }
-  ],
-  "toolbar": [
-    {
       "id": "empty-grid",
-      "showConfig": true
+      "toolbar": {
+        "showConfig": true
+      }
     }
   ]
 }
