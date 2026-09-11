@@ -182,9 +182,14 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     return new CellHandle(this.grid, this, field);
   }
 
-  /** Edits several cells at once. */
-  set(values: Partial<T>): void {
-    for (const [field, value] of Object.entries(values)) this.cell(field).set(value);
+  /**
+   * Edits several cells at once. Fields the grid's `editableCols` does not allow are skipped (with
+   * a warning) unless `force` is set. Returns how many cells were written.
+   */
+  set(values: Partial<T>, opts: {force?: boolean} = {}): number {
+    let n = 0;
+    for (const [field, value] of Object.entries(values)) if (this.cell(field).set(value, opts)) n++;
+    return n;
   }
 
   revert(): void {
@@ -220,10 +225,25 @@ export class CellHandle<T extends Record<string, unknown> = Record<string, unkno
     return !!row && this.grid.isCellModified(row, this.field);
   }
 
-  /** Edits the cell exactly as typing into it would: tracked, marked, synced to the engine. */
-  set(value: unknown): void {
+  /** Whether the grid's `editableCols` lets this column be edited (from the UI or here). */
+  isEditable(): boolean {
+    return this.grid.getEditableFields(this.row.gridId).includes(this.field);
+  }
+
+  /**
+   * Edits the cell exactly as typing into it would: tracked, marked, synced to the engine. Honours
+   * `editableCols` like the UI does — a column not listed there is refused (false, with a warning)
+   * unless `force` is set, which is for code that knows better than the config.
+   */
+  set(value: unknown, opts: {force?: boolean} = {}): boolean {
     const row = this.row.get();
-    if (row) this.grid.updateData(row, this.field, value);
+    if (!row) return false;
+    if (!opts.force && !this.isEditable()) {
+      console.warn(`Everygrid: "${this.field}" is not an editable column of "${this.row.gridId}" — pass {force: true} to set it anyway.`);
+      return false;
+    }
+    this.grid.updateData(row, this.field, value);
+    return true;
   }
 
   revert(): void {

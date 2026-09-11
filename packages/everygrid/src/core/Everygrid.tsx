@@ -1286,7 +1286,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       if (cells.length === 0) continue;
       const index = data.indexOf(row);
       if (index === -1) continue;
-      out.push({index, key: this._keyOf(containerId, row, index), row, original: this._originalOf(row), cells});
+      // The key is taken from the original row: if the key field itself was edited, a save still
+      // has to find the record by the key the server knows.
+      const original = this._originalOf(row);
+      out.push({index, key: this._keyOf(containerId, original, index), row, original, cells});
     }
     return out.sort((a, b) => a.index - b.index);
   }

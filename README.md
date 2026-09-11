@@ -480,14 +480,17 @@ const g = Everygrid.get('user-grid');            // null until the grid is mount
 // target a row: by index, by key (see rowKey), by predicate, or by position on screen
 g.row(3);  g.rowByKey('U-1002');  g.find(r => r.email === 'a@b.c');  g.visibleRow(0);
 
-// cells — set() behaves exactly like typing into the cell: tracked, marked, synced to the engine
+// cells — set() behaves exactly like typing into the cell: tracked, marked, synced to the engine.
+// It honours editableCols like the UI: a column not listed there is refused (false + a warning)
+// unless you pass {force: true}.
 g.row(3).cell('score').get();        g.cell(3, 'score')          // same thing
-g.row(3).cell('score').set(90);
+g.row(3).cell('score').set(90);      g.row(3).cell('score').isEditable();
+g.row(3).cell('id').set(7, {force: true});
 g.row(3).cell('score').original();   g.row(3).cell('score').isModified();
 g.row(3).cell('score').revert();
 
 // rows
-g.row(3).set({score: 90, active: false});
+g.row(3).set({score: 90, active: false});   // returns how many cells were written
 g.row(3).changes();                  // [{field, from, to}]
 g.row(3).original();  g.row(3).isModified();  g.row(3).revert();  g.row(3).key();
 
@@ -509,7 +512,9 @@ g.on('change', changes => …);        // after every edit, revert and commit
 ```
 
 `rowKey` names the field that identifies a row (`{"id": "user-grid", "field": "id"}`; an array
-makes a composite key joined with `|`). Without it `key` is the row's data index.
+makes a composite key joined with `|`). Without it `key` is the row's data index. In `changes()`
+and `patch()` the key is read from the row's *original*, so a save can still find the record when
+the key field itself was edited.
 
 Change tracking costs only what was edited: a row's original is snapshotted on its first edit, so
 `changes()` and `patch()` walk the edited rows, not the dataset.
