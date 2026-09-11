@@ -56,6 +56,20 @@ nav {
 nav::-webkit-scrollbar {
   display: none; /* WebKit */
 }
+nav + nav {
+  margin-left: 10px;
+}
+/* The capsule's name, set in the capsule's own dark, before its buttons. */
+.nav-group-label {
+  align-self: center;
+  padding: 0 8px 0 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b93b0;
+  white-space: nowrap;
+}
 /* A tool is a button of its own beside the capsule: the capsule's height, background and faint
    outline, so the two read as one control strip, with the same raised block when active. */
 .tool-tabs {

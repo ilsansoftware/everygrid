@@ -33,13 +33,15 @@ function compactCount(n: number): string {
 // `icon` tabs show a favicon with a short name beside it; `label` tabs (the React-only heavy demos)
 // show text alone. `caption` is the one-liner under the page title.
 // Demos share the header capsule; a `tool` (acts on your data) is a standalone button beside it.
-type TabGroup = 'demo' | 'tool';
+// Demos share a labelled capsule each: the framework demos, then the scale demos.
+type TabGroup = 'demo' | 'scale' | 'tool';
+const GROUP_LABEL: Partial<Record<TabGroup, string>> = {demo: 'Demo', scale: 'Scale'};
 const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
   {id: 'react', title: 'React Demo', icon: '/react/favicon.ico', name: 'React'},
   {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico', name: 'JS'},
   {id: 'jquery', title: 'jQuery Demo', icon: '/jquery/logo.svg', name: 'jQuery'},
-  {id: 'large', title: 'Large Data', caption: 'streaming 1.6M rows', label: 'large\ndata'},
-  {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll'},
+  {id: 'large', title: 'Large Data', caption: 'streaming 1.6M rows', label: 'large\ndata', group: 'scale'},
+  {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll', group: 'scale'},
   {id: 'sandbox', title: 'JSON to Grid', caption: 'drop a file, get a grid', label: 'json to grid', group: 'tool'},
   {id: 'docs', title: 'API Docs', label: 'api docs', group: 'tool'},
 ];
@@ -268,8 +270,13 @@ export default function App() {
   return (
       <>
         <header>
-          <h1>everygrid Demo</h1>
-          <nav>{tabsOf('demo').map(renderTab)}</nav>
+          <h1>everygrid</h1>
+          {(['demo', 'scale'] as TabGroup[]).map((group) => (
+            <nav key={group} aria-label={GROUP_LABEL[group]}>
+              <span className='nav-group-label'>{GROUP_LABEL[group]}</span>
+              {tabsOf(group).map(renderTab)}
+            </nav>
+          ))}
           {/* Tools stand outside the capsule as buttons of their own. */}
           <div className='tool-tabs'>{tabsOf('tool').map(renderTab)}</div>
           {isNarrow && codeButton}
