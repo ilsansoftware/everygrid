@@ -32,9 +32,8 @@ function compactCount(n: number): string {
 
 // `icon` tabs show a favicon with a short name beside it; `label` tabs (the React-only heavy demos)
 // show text alone.
-// Each `group` is its own capsule in the header: the demos, then the tools that act on your data.
+// Demos share the header capsule; a `tool` (acts on your data) is a standalone button beside it.
 type TabGroup = 'demo' | 'tool';
-const TAB_GROUPS: TabGroup[] = ['demo', 'tool'];
 const TABS: { id: TabId; title: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
   {id: 'react', title: 'React Demo', icon: '/react/favicon.ico', name: 'React'},
   {id: 'vanilla', title: 'Vanilla JS Demo', icon: '/vanilla/favicon.ico', name: 'JS'},
@@ -245,6 +244,39 @@ export default function App() {
 
   const meta = CODE_META[tab];
 
+  const tabsOf = (group: TabGroup) => TABS.filter((t) =>
+      (t.group ?? 'demo') === group && !(isNarrow && MOBILE_HIDDEN_TABS.includes(t.id)));
+  const renderTab = (t: typeof TABS[number]) => {
+      const gid = PROGRESS_GRID_OF_TAB[t.id];
+      const prog = gid ? loadProgress[gid] : undefined;
+      // Badge is a heads-up for a grid loading on a tab you've left — on the active tab the
+      // grid's own toolbar already shows its progress, so it's redundant there.
+      const loading = !!prog?.active && t.id !== tab;
+      return (
+        <button
+            key={t.id}
+            className={t.id === tab ? 'active' : ''}
+            data-tab={t.id}
+            title={t.title}
+            onClick={() => setTab(t.id)}
+        >
+          {t.label
+              ? <span className={`tab-label${loading ? ' is-loading' : ''}`}>
+                  <span className='tab-label-text'>{t.label}</span>
+                  {loading && (
+                    <span className='tab-progress-badge'>
+                      {prog!.percent >= 0 ? `${prog!.percent}%` : compactCount(prog!.rowsLoaded)}
+                    </span>
+                  )}
+                </span>
+              : <>
+                  <img src={t.icon} width='100%' height='100%' alt=''/>
+                  <span className='tab-name'>{t.name}</span>
+                </>}
+        </button>
+      );
+  };
+
   // Lives beside the page title, next to the demo it shows the source of; the header keeps it only
   // on a phone, where the title row is dropped. Tools have no demo source, so there it is not shown.
   const codeButton = NO_CODE_TABS.includes(tab) ? null : (
@@ -273,40 +305,9 @@ export default function App() {
       <HeadingSlotContext.Provider value={headingSlot}>
         <header>
           <h1>everygrid Demo</h1>
-          {TAB_GROUPS.map((group) => (
-            <nav key={group} data-group={group}>
-              {TABS.filter((t) => (t.group ?? 'demo') === group && !(isNarrow && MOBILE_HIDDEN_TABS.includes(t.id))).map((t) => {
-                const gid = PROGRESS_GRID_OF_TAB[t.id];
-                const prog = gid ? loadProgress[gid] : undefined;
-                // Badge is a heads-up for a grid loading on a tab you've left — on the active tab the
-                // grid's own toolbar already shows its progress, so it's redundant there.
-                const loading = !!prog?.active && t.id !== tab;
-                return (
-                  <button
-                      key={t.id}
-                      className={t.id === tab ? 'active' : ''}
-                      data-tab={t.id}
-                      title={t.title}
-                      onClick={() => setTab(t.id)}
-                  >
-                    {t.label
-                        ? <span className={`tab-label${loading ? ' is-loading' : ''}`}>
-                            <span className='tab-label-text'>{t.label}</span>
-                            {loading && (
-                              <span className='tab-progress-badge'>
-                                {prog!.percent >= 0 ? `${prog!.percent}%` : compactCount(prog!.rowsLoaded)}
-                              </span>
-                            )}
-                          </span>
-                        : <>
-                            <img src={t.icon} width='100%' height='100%' alt=''/>
-                            <span className='tab-name'>{t.name}</span>
-                          </>}
-                  </button>
-                );
-              })}
-            </nav>
-          ))}
+          <nav>{tabsOf('demo').map(renderTab)}</nav>
+          {/* Tools stand outside the capsule as buttons of their own. */}
+          <div className='tool-tabs'>{tabsOf('tool').map(renderTab)}</div>
           {isNarrow && codeButton}
           <div className='header-right'>
             <div className='locale-btn-group'>

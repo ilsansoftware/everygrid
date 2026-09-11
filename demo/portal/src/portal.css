@@ -56,10 +56,47 @@ nav {
 nav::-webkit-scrollbar {
   display: none; /* WebKit */
 }
-/* The tool capsule stands apart from the demo tabs: a gap, and no scroll-shrink of its own. */
-nav[data-group='tool'] {
-  margin-left: 12px;
+/* A tool is a button of its own beside the capsule: the capsule's height, background and faint
+   outline, so the two read as one control strip, with the same raised block when active. */
+.tool-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
   flex-shrink: 0;
+}
+.tool-tabs button {
+  height: 40px;
+  padding: 0 12px;
+  background: #2a2b3d;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.tool-tabs button:hover {
+  background: #3a3c55;
+  border-color: rgba(148, 163, 184, 0.45);
+}
+.tool-tabs button.active {
+  background: #3a3c55;
+  border-color: rgba(148, 163, 184, 0.38);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.tool-tabs button .tab-label {
+  position: relative;
+  white-space: pre-line;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  color: #cbd5e1;
+}
+.tool-tabs button:hover .tab-label,
+.tool-tabs button.active .tab-label {
+  color: #ffffff;
 }
 
 /* Minimal icon-only button centered */
