@@ -219,7 +219,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                 className='everygrid-header-content px-2 py-2'
               >
                 {col.type === 'row_actions' ? (
-                  <div className='flex w-full justify-center text-slate-400' title={I18n.t('grid.deleteRow')}>
+                  <div className='flex w-full justify-center text-current' title={I18n.t('grid.deleteRow')}>
                     <TrashIcon className='w-4 h-4'/>
                   </div>
                 ) : col.type === 'row_detail' ? (
