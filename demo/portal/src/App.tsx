@@ -287,10 +287,11 @@ export default function App() {
             would pin to the panel top and cover it. Dropped entirely on mobile to save space. */}
           {!isNarrow && (
             <div className='demo-heading'>
+              {/* Caption on the title's line, so the row is the same height on every tab. */}
               <div className='demo-heading-title'>
                 <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
                 {TABS.find((t) => t.id === tab)?.caption && (
-                  <p className='demo-caption'>{TABS.find((t) => t.id === tab)?.caption}</p>
+                  <span className='demo-caption'>{TABS.find((t) => t.id === tab)?.caption}</span>
                 )}
               </div>
               {codeButton}

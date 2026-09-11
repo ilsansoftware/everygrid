@@ -276,13 +276,15 @@ nav button.active .tab-name {
 /* Title (with its caption beneath), then the code button right beside it. */
 .demo-heading-title {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
 }
 .demo-caption {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: #64748b;
+  white-space: nowrap;
 }
 /* Control row above a demo's first grid — the language toggle, plus whatever the demo adds. The
    html demos draw the same row themselves (.page-tools), so the toggle is in one place everywhere. */
