@@ -1,25 +1,32 @@
 # Everygrid
 
-A flexible, config-driven data grid library for React.
+A config-driven React data grid. Filtering, sorting and paging over millions of rows run in a
+Rust → WASM engine inside a Web Worker, so the UI never blocks.
 
 ## Installation
 
+The package is `@everygrid/grid`. It is served from its own CDN rather than the npm registry: every
+deploy publishes an immutable tarball at `/packages/everygrid-grid-<version>-<hash>.tgz`, which is
+what you install and what your lockfile pins.
+
 ```bash
-npm install @everygrid/core
+npm install https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.3.3-eba737af4404.tgz
 ```
+
+React 18+ is a peer dependency. For a plain `<script>` page with no bundler, see [CDN Usage](#cdn-usage).
 
 ## Quick Start
 
 ### 1. Install the library
 
 ```bash
-npm install @everygrid/core
+npm install https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-<version>-<hash>.tgz
 ```
 
 ### 2. Import CSS
 
 ```ts
-import '@everygrid/core/css';
+import '@everygrid/grid/css';
 ```
 
 ### 3. Create your grid config file
@@ -101,15 +108,16 @@ bootstrap: a matching config target customizes the grid, otherwise it renders wi
 lifetime is yours to control; nothing is allocated for a target this screen doesn't render.
 
 ```tsx
-import { Everygrid } from '@everygrid/core';
-import '@everygrid/core/css';
+import { Everygrid, createGrid } from '@everygrid/grid';
+import '@everygrid/grid/css';
 
-// No bootstrap — mount loads `everygrid.config.json` from the app root itself (cached; resolved
+// No bootstrap — createGrid loads `everygrid.config.json` from the app root itself (cached; resolved
 // relative to the document, so a sub-app at /vanilla/ auto-loads /vanilla/everygrid.config.json) and
-// renders with defaults if the id isn't in the config.
-await Everygrid.mount('user-grid', {
-  fetcher: () => fetch('/api/users').then(r => r.json()),
-});
+// renders with defaults if the id isn't in the config. The fetcher is a `() => Promise<rows>` or a
+// URL string, which is streamed straight into the engine.
+await createGrid('user-grid', () => fetch('/api/users').then(r => r.json()));
+// same thing, long form:
+await Everygrid.mount('user-grid', {fetcher: '/api/users'});
 
 // …when the screen unmounts
 Everygrid.unmount('user-grid');
@@ -156,27 +164,25 @@ useGrid('user-grid', () => buildRows(rows));
 
 ## CDN Usage
 
-You can use Everygrid directly in the browser via CDN (no build step required).
+The standalone build is one self-contained file — React, the WASM engine, the worker and the CSS
+are all inlined — exposed as `window.Everygrid`. No stylesheet, no React script tags, no build step.
 
 ```html
-<!-- React (peer dependency) -->
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-<!-- Everygrid -->
-<link rel="stylesheet" href="https://unpkg.com/@everygrid/core/dist/Everygrid.css"/>
-<script src="https://unpkg.com/@everygrid/core/dist/index.umd.js"></script>
+<!-- rolling: always the newest build -->
+<script src="https://d3886c7yrxubj8.cloudfront.net/latest/everygrid.standalone.js"></script>
+<!-- or pinned: an immutable, hash-named build, e.g.
+<script src="https://d3886c7yrxubj8.cloudfront.net/packages/everygrid.standalone-0.3.3-964c98a78fd2.js"></script> -->
 
 <div id="user-grid"></div>
 
 <script>
-  everygrid.autoInit({
-    'user-grid': () => fetch('/api/users').then(r => r.json()),
-  });
+  Everygrid.createGrid('user-grid', () => fetch('/api/users').then(r => r.json()));
 </script>
 ```
 
-> **Note:** When using CDN, `everygrid.config.json` must be accessible at `/everygrid.config.json` on your server, and each config file path in `configs` must also be publicly accessible.
+> **Note:** `everygrid.config.json` is resolved relative to the page (a page at `/vanilla/` loads
+> `/vanilla/everygrid.config.json`), and each path in its `configs` must be publicly reachable. A
+> page without one still works — every grid then renders with defaults.
 
 ---
 
@@ -507,7 +513,7 @@ Everygrid.refreshAll();
 grid.reloadData('my-grid-id', {silent: true, discard: true});   // or Everygrid.reload(id, opts)
 
 // Internationalization
-import { I18n } from '@everygrid/core';
+import { I18n } from '@everygrid/grid';
 I18n.initFromBrowser(); // auto-detect browser language
 I18n.setLocale('en');   // 'en' | 'ko'
 ```
