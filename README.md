@@ -485,7 +485,7 @@ g.row(3);  g.rowByKey('U-1002');  g.find(r => r.email === 'a@b.c');  g.visibleRo
 // It honours editableCols like the UI: a column not listed there is refused (false + a warning)
 // unless you pass {force: true}.
 g.row(3).cell('score').get();        g.cell(3, 'score')          // same thing
-g.row(3).cell('score').set(90);      g.row(3).cell('score').isEditable();
+g.row(3).cell('score').set(90);      g.row(3).cell('score').isEditable();   // any cell of an inserted row is editable
 g.row(3).cell('id').set(7, {force: true});
 g.row(3).cell('score').original();   g.row(3).cell('score').modified();
 g.row(3).cell('score').revert();

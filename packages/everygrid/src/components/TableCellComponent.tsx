@@ -171,7 +171,9 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
   const renderValue = () => {
     const isEditableField = editableFields.includes(col.field);
     const activeEdits = grid.activeEditFields.get(containerId) || new Set();
-    const isEditing = isEditableField && activeEdits.has(col.field);
+    // An inserted row is being filled in: every data cell is an editor from the start, whatever
+    // editableCols says and without the column's edit toggle.
+    const isEditing = grid.isRowInserted(item) || (isEditableField && activeEdits.has(col.field));
 
     // Use JSON editor if column type is object, current value is object, value is a JSON string, or any row in the column has an object/JSON value
     const isObjectColumn = col.type === 'object' || (value !== null && typeof value === 'object') || isJsonString(value) || grid.isColumnObject(col.field);

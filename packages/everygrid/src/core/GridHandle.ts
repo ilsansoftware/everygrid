@@ -412,9 +412,9 @@ export class CellHandle<T extends Record<string, unknown> = Record<string, unkno
     return !!row && this.grid.isCellModified(row, this.field);
   }
 
-  /** Whether the grid's `editableCols` lets this column be edited (from the UI or here). */
+  /** Whether this cell can be edited: any cell of an inserted row, else what `editableCols` allows. */
   isEditable(): boolean {
-    return this.grid.getEditableFields(this.row.gridId).includes(this.field);
+    return this.row.inserted() || this.grid.getEditableFields(this.row.gridId).includes(this.field);
   }
 
   /**
