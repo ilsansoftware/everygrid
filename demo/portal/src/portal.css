@@ -89,7 +89,7 @@ nav button {
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  color: #a5b4fc; /* indigo-300 — brighter than the label, so it reads as the front layer */
+  color: #fff;
   font-variant-numeric: tabular-nums;
   /* Separates the number from the label showing through behind it. */
   text-shadow: 0 1px 3px rgba(15, 23, 42, 0.95), 0 0 8px rgba(15, 23, 42, 0.8);
@@ -98,10 +98,6 @@ nav button {
 nav button .tab-label.is-loading .tab-label-text {
   opacity: 0.22;
 }
-nav button.active .tab-progress-badge {
-  color: #a5b4fc; /* indigo-300 — same reading on the dark active block as elsewhere */
-}
-
 /* Unselected tabs carry a faint outline so they still read as buttons against the capsule
    instead of floating text. The active tab has its white block and needs none. */
 nav button:not(.active) {
