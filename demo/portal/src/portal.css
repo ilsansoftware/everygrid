@@ -199,13 +199,41 @@ nav button.active img {
    the same 80rem content column, sitting just above the grid stack. */
 .demo-heading {
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   width: 100%;
   max-width: 80rem;
   margin: 1.25rem auto 0.75rem;
   padding: 0 1.5rem;
+}
+.demo-heading h2 {
+  margin: 0;
   font-size: 1.375rem;
   font-weight: 700;
   color: #0f172a;
+}
+/* On the light page the code button is a quiet outlined pill — the title row's only control. */
+.demo-heading .show-code-btn {
+  margin-left: 0;
+  width: auto;
+  height: 34px;
+  padding: 0 12px 0 10px;
+  gap: 6px;
+  background: #ffffff;
+  color: #475569;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+.demo-heading .show-code-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+.demo-heading .show-code-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Slim footer that bookends the dark header — same navy, muted text, flex-shrink:0 so it stays
@@ -297,9 +325,8 @@ nav button.active img {
   opacity: 1;
 }
 
-/* Show Code button in header */
-/* Sits immediately right of the tab capsule, so it borrows the capsule's height and background
-   and the same faint outline the idle tabs carry — one continuous control strip. */
+/* Show Code button. In the header (phone only) it sits right of the tab capsule and borrows the
+   capsule's height, background and faint outline — one continuous control strip. */
 .show-code-btn {
   display: inline-flex;
   align-items: center;

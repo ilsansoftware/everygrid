@@ -241,6 +241,31 @@ export default function App() {
 
   const meta = CODE_META[tab];
 
+  // Lives beside the page title, next to the demo it shows the source of; the header keeps it only
+  // on a phone, where the title row is dropped. Tools have no demo source, so it is disabled there.
+  const codeButton = (
+    <button className='show-code-btn' title='Show source code'
+            disabled={NO_CODE_TABS.includes(tab)}
+            onClick={() => setModalOpen(true)}>
+      <svg
+          xmlns='http://www.w3.org/2000/svg'
+          width='18'
+          height='18'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='2.2'
+          strokeLinecap='round'
+          strokeLinejoin='round'
+      >
+        <path d='m18 16 4-4-4-4'/>
+        <path d='m6 8-4 4 4 4'/>
+        <path d='m14.5 4-5 16'/>
+      </svg>
+      {!isNarrow && <span>Code</span>}
+    </button>
+  );
+
   return (
       <>
         <header>
@@ -276,25 +301,7 @@ export default function App() {
               })}
             </nav>
           ))}
-          <button className='show-code-btn' title='Show source code'
-                  disabled={NO_CODE_TABS.includes(tab)}
-                  onClick={() => setModalOpen(true)}>
-            <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='18'
-                height='18'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2.2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-            >
-              <path d='m18 16 4-4-4-4'/>
-              <path d='m6 8-4 4 4 4'/>
-              <path d='m14.5 4-5 16'/>
-            </svg>
-          </button>
+          {isNarrow && codeButton}
           <div className='header-right'>
             <div className='locale-btn-group'>
               {LOCALES.map((l) => (
@@ -315,7 +322,12 @@ export default function App() {
         <div className='demo-panel'>
           {/* Heading sits OUTSIDE the scroll area (fixed above), otherwise a grid's sticky header
             would pin to the panel top and cover it. Dropped entirely on mobile to save space. */}
-          {!isNarrow && <h2 className='demo-heading'>{TABS.find((t) => t.id === tab)?.title}</h2>}
+          {!isNarrow && (
+            <div className='demo-heading'>
+              <h2>{TABS.find((t) => t.id === tab)?.title}</h2>
+              {codeButton}
+            </div>
+          )}
           <div className='demo-scroll'>
             {TABS.filter((t) => mounted.has(t.id)).map((t) =>
                 REACT_TABS.includes(t.id) ? (
