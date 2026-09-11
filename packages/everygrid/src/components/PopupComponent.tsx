@@ -6,6 +6,8 @@ interface PopupProps {
   title?: string;
   /** Muted line under the title, e.g. the file a config came from. */
   subtitle?: string;
+  /** Hover text for the subtitle (e.g. the full URL when `subtitle` is just the file name). */
+  subtitleTitle?: string;
   children: React.ReactNode;
   data?: unknown; // Add data prop for JSON view
   /**
@@ -16,7 +18,7 @@ interface PopupProps {
   size?: 's' | 'm' | 'l' | 'auto';
 }
 
-const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, children, data, size = 'm'}) => {
+const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, subtitleTitle, children, data, size = 'm'}) => {
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
   const [copied, setCopied] = useState(false);
   const copyJson = () => {
@@ -54,7 +56,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, childre
           </div>
           <span className='everygrid-popup-close' onClick={onClose}>&times;</span>
         </div>
-        {subtitle && <div className='everygrid-popup-subtitle' title={subtitle}>{subtitle}</div>}
+        {subtitle && <div className='everygrid-popup-subtitle' title={subtitleTitle ?? subtitle}>{subtitle}</div>}
         <div className='everygrid-popup-body everygrid-popup-code-body overflow-auto flex-1'>
           {viewMode === 'table' ? (
             isXml ? (

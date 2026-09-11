@@ -74,6 +74,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public activePopupData: {data: unknown} | null = null;
   public activePopupTitle: string | null = null;
   public activePopupSubtitle: string | null = null;
+  /** Hover text for the subtitle strip (e.g. the full URL behind a file name). */
+  public activePopupSubtitleTitle: string | null = null;
   public activePopupRow: unknown | null = null;
   public activePopupRowKey: string | null = null;
   public currentPage: Map<string, number> = new Map();
@@ -1146,6 +1148,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.activePopupData = null;
     this.activePopupTitle = null;
     this.activePopupSubtitle = null;
+    this.activePopupSubtitleTitle = null;
     this.activePopupRow = null;
     this.activePopupRowKey = null;
     const {targets} = this.options;
@@ -1297,7 +1300,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public showConfig(container: HTMLElement) {
     // The source file is shown as the popup's subtitle, not inside the JSON — the body must stay
     // a faithful excerpt of the config file so it can be copied back verbatim.
-    this.showPopup(this.getTargetConfig(container.id), undefined, I18n.t('toolbar.config'), Everygrid._targetRegistry.get(container.id)?.url);
+    const url = Everygrid._targetRegistry.get(container.id)?.url;
+    // File name only; the full URL stays in the strip's hover title.
+    this.showPopup(this.getTargetConfig(container.id), undefined, I18n.t('toolbar.config'), url && url.split('?')[0].split('/').pop() || undefined, url);
   }
 
   public getRowActions(containerId: string): {insertRow: boolean; deleteRow: boolean} {
@@ -2455,13 +2460,14 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
 
-  public showPopup(data: unknown, rowData?: unknown, title?: string, subtitle?: string) {
+  public showPopup(data: unknown, rowData?: unknown, title?: string, subtitle?: string, subtitleTitle?: string) {
     this.activePopupRow = rowData || null;
     this.activePopupRowKey = rowData ? JSON.stringify(rowData) : null;
     // Store data only; EverygridComponent builds the popup with the live filterText each render.
     this.activePopupData = {data};
     this.activePopupTitle = title ?? null;
     this.activePopupSubtitle = subtitle ?? null;
+    this.activePopupSubtitleTitle = subtitleTitle ?? null;
     this.activePopup = null;
     const {targets} = this.options;
     targets?.forEach(idConfig => {
