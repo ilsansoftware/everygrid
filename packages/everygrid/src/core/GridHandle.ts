@@ -1,0 +1,263 @@
+import type {Everygrid} from './Everygrid';
+
+/** Identifies a row to the outside world: the `rowKey` field's value, else the row's data index. */
+export type RowKey = string | number;
+
+/** One cell's change, original → current. */
+export interface CellChange {
+  field: string;
+  from: unknown;
+  to: unknown;
+}
+
+/** One row's changes, with the row as it is now and as it was loaded. */
+export interface RowChange<T = Record<string, unknown>> {
+  index: number;
+  key: RowKey;
+  row: T;
+  original: T;
+  cells: CellChange[];
+}
+
+/** A change seen from a column: which row, and the value before and after. */
+export interface ColumnChange<T = Record<string, unknown>> extends CellChange {
+  index: number;
+  key: RowKey;
+  row: T;
+}
+
+/** The minimal payload for a save: per changed row, its key and only the fields that changed. */
+export interface RowPatch {
+  key: RowKey;
+  changes: Record<string, unknown>;
+}
+
+export type CellChangeEvent<T = Record<string, unknown>> = ColumnChange<T>;
+
+export interface GridEvents<T = Record<string, unknown>> {
+  /** One cell was edited (through the grid's UI or `set`). */
+  cellChange: (e: CellChangeEvent<T>) => void;
+  /** The set of changes moved: an edit, a revert, or a commit. */
+  change: (changes: RowChange<T>[]) => void;
+}
+
+/**
+ * Coordinates into one grid's data — grid → row → cell — with the same verbs at every level:
+ * `get`, `set`, `original`, `isModified`, `changes`, `revert`. Handles are stateless views over
+ * the grid, so they are cheap to make and never go stale; a handle to a row that does not exist
+ * reports `exists() === false` and its writes are no-ops, so a chain never has to null-check.
+ *
+ * Row indices are positions in the loaded data, so they hold still under sort and filter. For
+ * "the n-th row on screen" use `visibleRow`.
+ */
+export class GridHandle<T extends Record<string, unknown> = Record<string, unknown>> {
+  private readonly grid: Everygrid<T>;
+  public readonly id: string;
+
+  constructor(grid: Everygrid<T>, id: string) {
+    this.grid = grid;
+    this.id = id;
+  }
+
+  exists(): boolean {
+    return !this.grid._destroyed;
+  }
+
+  /** The loaded rows, in data order. Live objects — read, do not mutate; use `set`. */
+  data(): T[] {
+    return (this.grid.options.data || []) as T[];
+  }
+
+  row(index: number): RowHandle<T> {
+    return new RowHandle(this.grid, this, index);
+  }
+
+  rowByKey(key: RowKey): RowHandle<T> {
+    return this.row(this.grid._indexOfKey(this.id, key));
+  }
+
+  find(predicate: (row: T, index: number) => boolean): RowHandle<T> {
+    return this.row(this.data().findIndex(predicate));
+  }
+
+  /** The n-th row as currently shown (after filter and sort), by its position on screen. */
+  visibleRow(position: number): RowHandle<T> {
+    const shown = this.grid.getRowsInRange(this.id, position, position + 1)[0];
+    return this.row(shown ? this.grid._indexOfRow(shown) : -1);
+  }
+
+  cell(index: number, field: string): CellHandle<T> {
+    return this.row(index).cell(field);
+  }
+
+  column(field: string): ColumnHandle<T> {
+    return new ColumnHandle(this, field);
+  }
+
+  hasChanges(): boolean {
+    return this.grid.checkHasChanges();
+  }
+
+  /** Every changed row with its changed cells. */
+  changes(): RowChange<T>[] {
+    return this.grid._changedRows(this.id);
+  }
+
+  /** Original vs current, summarised: the changed rows and how many cells moved in total. */
+  diff(): {rows: RowChange<T>[]; cells: number} {
+    const rows = this.changes();
+    return {rows, cells: rows.reduce((n, r) => n + r.cells.length, 0)};
+  }
+
+  /** What to send to a server: per changed row, its key and only the changed fields. */
+  patch(): RowPatch[] {
+    return this.changes().map(r => ({
+      key: r.key,
+      changes: Object.fromEntries(r.cells.map(c => [c.field, c.to])),
+    }));
+  }
+
+  /** Puts every row back to its original. */
+  revert(): void {
+    const el = document.getElementById(this.id);
+    if (el) this.grid.reset(el);
+  }
+
+  /** Accepts the current values as the new baseline — after a successful save, typically. */
+  commit(): void {
+    this.grid.commit(this.id);
+  }
+
+  /** Subscribe to grid events; returns the unsubscribe function. */
+  on<K extends keyof GridEvents<T>>(event: K, handler: GridEvents<T>[K]): () => void {
+    return this.grid.on(event, handler);
+  }
+}
+
+export class RowHandle<T extends Record<string, unknown> = Record<string, unknown>> {
+  private readonly grid: Everygrid<T>;
+  private readonly parent: GridHandle<T>;
+  public readonly index: number;
+  /** The grid this row belongs to. */
+  public readonly gridId: string;
+
+  constructor(grid: Everygrid<T>, parent: GridHandle<T>, index: number) {
+    this.grid = grid;
+    this.parent = parent;
+    this.index = index;
+    this.gridId = parent.id;
+  }
+
+  exists(): boolean {
+    return this.index >= 0 && this.index < this.parent.data().length;
+  }
+
+  /** The row's key: its `rowKey` field, else its index. */
+  key(): RowKey {
+    const row = this.get();
+    return row ? this.grid._keyOf(this.parent.id, row, this.index) : this.index;
+  }
+
+  get(): T | undefined {
+    return this.exists() ? this.parent.data()[this.index] : undefined;
+  }
+
+  /** The row as it was loaded (the row itself when it has not been edited). */
+  original(): T | undefined {
+    const row = this.get();
+    return row ? this.grid._originalOf(row) : undefined;
+  }
+
+  isModified(): boolean {
+    const row = this.get();
+    return !!row && Object.keys(row).some(f => this.grid.isCellModified(row, f));
+  }
+
+  changes(): CellChange[] {
+    const row = this.get();
+    return row ? this.grid._cellChanges(row) : [];
+  }
+
+  cell(field: string): CellHandle<T> {
+    return new CellHandle(this.grid, this, field);
+  }
+
+  /** Edits several cells at once. */
+  set(values: Partial<T>): void {
+    for (const [field, value] of Object.entries(values)) this.cell(field).set(value);
+  }
+
+  revert(): void {
+    for (const c of this.changes()) this.cell(c.field).revert();
+  }
+}
+
+export class CellHandle<T extends Record<string, unknown> = Record<string, unknown>> {
+  private readonly grid: Everygrid<T>;
+  public readonly row: RowHandle<T>;
+  public readonly field: string;
+
+  constructor(grid: Everygrid<T>, row: RowHandle<T>, field: string) {
+    this.grid = grid;
+    this.row = row;
+    this.field = field;
+  }
+
+  exists(): boolean {
+    return this.row.exists();
+  }
+
+  get(): unknown {
+    return this.row.get()?.[this.field];
+  }
+
+  original(): unknown {
+    return this.row.original()?.[this.field];
+  }
+
+  isModified(): boolean {
+    const row = this.row.get();
+    return !!row && this.grid.isCellModified(row, this.field);
+  }
+
+  /** Edits the cell exactly as typing into it would: tracked, marked, synced to the engine. */
+  set(value: unknown): void {
+    const row = this.row.get();
+    if (row) this.grid.updateData(row, this.field, value);
+  }
+
+  revert(): void {
+    const row = this.row.get();
+    const el = document.getElementById(this.row.gridId);
+    if (row && el && this.isModified()) this.grid.resetCell(row, this.field, el);
+  }
+}
+
+export class ColumnHandle<T extends Record<string, unknown> = Record<string, unknown>> {
+  private readonly parent: GridHandle<T>;
+  public readonly field: string;
+
+  constructor(parent: GridHandle<T>, field: string) {
+    this.parent = parent;
+    this.field = field;
+  }
+
+  /** Current values down the column, in data order. */
+  values(): unknown[] {
+    return this.parent.data().map(r => r[this.field]);
+  }
+
+  /** Rows whose value in this column changed. */
+  changes(): ColumnChange<T>[] {
+    const out: ColumnChange<T>[] = [];
+    for (const r of this.parent.changes()) {
+      const c = r.cells.find(c => c.field === this.field);
+      if (c) out.push({...c, index: r.index, key: r.key, row: r.row});
+    }
+    return out;
+  }
+
+  revert(): void {
+    for (const c of this.changes()) this.parent.row(c.index).cell(this.field).revert();
+  }
+}

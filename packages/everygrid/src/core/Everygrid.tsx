@@ -2,6 +2,7 @@ import '../styles/Everygrid.css';
 import {GridEngineWasm} from '../wasm/GridEngineWasm';
 import {EverygridComponent} from '../components/EverygridComponent';
 import {isJsonString, parseIfJson} from './utils';
+import {GridHandle, type GridEvents, type RowKey, type CellChange, type RowChange} from './GridHandle';
 import {ExcelView} from './ExcelView';
 import {runExcelExport} from '../wasm/ExcelExportClient';
 import {ColumnSelectorComponent} from '../components/ColumnSelectorComponent';
@@ -84,7 +85,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private domObserver: MutationObserver | null = null;
   // Set by destroy(). Pending polls check it so an unmounted grid stops working immediately
   // instead of spinning out its timeout.
-  private _destroyed = false;
+  public _destroyed = false;
   public filterText: string = '';
   private _wasmEngines: Map<string, GridEngineWasm> = new Map();
   private _wasmEngineReady: Map<string, boolean> = new Map();
@@ -273,6 +274,15 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public static async reload(id: string, opts: ReloadOptions = {}): Promise<void> {
     const instance = Everygrid.instances.get(id) as Everygrid | undefined;
     await instance?.reloadData(id, opts);
+  }
+
+  /**
+   * A handle onto a mounted grid's data — `Everygrid.get('users').row(3).cell('score').set(90)`.
+   * Null when nothing is mounted under that id. See GridHandle.
+   */
+  public static get<D extends Record<string, unknown> = Record<string, unknown>>(id: string): GridHandle<D> | null {
+    const instance = Everygrid.instances.get(id) as Everygrid<D> | undefined;
+    return instance ? new GridHandle<D>(instance, id) : null;
   }
 
   public static resetAutoInit(): void {
@@ -1195,6 +1205,99 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     });
 
     this.renderGrid(container);
+  }
+
+  // ---- Change tracking (the GridHandle API) --------------------------------------------------
+
+  private _listeners: Map<keyof GridEvents<T>, Set<(arg: unknown) => void>> = new Map();
+
+  /** Subscribe to `cellChange` / `change`; returns the unsubscribe function. */
+  public on<K extends keyof GridEvents<T>>(event: K, handler: GridEvents<T>[K]): () => void {
+    let set = this._listeners.get(event);
+    if (!set) { set = new Set(); this._listeners.set(event, set); }
+    const fn = handler as unknown as (arg: unknown) => void;
+    set.add(fn);
+    return () => { set.delete(fn); };
+  }
+
+  private _emit<K extends keyof GridEvents<T>>(event: K, arg: Parameters<GridEvents<T>[K]>[0]): void {
+    const set = this._listeners.get(event);
+    if (!set) return;
+    for (const fn of set) fn(arg);
+  }
+
+  /** Fires `change` with the current change set; every edit, revert and commit ends here. */
+  private _emitChange(containerId: string): void {
+    if (this._listeners.get('change')?.size) this._emit('change', this._changedRows(containerId));
+  }
+
+  /** The row's key per the `rowKey` config, else its index. */
+  public _keyOf(containerId: string, row: T, index: number): RowKey {
+    const conf = this.options.rowKey?.find(c => c.id === containerId);
+    if (!conf) return index;
+    const fields = Array.isArray(conf.field) ? conf.field : [conf.field];
+    const parts = fields.map(f => row[f]);
+    if (parts.length === 1) {
+      const v = parts[0];
+      return typeof v === 'number' ? v : String(v);
+    }
+    return parts.map(String).join('|');
+  }
+
+  public _indexOfKey(containerId: string, key: RowKey): number {
+    const data = (this.options.data || []) as T[];
+    if (!this.options.rowKey?.some(c => c.id === containerId)) {
+      return typeof key === 'number' && key >= 0 && key < data.length ? key : -1;
+    }
+    return data.findIndex((row, i) => this._keyOf(containerId, row, i) === key);
+  }
+
+  /** Data index of a row handed out by the grid — a WASM copy is matched by content. */
+  public _indexOfRow(row: T): number {
+    const data = (this.options.data || []) as T[];
+    const live = this._editedKeys.get(JSON.stringify(row)) ?? row;
+    const idx = data.indexOf(live);
+    if (idx !== -1) return idx;
+    const key = JSON.stringify(row);
+    return data.findIndex(d => JSON.stringify(d) === key);
+  }
+
+  public _originalOf(row: T): T {
+    return this.originalDataMap.get(row) ?? row;
+  }
+
+  public _cellChanges(row: T): CellChange[] {
+    const original = this.originalDataMap.get(row);
+    if (!original) return [];
+    const fields = new Set([...Object.keys(original), ...Object.keys(row)]);
+    const out: CellChange[] = [];
+    for (const field of fields) {
+      if (this.isCellModified(row, field)) out.push({field, from: original[field], to: row[field]});
+    }
+    return out;
+  }
+
+  /** Every edited row that still differs from its original, with its changed cells. */
+  public _changedRows(containerId: string): RowChange<T>[] {
+    const data = (this.options.data || []) as T[];
+    const out: RowChange<T>[] = [];
+    for (const row of this._editedKeys.values()) {
+      const cells = this._cellChanges(row);
+      if (cells.length === 0) continue;
+      const index = data.indexOf(row);
+      if (index === -1) continue;
+      out.push({index, key: this._keyOf(containerId, row, index), row, original: this._originalOf(row), cells});
+    }
+    return out.sort((a, b) => a.index - b.index);
+  }
+
+  /** Accepts the current values as the new baseline: no row is modified any more. */
+  public commit(containerId: string): void {
+    this.originalDataMap.clear();
+    this._editedKeys.clear();
+    const el = document.getElementById(containerId);
+    if (el) this.renderGrid(el);
+    this._emitChange(containerId);
   }
 
   /**
@@ -2137,6 +2240,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // The live reference currently at this index owns the original snapshot. rowData may be a
       // WASM-derived copy (not a map key), so look the snapshot up via the live ref, not rowData.
       const prevRef = data[idx] as T;
+      const from = prevRef[field];
 
       // Create a new object so React.memo detects the change and re-renders
       const newRow = {...rowData, [field]: parseIfJson(value)} as T;
@@ -2170,7 +2274,17 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         const container = document.getElementById(id);
         if (container) this.renderGrid(container, this.pinnedColumns.has(field));
       });
+
+      const gridId = this._firstTargetId();
+      this._emit('cellChange', {index: idx, key: this._keyOf(gridId, newRow, idx), field, from, to: newRow[field], row: newRow});
+      this._emitChange(gridId);
     }
+  }
+
+  /** The id this instance renders into — one instance serves one target under createGrid/mount. */
+  private _firstTargetId(): string {
+    const t = this.options.targets?.[0];
+    return typeof t === 'string' ? t : (t?.id ?? '');
   }
 
   public reset(container: HTMLElement) {
@@ -2200,6 +2314,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     if (this.options.onDataChange && this.options.data) {
       this.options.onDataChange(this.options.data, this._originalData());
     }
+    this._emitChange(container.id);
   }
 
   public resetCell(rowData: Record<string, unknown>, field: string, container: HTMLElement) {
@@ -2242,6 +2357,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       if (this.options.onDataChange && this.options.data) {
         this.options.onDataChange(this.options.data, this._originalData());
       }
+      this._emitChange(container.id);
     }
   }
 

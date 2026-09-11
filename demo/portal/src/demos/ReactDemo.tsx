@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import {Everygrid, useGrid} from '@everygrid/grid';
 import LocaleSwitch, {type Locale} from './LocaleSwitch';
+import ChangesPanel from './ChangesPanel';
 
 // React demo — grids driven directly by the Everygrid API from a React component. (The two heavy
 // grids — large-data + virtual scroll — live on their own tabs; see LargeDataDemo / VirtualScrollDemo.)
@@ -24,6 +25,8 @@ export default function ReactDemo({active}: { active: boolean }) {
         <main className='min-h-150 flex flex-col gap-8 py-8 bg-white'>
           <div className='demo-tools'><LocaleSwitch value={locale} onChange={setLocale}/></div>
           <div id='test-grid' className='w-full border-slate-200'/>
+          {/* Edits on test-grid, read back through Everygrid.get('test-grid') — see ChangesPanel. */}
+          <ChangesPanel gridId='test-grid'/>
           <div id='test-grid2' className='w-full border-slate-200'/>
           <div id='test-grid3' className='w-full border-slate-200'/>
           <div id='api-grid' className='w-full border-slate-200'/>

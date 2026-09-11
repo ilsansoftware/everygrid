@@ -3,6 +3,8 @@ import {Everygrid} from './core/Everygrid';
 
 export {Everygrid} from './core/Everygrid';
 export {Everygrid as default} from './core/Everygrid';
+export {GridHandle, RowHandle, CellHandle, ColumnHandle} from './core/GridHandle';
+export type {RowKey, CellChange, RowChange, ColumnChange, RowPatch, CellChangeEvent, GridEvents} from './core/GridHandle';
 
 // Ergonomic functional API (thin wrappers over the static methods above). Import these directly, or
 // reach them as statics on the global (`Everygrid.createGrid`) in the standalone build.
@@ -27,6 +29,7 @@ export type {
   GridPaginationConfig,
   GridColorConfig,
   EditableColConfig,
+  GridRowKeyConfig,
   GridLinkConfig,
   IEverygrid,
   GridLoadProgress,

@@ -100,5 +100,11 @@
         "language": "Language"
       }
     }
-  }
+  },
+  "rowKey": [
+    {
+      "id": "test-grid",
+      "field": "id"
+    }
+  ]
 }

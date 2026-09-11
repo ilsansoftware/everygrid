@@ -46,6 +46,16 @@ export interface EditableColConfig {
 }
 
 /**
+ * Which field identifies a row to the outside world — what `GridHandle` reports as a row's `key`
+ * and what `patch()` sends. Several fields make a composite key, joined with `|`. Without an
+ * entry the key is the row's index in the loaded data.
+ */
+export interface GridRowKeyConfig {
+  id: string;
+  field: string | string[];
+}
+
+/**
  * Default columns for the narrow (mobile) layout, where rows scroll horizontally and each carries a
  * detail button opening the whole row. `cols` lists the field keys to show until the user picks
  * their own (the mobile "Columns" action, same whitelist as desktop); with no entry every column
@@ -304,6 +314,7 @@ export interface GridOptions<T = Record<string, unknown>> {
   columnI18n?: ColumnI18n;
   mobileColumns?: GridMobileColumnsConfig[];
   editableCols?: EditableColConfig[];
+  rowKey?: GridRowKeyConfig[];
   colors?: GridColorConfig[];
   links?: GridLinkConfig[];
   checkbox?: GridCheckboxConfig[];

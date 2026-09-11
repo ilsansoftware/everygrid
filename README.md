@@ -169,6 +169,7 @@ are all inlined — exposed as `window.Everygrid`. No stylesheet, no React scrip
 |-------|------|-------------|
 | `targets` | `GridTargetConfig[]` | Grid instances to initialize |
 | `editableCols` | `EditableColConfig[]` | Editable column settings per grid |
+| `rowKey` | `GridRowKeyConfig[]` | Field (or fields) that identify a row — what `patch()` and change events report as `key`. Without it, the row's data index |
 | `checkbox` | `GridCheckboxConfig[]` | Adds a checkbox column per grid; `mapping` names the field whose value is collected when a row is checked |
 | `pagination` | `GridPaginationConfig[]` | Pagination settings per grid |
 | `virtualScroll` | `GridVirtualScrollConfig[]` | Virtual scrolling settings per grid (replaces pagination for that grid) |
@@ -464,6 +465,54 @@ A grid sized by its content is capped at `60vh` so a preview of wide, deeply nes
 push the page around; it scrolls within the cap. Override with `.everygrid-excel-body`.
 
 ---
+
+## Editing & change tracking
+
+`Everygrid.get(id)` is a cursor into a mounted grid's data — grid → row → cell — with the same verbs
+at every level: `get`, `set`, `original`, `isModified`, `changes`, `revert`. Handles are stateless
+views, so they never go stale; a row that does not exist reports `exists() === false` and its
+writes are no-ops, so chains need no null checks. Row indices are positions in the loaded data and
+hold still under sort and filter; `visibleRow(n)` is the n-th row on screen.
+
+```ts
+const g = Everygrid.get('user-grid');            // null until the grid is mounted
+
+// target a row: by index, by key (see rowKey), by predicate, or by position on screen
+g.row(3);  g.rowByKey('U-1002');  g.find(r => r.email === 'a@b.c');  g.visibleRow(0);
+
+// cells — set() behaves exactly like typing into the cell: tracked, marked, synced to the engine
+g.row(3).cell('score').get();        g.cell(3, 'score')          // same thing
+g.row(3).cell('score').set(90);
+g.row(3).cell('score').original();   g.row(3).cell('score').isModified();
+g.row(3).cell('score').revert();
+
+// rows
+g.row(3).set({score: 90, active: false});
+g.row(3).changes();                  // [{field, from, to}]
+g.row(3).original();  g.row(3).isModified();  g.row(3).revert();  g.row(3).key();
+
+// columns
+g.column('score').changes();         // [{index, key, from, to, row}]
+g.column('score').values();  g.column('score').revert();
+
+// the grid
+g.hasChanges();
+g.changes();                         // [{index, key, row, original, cells: [{field, from, to}]}]
+g.diff();                            // {rows, cells} — the same, with a cell count
+g.patch();                           // [{key, changes: {score: 90}}] — what to send to a server
+g.revert();                          // every row back to its original
+g.commit();                          // after a successful save: current values become the baseline
+
+// events — each returns its unsubscribe function
+g.on('cellChange', ({index, key, field, from, to, row}) => …);
+g.on('change', changes => …);        // after every edit, revert and commit
+```
+
+`rowKey` names the field that identifies a row (`{"id": "user-grid", "field": "id"}`; an array
+makes a composite key joined with `|`). Without it `key` is the row's data index.
+
+Change tracking costs only what was edited: a row's original is snapshotted on its first edit, so
+`changes()` and `patch()` walk the edited rows, not the dataset.
 
 ## Other APIs
 
