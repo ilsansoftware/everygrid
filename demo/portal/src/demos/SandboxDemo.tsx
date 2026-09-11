@@ -98,6 +98,14 @@ export default function SandboxDemo({active}: { active: boolean }) {
     }
   };
 
+  /** Empties the grid — back to the "appears here" placeholder; the text box is left alone. */
+  const clearGrid = async () => {
+    rowsRef.current = [];
+    setInfo(null);
+    setError(null);
+    await Everygrid.reload('sandbox-grid', {silent: true, discard: true});
+  };
+
   const loadFile = (file: File) => load(file.name, file.size, () => file.text());
   const loadText = (text: string) => load('Pasted JSON', new Blob([text]).size, () => Promise.resolve(text));
 
@@ -223,11 +231,21 @@ export default function SandboxDemo({active}: { active: boolean }) {
 
             {error && <p className='text-sm text-red-600' role='alert'>{error}</p>}
             {info && !error && (
-                <p className='text-sm text-slate-600'>
-                  <span className='font-medium text-slate-800'>{info.name}</span>
-                  {' · '}{formatBytes(info.bytes)}
-                  {' · '}{info.rows.toLocaleString()} rows
-                  {' · '}{info.columns} columns
+                <p className='flex items-center gap-3 text-sm text-slate-600'>
+                  <span className='min-w-0 truncate'>
+                    <span className='font-medium text-slate-800'>{info.name}</span>
+                    {' · '}{formatBytes(info.bytes)}
+                    {' · '}{info.rows.toLocaleString()} rows
+                    {' · '}{info.columns} columns
+                  </span>
+                  <button
+                      type='button'
+                      className='ml-auto shrink-0 text-slate-500 hover:text-slate-800 disabled:opacity-50'
+                      disabled={busy}
+                      onClick={() => void clearGrid()}
+                  >
+                    Clear grid
+                  </button>
                 </p>
             )}
           </div>
