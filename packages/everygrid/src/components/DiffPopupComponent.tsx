@@ -17,7 +17,7 @@ interface DiffLine extends Record<string, unknown> {
   status: 'inserted' | 'updated' | 'deleted';
   key: string | number | null;
   row: number;
-  changes: Record<string, unknown>;
+  changes: Record<string, unknown> | null;
 }
 
 /**
@@ -39,13 +39,16 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
   const empty = (v: unknown) => v === null || v === undefined || v === '';
   const compact = (row: Record<string, unknown>) =>
     Object.fromEntries(Object.entries(row).filter(([, v]) => !empty(v)));
+  // An empty object (an inserted row with nothing filled in yet) is shown as an empty cell, not
+  // as a viewer button with no label.
+  const orNull = (o: Record<string, unknown>) => Object.keys(o).length > 0 ? o : null;
   const lines: DiffLine[] = changes.map(r => ({
     status: r.status,
     key: r.key,
     row: r.index,
-    changes: r.status === 'updated'
+    changes: orNull(r.status === 'updated'
       ? Object.fromEntries(r.cells.map(c => [c.field, {from: c.from, to: c.to}]))
-      : compact(r.status === 'deleted' ? r.original : r.row),
+      : compact(r.status === 'deleted' ? r.original : r.row)),
   }));
   const cells = changes.reduce((n, r) => n + r.cells.length, 0);
 
