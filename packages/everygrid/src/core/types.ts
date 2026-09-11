@@ -160,6 +160,12 @@ export interface GridVirtualScrollConfig {
  * For genuinely large data the right answer is server-side pagination (`pagination.serverSide` +
  * `serverFetcher`); this is a safety net for when a full dataset reaches the client anyway.
  */
+/** Toolbar (search box + action buttons) per grid; `active: false` hides it. On by default. */
+export interface GridToolbarConfig {
+  id: string;
+  active?: boolean;
+}
+
 export interface GridDataLimitConfig {
   id: string;
   /**
@@ -250,6 +256,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   getMobileColumns(containerId: string): string[] | undefined;
   isColumnBoolean(field: string): boolean;
   getRowActions(containerId: string): {insertRow: boolean; deleteRow: boolean};
+  hasToolbar(containerId: string): boolean;
   getCheckboxMapping(containerId: string): string | undefined;
   getCheckedValues(containerId: string): unknown[];
   getCheckedRows(containerId: string): T[];
@@ -344,6 +351,7 @@ export interface GridOptions<T = Record<string, unknown>> {
   editableCols?: EditableColConfig[];
   rowKey?: GridRowKeyConfig[];
   rowActions?: GridRowActionsConfig[];
+  toolbar?: GridToolbarConfig[];
   colors?: GridColorConfig[];
   links?: GridLinkConfig[];
   checkbox?: GridCheckboxConfig[];

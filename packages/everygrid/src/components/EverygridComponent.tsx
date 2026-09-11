@@ -356,7 +356,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
         <div className='flex-1 flex flex-col min-h-0'>
           <ExcelViewWrapperComponent
             data={excelItems}
-            toolbar={toolbar}
+            toolbar={grid.hasToolbar(containerId) ? toolbar : null}
             header={excelBar('top')}
             footer={excelBar('bottom')}
             onBodyScroll={excelScrolls ? onExcelScroll : undefined}
@@ -408,7 +408,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
         {/* The toolbar stays up while loading — it hosts the search box, title and the progress
             pill. A settled empty grid gets none of it: search, sort reset, column selection and
             export all act on rows that don't exist. */}
-        {!showEmpty && <div className={`everygrid-toolbar-container px-2 shrink-0 everygrid-panel everygrid-panel-top`}>
+        {!showEmpty && grid.hasToolbar(containerId) && <div className={`everygrid-toolbar-container px-2 shrink-0 everygrid-panel everygrid-panel-top`}>
           <GridToolbarComponent
             gridTitle={gridTitle}
             isExporting={isExporting}
@@ -447,7 +447,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             suggestions have a band to open into before they reach the column headers — without it
             the dropdown lands straight on top of the columns. */}
         {!showEmpty && (
-          <div className='everygrid-pagination-top shrink-0 everygrid-panel everygrid-panel-above-body everygrid-panel-strip'>
+          <div className={`everygrid-pagination-top shrink-0 everygrid-panel everygrid-panel-above-body everygrid-panel-strip${grid.hasToolbar(containerId) ? '' : ' everygrid-panel-top'}`}>
             {!topInlineCount && <RowCountComponent {...rowCountData}/>}
             {hasTopPagination && <PaginationComponent
               grid={grid}

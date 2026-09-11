@@ -59,6 +59,8 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
     const instance = new Everygrid<DiffLine>({
       targets: [{id: diffId, title: I18n.t('toolbar.diff')}],
       data: lines,
+      // The popup has its own header; the grid shows just the rows.
+      toolbar: [{id: diffId, active: false}],
       columnI18n: {[locale]: {[diffId]: labels}},
     });
     return () => { instance.destroy(); };

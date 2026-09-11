@@ -1231,6 +1231,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   // ---- Row add / delete ------------------------------------------------------------------------
 
+  /** Whether the target shows its toolbar (search + actions); `toolbar: [{id, active: false}]` hides it. */
+  public hasToolbar(containerId: string): boolean {
+    const conf = this.options.toolbar?.find(c => c.id === containerId);
+    return conf?.active !== false;
+  }
+
   public getRowActions(containerId: string): {insertRow: boolean; deleteRow: boolean} {
     const conf = this.options.rowActions?.find(c => c.id === containerId);
     return {insertRow: !!conf?.insertRow, deleteRow: !!conf?.deleteRow};

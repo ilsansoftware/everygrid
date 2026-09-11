@@ -31,6 +31,7 @@ export type {
   EditableColConfig,
   GridRowKeyConfig,
   GridRowActionsConfig,
+  GridToolbarConfig,
   GridLinkConfig,
   IEverygrid,
   GridLoadProgress,

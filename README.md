@@ -171,6 +171,7 @@ are all inlined — exposed as `window.Everygrid`. No stylesheet, no React scrip
 | `editableCols` | `EditableColConfig[]` | Editable column settings per grid |
 | `rowKey` | `GridRowKeyConfig[]` | Field (or fields) that identify a row — what `patch()` and change events report as `key`. Without it, the row's data index |
 | `rowActions` | `GridRowActionsConfig[]` | `{insertRow, deleteRow}` per grid: a "+ row" toolbar button that adds an empty row above the data rows (kept apart from the loaded data — its rows and their indices stay put until commit), and a delete button on every row (deleted rows stay struck through until commit) |
+| `toolbar` | `GridToolbarConfig[]` | `{id, active: false}` hides a grid's toolbar (search box and action buttons); on by default |
 | `checkbox` | `GridCheckboxConfig[]` | Adds a checkbox column per grid; `mapping` names the field whose value is collected when a row is checked |
 | `pagination` | `GridPaginationConfig[]` | Pagination settings per grid |
 | `virtualScroll` | `GridVirtualScrollConfig[]` | Virtual scrolling settings per grid (replaces pagination for that grid) |
