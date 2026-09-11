@@ -53,7 +53,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   readonly options: GridOptions<T>;
   public hiddenFieldsMap: Map<string, Set<string>> = new Map(); // Manages hidden fields per targetId
   public displayColsMap: Map<string, Set<string>> = new Map(); // Column selector whitelist per targetId (empty = show all)
-  public mobileColsMap: Map<string, Set<string>> = new Map(); // Mobile column picks per targetId (≤3; overrides mobileColumns config)
+  /** @deprecated Unused — mobile picks go through displayColsMap like desktop. Kept for the interface. */
+  public mobileColsMap: Map<string, Set<string>> = new Map();
   public exportState: Map<string, {done: number; total: number}> = new Map(); // Excel export progress (files done/total) per targetId
   private _exportControllers: Map<string, AbortController> = new Map(); // aborts in-flight exports (terminates the worker) on re-export or destroy
   public pinnedColumns: Set<string> = new Set(); // Manages pinned columns
@@ -1939,9 +1940,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   /**
-   * The ≤3 field keys shown on a narrow (mobile) layout, in priority order: the user's in-session
-   * picks (`mobileColsMap`), then the `mobileColumns` config, then the first three data columns.
-   * Only fields that exist in `available` are kept, so a stale pick/config never yields a blank column.
+   * @deprecated Unused — the mobile layout no longer caps at three columns; `getColumns(…, true)`
+   * applies the desktop whitelist over the `mobileColumns` default. Kept for the interface.
    */
   public getMobileFields(containerId: string, available: GridColumn[]): string[] {
     const has = (f: string) => available.some(c => c.field === f);

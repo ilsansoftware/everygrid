@@ -46,10 +46,10 @@ export interface EditableColConfig {
 }
 
 /**
- * Columns shown on a narrow (mobile) layout, where the grid drops to a no-horizontal-scroll view of
- * a few fixed columns plus a per-row detail button. `cols` lists the field keys (first 3 used); with
- * no entry the grid falls back to the first three data columns. A user can also pick up to 3 at
- * runtime, which overrides this.
+ * Default columns for the narrow (mobile) layout, where rows scroll horizontally and each carries a
+ * detail button opening the whole row. `cols` lists the field keys to show until the user picks
+ * their own (the mobile "Columns" action, same whitelist as desktop); with no entry every column
+ * shows. Fields that do not exist are skipped.
  */
 export interface GridMobileColumnsConfig {
   id: string;
@@ -168,6 +168,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   activeEditFields: Map<string, Set<string>>;
   sortConfig: Map<string, { field: string; direction: 'asc' | 'desc' | null }>;
   hiddenFieldsMap: Map<string, Set<string>>;
+  /** @deprecated Unused since the mobile layout adopted the desktop column whitelist (`displayColsMap`). */
   mobileColsMap: Map<string, Set<string>>;
   exportState: Map<string, {done: number; total: number}>;
   commaSeparatedFields: Set<string>;
@@ -234,6 +235,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   getColumns(containerId: string, items: T[], isMobile?: boolean): GridColumn[];
   columnLabel(field: string, containerId: string): string;
   getMobileColumns(containerId: string): string[] | undefined;
+  /** @deprecated Unused since the mobile layout adopted the desktop column whitelist; see `getColumns`. */
   getMobileFields(containerId: string, available: GridColumn[]): string[];
   showMobileColumnSelector(allFields: string[], container: HTMLElement): void;
   showRowDetail(row: T, container: HTMLElement): void;

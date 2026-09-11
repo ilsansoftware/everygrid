@@ -405,15 +405,16 @@ invalidates a typed query.
 
 ## Mobile layout
 
-Below 720px the grid drops to a touch-friendly layout that **doesn't scroll horizontally**: it shows
-a fixed set of up to 3 columns plus a per-row **detail button** that opens the whole row in a modal.
-Rows are taller and controls are larger for touch; pinning, resizing and the checkbox column are off.
+Below 720px the grid switches to a touch layout: fixed-width columns that **scroll horizontally**,
+taller rows and larger controls, and a per-row **detail button** that opens the whole row in a
+modal. Pinning, resizing and the checkbox column are off.
 
-Which 3 columns show, in priority order:
+Which columns show, in priority order:
 
-1. The user's in-session pick — the toolbar's **Mobile Columns** action (mobile only) lets them choose up to 3.
+1. The user's in-session pick — the **Columns** action in the header (the same whitelist as
+   desktop's "Select Columns"; an empty pick falls back to the first three columns).
 2. `mobileColumns` config for the grid.
-3. The first three data columns (default).
+3. Every column (default).
 
 ```json
 "mobileColumns": [
@@ -421,8 +422,8 @@ Which 3 columns show, in priority order:
 ]
 ```
 
-`cols` are field keys (first 3 used); any that don't exist are skipped. Column labels follow
-[Column i18n](#column-i18n) like everywhere else.
+`cols` are field keys, shown in the grid's column order; any that don't exist are skipped. Column
+labels follow [Column i18n](#column-i18n) like everywhere else.
 
 ## Excel export
 
