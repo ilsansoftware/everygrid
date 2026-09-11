@@ -7,6 +7,7 @@ import {SortUpIcon} from '../icons/SortUpIcon.tsx';
 import {PinFilledIcon} from '../icons/PinFilledIcon.tsx';
 import {EditIcon} from '../icons/EditIcon.tsx';
 import {TableCellComponent} from './TableCellComponent';
+import {InsertedRowsComponent} from './InsertedRowsComponent';
 
 interface PinnedTableComponentProps<T extends Record<string, unknown>> {
   instance: IEverygrid<T>;
@@ -161,27 +162,10 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
         </tr>
         </thead>
         <tbody>
-        {insertedItems.map((item, i) => (
-          <tr key={`ins-${i}`}
-              style={virtual ? {height: `${virtual.rowHeight}px`} : undefined}
-              className='everygrid-row-inserted'>
-            {pinnedColumns.map((col) => col.type === 'data_checkbox'
-              ? <td key={`ins-${i}-${col.field}`} className='w-10'/>
-              : (
-                <TableCellComponent
-                  key={`ins-${i}-${col.field}`}
-                  grid={instance}
-                  col={col}
-                  item={item}
-                  rowIndex={-1 - i}
-                  containerId={containerId}
-                  container={container}
-                  editableFields={editableFields}
-                  filterText={filterText}
-                />
-              ))}
-          </tr>
-        ))}
+        <InsertedRowsComponent
+          grid={instance} columns={pinnedColumns} items={insertedItems} container={container} containerId={containerId}
+          editableFields={editableFields} filterText={filterText} rowHeight={virtual?.rowHeight}
+        />
         {virtual && virtual.topPad > 0 && (
           <tr className='everygrid-spacer-row' style={{height: `${virtual.topPad}px`}} aria-hidden='true'>
             <td colSpan={pinnedColumns.length}/>

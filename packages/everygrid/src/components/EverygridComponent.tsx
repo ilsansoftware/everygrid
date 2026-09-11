@@ -250,6 +250,41 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
       (!pagerPosition && (streamTotal > 0 || streamTotalRaw > 0)));
 
   // Excel View Mode
+  // One toolbar, whichever view is on: the normal grid and the Excel preview mount it with the
+  // same props. Only grids created from a URL / fetcher can re-fetch; only grids that can change
+  // get the diff button; only a target that asked for it gets the config button.
+  const toolbarProps = {
+    gridTitle,
+    isExporting,
+    statusText,
+    progress,
+    onCancelExport,
+    hasCustomWidths: currentWidths.size > 0,
+    isExcelViewMode: grid.isExcelViewMode,
+    onToggleExcelView: () => grid.toggleExcelViewMode(container),
+    onResetWidths: () => grid.resetColumnWidths(container),
+    onShowColumnSelector: () => grid.showColumnSelector(dataFields, container),
+    onShowHiddenColumnSelector: () => grid.showHiddenColumnSelector(container),
+    onDownloadExcel: (scope: 'filtered' | 'all') => { void grid.exportExcel(containerId, scope); },
+    filteredCount: streamTotal,
+    allCount: streamTotalRaw,
+    onReloadData: grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined,
+    onInsertRow: grid.getRowActions(containerId).insertRow ? () => grid.insertRow(containerId) : undefined,
+    onShowDiff: canChange ? () => grid.showDiff(container) : undefined,
+    onShowConfig: grid.showsConfig(containerId) ? () => grid.showConfig(container) : undefined,
+    isReloading: grid._reloading?.get(containerId) === 'button',
+    onReset: () => grid.reset(container),
+    onResetSort: () => grid.resetSort(container),
+    hasChanges: grid.checkHasChanges(),
+    hiddenFields: grid.hiddenFieldsMap.get(containerId) || new Set<string>(),
+    sortInfo: grid.sortConfig.get(containerId),
+    filterText: grid.filterText,
+    onFilter: (text: string) => grid.setFilter(text, container),
+    searchKeys,
+    labelOf: (k: string) => grid.columnLabel(k, containerId),
+    isIndexing: isBusy,
+  };
+
   if (grid.isExcelViewMode) {
     // The preview pages through the entire result rather than showing a truncated head — that is
     // what removed the old "only the top 50 are shown" banner, and with it the mismatch between
@@ -319,35 +354,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
     };
     const toolbar = (
       <div className='everygrid-toolbar-container px-2 shrink-0 everygrid-panel everygrid-panel-top everygrid-panel-above-body'>
-        <GridToolbarComponent
-          isExcelViewMode={grid.isExcelViewMode}
-          isExporting={isExporting}
-          statusText={statusText}
-          progress={progress}
-          onCancelExport={onCancelExport}
-          onToggleExcelView={() => grid.toggleExcelViewMode(container)}
-          onResetWidths={() => grid.resetColumnWidths(container)}
-          onShowColumnSelector={() => grid.showColumnSelector(dataFields, container)}
-          onShowHiddenColumnSelector={() => grid.showHiddenColumnSelector(container)}
-          onDownloadExcel={(scope) => { void grid.exportExcel(containerId, scope); }}
-          filteredCount={streamTotal}
-          allCount={streamTotalRaw}
-          // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
-          onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
-          onInsertRow={grid.getRowActions(containerId).insertRow ? () => grid.insertRow(containerId) : undefined}
-          onShowDiff={canChange ? () => grid.showDiff(container) : undefined}
-          onShowConfig={grid.showsConfig(containerId) ? () => grid.showConfig(container) : undefined}
-          isReloading={grid._reloading?.get(containerId) === 'button'}
-          onReset={() => grid.reset(container)}
-          onResetSort={() => grid.resetSort(container)}
-          hasChanges={grid.checkHasChanges()}
-          hiddenFields={grid.hiddenFieldsMap.get(containerId) || new Set()}
-          sortInfo={grid.sortConfig.get(containerId)}
-          filterText={grid.filterText}
-          onFilter={(text) => grid.setFilter(text, container)}
-          searchKeys={searchKeys}
-          labelOf={(k) => grid.columnLabel(k, containerId)}
-        />
+        <GridToolbarComponent {...toolbarProps}/>
       </div>
     );
     return (
@@ -410,38 +417,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             pill. A settled empty grid gets none of it: search, sort reset, column selection and
             export all act on rows that don't exist. */}
         {!showEmpty && grid.hasToolbar(containerId) && <div className={`everygrid-toolbar-container px-2 shrink-0 everygrid-panel everygrid-panel-top`}>
-          <GridToolbarComponent
-            gridTitle={gridTitle}
-            isExporting={isExporting}
-            statusText={statusText}
-            progress={progress}
-            onCancelExport={onCancelExport}
-            hasCustomWidths={currentWidths.size > 0}
-            isExcelViewMode={grid.isExcelViewMode}
-            onToggleExcelView={() => grid.toggleExcelViewMode(container)}
-            onResetWidths={() => grid.resetColumnWidths(container)}
-            onShowColumnSelector={() => grid.showColumnSelector(dataFields, container)}
-            onShowHiddenColumnSelector={() => grid.showHiddenColumnSelector(container)}
-            onDownloadExcel={(scope) => { void grid.exportExcel(containerId, scope); }}
-            filteredCount={streamTotal}
-            allCount={streamTotalRaw}
-            // Only grids created from a URL/fetcher can re-fetch; the rest get no button.
-            onReloadData={grid._dataSource?.has(containerId) ? () => { void grid.reloadData(containerId); } : undefined}
-            onInsertRow={grid.getRowActions(containerId).insertRow ? () => grid.insertRow(containerId) : undefined}
-            onShowDiff={canChange ? () => grid.showDiff(container) : undefined}
-            onShowConfig={grid.showsConfig(containerId) ? () => grid.showConfig(container) : undefined}
-            isReloading={grid._reloading?.get(containerId) === 'button'}
-            onReset={() => grid.reset(container)}
-            onResetSort={() => grid.resetSort(container)}
-            hasChanges={grid.checkHasChanges()}
-            hiddenFields={grid.hiddenFieldsMap.get(containerId) || new Set()}
-            sortInfo={grid.sortConfig.get(containerId)}
-            filterText={grid.filterText}
-            onFilter={(text) => grid.setFilter(text, container)}
-            searchKeys={searchKeys}
-          labelOf={(k) => grid.columnLabel(k, containerId)}
-            isIndexing={isBusy}
-          />
+          <GridToolbarComponent {...toolbarProps}/>
         </div>}
 
         {/* The strip under the toolbar is always here, whether or not top pagination is configured.
