@@ -26,12 +26,58 @@ const marked = new Marked({
 
 // The library's README, rendered as the portal's documentation page: a sticky table of contents
 // built from its second-level headings, and the document itself.
+/** The technical case for the library, above the README: what is different and why it matters. */
+const HIGHLIGHTS: { title: string; body: string; tag: string }[] = [
+  {
+    tag: 'Rust → WASM',
+    title: 'The heavy lifting is not in JavaScript',
+    body: 'Filtering, sorting and paging run in a Rust engine compiled to WebAssembly, inside a Web '
+        + 'Worker. A million rows sort in the worker while the page stays responsive; the main thread '
+        + 'only ever renders the rows in view.',
+  },
+  {
+    tag: 'Streaming',
+    title: 'Bytes go straight to the engine',
+    body: 'A URL fetcher streams the response into the worker as raw bytes — no JSON.parse on the '
+        + 'main thread, no copy of the dataset on the JS heap. The 1.6M-row demo loads with a '
+        + 'progress bar, not a frozen tab.',
+  },
+  {
+    tag: 'Virtual scroll',
+    title: 'Millions of rows, one scrollbar',
+    body: 'Only the rows on screen exist in the DOM. Blocks are fetched from the engine on demand '
+        + 'and prefetched ahead of the scroll, and results too tall for a browser scroller are '
+        + 'paged through in 200,000-row segments that slide under the reader unnoticed.',
+  },
+  {
+    tag: 'Config-driven',
+    title: 'Behaviour is JSON, not code',
+    body: 'Pagination, editable columns, checkboxes, colours, row actions, keys, mobile columns and '
+        + 'i18n are all per-grid entries in a config file. A grid is one element with an id; the '
+        + 'config decides the rest.',
+  },
+  {
+    tag: 'Any stack',
+    title: 'React, plain HTML, jQuery — one API',
+    body: 'A React hook and component for bundlers; a single self-contained <script> (React, WASM, '
+        + 'worker and CSS inlined) for any other page. The same Everygrid.get(id) handle works in all '
+        + 'of them.',
+  },
+  {
+    tag: 'Change tracking',
+    title: 'Edits are data you can ship',
+    body: 'A grid → row → cell handle: get, set, cancel, insert, delete, check. patch() gives the '
+        + 'inserted rows, the updated cells by key and the deleted keys as plain JSON — save it '
+        + 'however you like, then commit().',
+  },
+];
+
 export default function DocsPage() {
   const {html, toc} = useMemo(() => {
     const toc = marked.lexer(readme)
         .filter((t): t is Tokens.Heading => t.type === 'heading' && t.depth === 2)
         .map(t => ({id: slug(t.text), text: t.text}));
-    return {html: marked.parse(readme) as string, toc};
+    return {html: marked.parse(readme) as string, toc: [{id: 'highlights', text: 'Highlights'}, ...toc]};
   }, []);
 
   return (
@@ -42,7 +88,32 @@ export default function DocsPage() {
             document.getElementById(h.id)?.scrollIntoView({behavior: 'smooth', block: 'start'});
           }}>{h.text}</a>)}
         </aside>
-        <article className='docs-body' dangerouslySetInnerHTML={{__html: html}}/>
+        <div className='docs-main'>
+          <section id='highlights' className='docs-highlights'>
+            <h2>Highlights</h2>
+            <p className='docs-highlights-lead'>
+              A data grid whose data work happens off the main thread. Config in, grid out — from a
+              few rows to a few million.
+            </p>
+            <div className='docs-highlight-grid'>
+              {HIGHLIGHTS.map(h => (
+                  <div key={h.tag} className='docs-highlight'>
+                    <span className='docs-highlight-tag'>{h.tag}</span>
+                    <h3>{h.title}</h3>
+                    <p>{h.body}</p>
+                  </div>
+              ))}
+            </div>
+            <div className='docs-pipeline'>
+              <span>everygrid.config.json</span><i>→</i>
+              <span>Everygrid (React UI)</span><i>→</i>
+              <span>GridEngineWasm</span><i>→</i>
+              <span>Web Worker</span><i>→</i>
+              <span>Rust engine (WASM)</span>
+            </div>
+          </section>
+          <article className='docs-body' dangerouslySetInnerHTML={{__html: html}}/>
+        </div>
       </div>
   );
 }
