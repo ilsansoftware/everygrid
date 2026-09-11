@@ -34,12 +34,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, childre
       <div className={`everygrid-popup-content everygrid-popup-${size}`}>
         <div className='everygrid-popup-header flex items-center justify-between'>
           <div className='flex items-center gap-4'>
-            {title && (
-              <div className='min-w-0'>
-                <h3 className='m-0'>{title}</h3>
-                {subtitle && <div className='everygrid-popup-subtitle'>{subtitle}</div>}
-              </div>
-            )}
+            {title && <h3 className='m-0'>{title}</h3>}
             {(data !== undefined && !isXml) && (
               <div className='flex bg-slate-100 p-0.5 rounded text-[10px] font-bold'>
                 <button
@@ -59,6 +54,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, childre
           </div>
           <span className='everygrid-popup-close' onClick={onClose}>&times;</span>
         </div>
+        {subtitle && <div className='everygrid-popup-subtitle' title={subtitle}>{subtitle}</div>}
         <div className='everygrid-popup-body everygrid-popup-code-body overflow-auto flex-1'>
           {viewMode === 'table' ? (
             isXml ? (

@@ -469,9 +469,10 @@
   @apply text-lg font-bold text-slate-800;
 }
 
-/* Source line under a popup title (e.g. the config file a grid came from). */
+/* Source strip under the popup header (e.g. the config file a grid came from). Its own full-width
+   row, so a long URL truncates instead of pushing the view toggle and close button around. */
 .everygrid-popup-subtitle {
-  @apply mt-0.5 text-[11px] font-mono text-slate-400 truncate;
+  @apply px-4 py-1.5 text-[11px] font-mono text-slate-500 bg-slate-50 border-b border-slate-200 truncate;
 }
 
 .everygrid-popup-close {
