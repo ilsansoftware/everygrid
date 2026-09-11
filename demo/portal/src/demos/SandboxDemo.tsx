@@ -1,4 +1,4 @@
-import {useCallback, useRef, useState, type DragEvent, type ChangeEvent} from 'react';
+import {useCallback, useRef, useState, type DragEvent, type ChangeEvent, type ClipboardEvent} from 'react';
 import {Everygrid, useGrid} from '@everygrid/grid';
 
 type Row = Record<string, unknown>;
@@ -41,7 +41,8 @@ function extractRows(doc: unknown): Row[] {
 
 type FileInfo = { name: string; bytes: number; rows: number; columns: number };
 
-// JSON to grid — drop any JSON file and the grid renders it, columns inferred from the rows.
+// JSON to grid — drop a JSON file or paste JSON text and the grid renders it, columns inferred
+// from the rows.
 export default function SandboxDemo() {
   // The grid re-runs this same fetcher on every reload, so the rows it should show live in a ref.
   const rowsRef = useRef<Row[]>([]);
@@ -53,23 +54,25 @@ export default function SandboxDemo() {
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [pasted, setPasted] = useState('');
 
-  const load = async (file: File) => {
+  /** A file and pasted text take the same path; `read` hands over the text once the size passed. */
+  const load = async (name: string, bytes: number, read: () => Promise<string>) => {
     setError(null);
     const limit = maxBytes();
-    if (file.size > limit) {
-      setError(`${file.name} is ${formatBytes(file.size)}; the limit is ${formatBytes(limit)}.`);
+    if (bytes > limit) {
+      setError(`${name} is ${formatBytes(bytes)}; the limit is ${formatBytes(limit)}.`);
       return;
     }
     setBusy(true);
     try {
       // Parsing a large file blocks the main thread; yielding once lets the busy state paint first.
       await new Promise<void>(resolve => setTimeout(resolve, 0));
-      const rows = extractRows(JSON.parse(await file.text()));
+      const rows = extractRows(JSON.parse(await read()));
       rowsRef.current = rows;
       const columns = new Set<string>();
       for (const r of rows.slice(0, 200)) Object.keys(r).forEach(k => columns.add(k));
-      setInfo({name: file.name, bytes: file.size, rows: rows.length, columns: columns.size});
+      setInfo({name, bytes, rows: rows.length, columns: columns.size});
       // Silent because nobody pressed the toolbar's reload; discarding because the previous file's
       // rows should not sit there while the new ones are indexed.
       await Everygrid.reload('sandbox-grid', {silent: true, discard: true});
@@ -84,15 +87,27 @@ export default function SandboxDemo() {
     }
   };
 
+  const loadFile = (file: File) => load(file.name, file.size, () => file.text());
+  const loadText = (text: string) => load('Pasted JSON', new Blob([text]).size, () => Promise.resolve(text));
+
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) void load(file);
+    if (file) void loadFile(file);
   };
   const onDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) void load(file);
+    if (file) void loadFile(file);
+  };
+  // A paste renders straight away — that is the whole gesture. The button covers text typed or
+  // edited in place.
+  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData('text');
+    if (!text.trim()) return;
+    e.preventDefault();
+    setPasted(text);
+    void loadText(text);
   };
 
   return (
@@ -122,6 +137,36 @@ export default function SandboxDemo() {
               Columns are inferred from the rows; nothing leaves your browser.
             </p>
             <input ref={inputRef} type='file' accept='.json,application/json' hidden onChange={onChange}/>
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <textarea
+                className='min-h-28 w-full resize-y rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none'
+                placeholder='…or paste JSON here'
+                spellCheck={false}
+                value={pasted}
+                disabled={busy}
+                onChange={(e) => setPasted(e.target.value)}
+                onPaste={onPaste}
+            />
+            <div className='flex items-center gap-3'>
+              <button
+                  type='button'
+                  className='h-[34px] rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50'
+                  disabled={busy || !pasted.trim()}
+                  onClick={() => void loadText(pasted)}
+              >
+                Render
+              </button>
+              <button
+                  type='button'
+                  className='text-sm text-slate-500 hover:text-slate-800 disabled:opacity-50'
+                  disabled={busy || !pasted}
+                  onClick={() => setPasted('')}
+              >
+                Clear
+              </button>
+            </div>
           </div>
 
           {busy && <p className='text-sm text-slate-500'>Parsing…</p>}

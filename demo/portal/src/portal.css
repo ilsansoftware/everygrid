@@ -359,12 +359,6 @@ nav button.active img {
   white-space: nowrap;
 }
 
-.show-code-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-  pointer-events: none;
-}
-
 .show-code-btn:hover {
   background: #3a3c55;
   color: #e2e8f0;

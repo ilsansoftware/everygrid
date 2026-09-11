@@ -245,10 +245,9 @@ export default function App() {
   const meta = CODE_META[tab];
 
   // Lives beside the page title, next to the demo it shows the source of; the header keeps it only
-  // on a phone, where the title row is dropped. Tools have no demo source, so it is disabled there.
-  const codeButton = (
+  // on a phone, where the title row is dropped. Tools have no demo source, so there it is not shown.
+  const codeButton = NO_CODE_TABS.includes(tab) ? null : (
     <button className='show-code-btn' title='Show source code'
-            disabled={NO_CODE_TABS.includes(tab)}
             onClick={() => setModalOpen(true)}>
       <svg
           xmlns='http://www.w3.org/2000/svg'
