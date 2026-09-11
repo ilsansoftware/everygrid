@@ -167,9 +167,9 @@
 .everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) * {
   @apply text-slate-400;
 }
-/* An inserted row reads as new until commit. */
-.everygrid-table tbody tr.everygrid-row-inserted td:not(.everygrid-actions-cell) {
-  @apply bg-emerald-50/60;
+/* An inserted row sits above the data, tinted, until commit moves it in. */
+.everygrid-table tbody tr.everygrid-row-inserted td {
+  @apply bg-emerald-50 border-b border-emerald-100;
 }
 
 /* The detail column is narrow (52px) and holds a 40px button, so it can't afford the mobile cells'

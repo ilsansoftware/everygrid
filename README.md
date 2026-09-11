@@ -170,7 +170,7 @@ are all inlined — exposed as `window.Everygrid`. No stylesheet, no React scrip
 | `targets` | `GridTargetConfig[]` | Grid instances to initialize |
 | `editableCols` | `EditableColConfig[]` | Editable column settings per grid |
 | `rowKey` | `GridRowKeyConfig[]` | Field (or fields) that identify a row — what `patch()` and change events report as `key`. Without it, the row's data index |
-| `rowActions` | `GridRowActionsConfig[]` | `{insertRow, deleteRow}` per grid: a "+ row" toolbar button that adds an empty row to the **insert grid** (a small table above the data — loaded rows and their indices stay put until commit), and a delete button on every row (deleted rows stay struck through until commit) |
+| `rowActions` | `GridRowActionsConfig[]` | `{insertRow, deleteRow}` per grid: a "+ row" toolbar button that adds an empty row above the data rows (kept apart from the loaded data — its rows and their indices stay put until commit), and a delete button on every row (deleted rows stay struck through until commit) |
 | `checkbox` | `GridCheckboxConfig[]` | Adds a checkbox column per grid; `mapping` names the field whose value is collected when a row is checked |
 | `pagination` | `GridPaginationConfig[]` | Pagination settings per grid |
 | `virtualScroll` | `GridVirtualScrollConfig[]` | Virtual scrolling settings per grid (replaces pagination for that grid) |
@@ -500,8 +500,8 @@ g.column('score').changes();         // [{index, key, from, to, row}]
 g.column('score').values();  g.column('score').revert();
 
 // rows in and out (rowActions.insertRow / deleteRow must allow it)
-g.insertRow({name: 'New'});          // a row in the insert grid, with these values; returns its handle
-g.insertedRow(0);                    // insert-grid rows have their own index space (handle.kind === 'inserted')
+g.insertRow({name: 'New'});          // a new row above the data, with these values; returns its handle
+g.insertedRow(0);                    // inserted rows have their own index space (handle.kind === 'inserted')
 g.row(3).delete();                   // struck through until commit; g.row(3).restore() undoes it
 g.row(3).status();                   // 'inserted' | 'updated' | 'deleted' | null
 g.row(3).inserted(); g.row(3).updated(); g.row(3).deleted(); g.row(3).checked();   // predicates

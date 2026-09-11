@@ -23,6 +23,8 @@ interface PinnedTableComponentProps<T extends Record<string, unknown>> {
   /** Must match the main table's spacers exactly — that identity is what keeps the two
    *  tables' rows aligned without any JS height syncing. */
   virtual?: {topPad: number; bottomPad: number; rowHeight: number};
+  /** Same rows as the main table's — the two must stay row-for-row aligned. */
+  insertedItems?: T[];
 }
 
 export const PinnedTableComponent = React.memo(<T extends Record<string, unknown>>({
@@ -33,6 +35,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
                                                                                      containerId,
                                                                                      editableFields,
                                                                                      startIndex = 0,
+                                                                                     insertedItems = [],
                                                                                      isExporting = false,
                                                                                      filterText = '',
                                                                                      isIndexing = false,
@@ -158,6 +161,27 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
         </tr>
         </thead>
         <tbody>
+        {insertedItems.map((item, i) => (
+          <tr key={`ins-${i}`}
+              style={virtual ? {height: `${virtual.rowHeight}px`} : undefined}
+              className='everygrid-row-inserted'>
+            {pinnedColumns.map((col) => col.type === 'data_checkbox'
+              ? <td key={`ins-${i}-${col.field}`} className='w-10'/>
+              : (
+                <TableCellComponent
+                  key={`ins-${i}-${col.field}`}
+                  grid={instance}
+                  col={col}
+                  item={item}
+                  rowIndex={-1 - i}
+                  containerId={containerId}
+                  container={container}
+                  editableFields={editableFields}
+                  filterText={filterText}
+                />
+              ))}
+          </tr>
+        ))}
         {virtual && virtual.topPad > 0 && (
           <tr className='everygrid-spacer-row' style={{height: `${virtual.topPad}px`}} aria-hidden='true'>
             <td colSpan={pinnedColumns.length}/>

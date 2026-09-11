@@ -42,6 +42,8 @@ export interface GridTableProps<T extends Record<string, unknown>> {
   isMobile?: boolean;
   /** Set when the target scrolls virtually: spacer heights standing in for the unrendered rows. */
   virtual?: {topPad: number; bottomPad: number; rowHeight: number};
+  /** Rows inserted since load: drawn first, tinted, above the data rows. Not part of `displayItems`. */
+  insertedItems?: T[];
 }
 
 export const GridTableComponent = React.memo(<T extends Record<string, unknown>>({
@@ -53,6 +55,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                                                                                    editableFields,
                                                                                    currentWidths,
                                                                                    startIndex = 0,
+                                                                                   insertedItems = [],
                                                                                    filterText = '',
                                                                                    isIndexing = false,
                                                                                    isExporting = false,
@@ -345,6 +348,32 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
         </tr>
         </thead>
         <tbody>
+        {/* Inserted rows sit at the very top, before any spacer: new rows belong above the data,
+            and they are not part of the loaded data the window is computed over. The checkbox
+            column stays empty — a new row has no key to be checked by yet. */}
+        {insertedItems.map((item, i) => (
+          <tr key={`ins-${i}`}
+              style={virtual ? {height: `${virtual.rowHeight}px`} : undefined}
+              className='everygrid-row-inserted'>
+            {gridColumns.map((col) => col.type === 'data_checkbox'
+              ? <td key={`ins-${i}-${col.field}`} className='w-10'/>
+              : (
+                <TableCellComponent
+                  key={`ins-${i}-${col.field}`}
+                  grid={grid}
+                  col={col}
+                  item={item}
+                  rowIndex={-1 - i}
+                  containerId={containerId}
+                  container={container}
+                  editableFields={editableFields}
+                  filterText={filterText}
+                  visibleFields={visibleFields}
+                  isMobile={isMobile}
+                />
+              ))}
+          </tr>
+        ))}
         {/* Spacer rows stand in for the rows above/below the window. Kept inside the tbody as
             real <tr>s so table-fixed layout, column widths and the sticky header all keep
             working — a transform/absolute body would break every one of them. */}

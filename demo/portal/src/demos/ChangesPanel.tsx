@@ -40,7 +40,7 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
     const age = g.row(0).cell('age');                 // first row, "age" column
     age.set(Number(age.get() || 0) + 1);
     g.rowByKey(2).set({category: 'Ops'});              // the row whose rowKey (id) is 2
-    g.insertRow({name: 'New person', age: 30});           // a row in the insert grid (rowActions.insertRow)
+    g.insertRow({name: 'New person', age: 30});           // a new row above the data (rowActions.insertRow)
     g.row(g.data().length - 1).delete();               // the last row (rowActions.deleteRow)
   };
 
@@ -64,8 +64,8 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
   const code: Record<Kind, string> = {
     inserted: `const g = Everygrid.get('${gridId}');
 
-g.insertRow({name: 'New person'})     // a row in the insert grid above the data; needs rowActions.insertRow
-g.insertedRows()                      // RowHandle[] (indexed within the insert grid)  → ${g?.insertedRows().map(r => `#${r.index}`).join(' ') || '—'}
+g.insertRow({name: 'New person'})     // a new row above the data rows; needs rowActions.insertRow
+g.insertedRows()                      // RowHandle[] (their own index space)  → ${g?.insertedRows().map(r => `#${r.index}`).join(' ') || '—'}
 g.insertedRows()[0]?.cell('age').set(30)
 g.insertedRows().forEach(r => r.revert())            // drop them again
 g.rows().filter(r => r.inserted())                   // the same rows, as a filter
