@@ -705,7 +705,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /** Re-renders one target if it is in the DOM. */
   private _rerender(containerId: string): void {
-    this._rerender(containerId);
+    const el = document.getElementById(containerId);
+    if (el) this.renderGrid(el);
   }
 
   /** After a change to the change set: repaint the grid and tell listeners. */

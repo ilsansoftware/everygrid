@@ -1,4 +1,4 @@
-import React, {type JSX, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import React, {type JSX, type ReactNode, useLayoutEffect, useRef, useState} from 'react';
 import type {GridColumn, IEverygrid} from '../core/types';
 import {I18n} from '../i18n/I18n';
 import {EditIcon} from '../icons/EditIcon';
@@ -78,19 +78,24 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
   }: TableCellProps<T>) => {
   const isIndexCol = col.field === I18n.t('grid.index');
 
-  const isNumeric = useMemo(() => grid.isColumnNumeric(col.field), [grid, col.field]);
-  const isDate = useMemo(() => grid.isColumnDate(col.field), [grid, col.field]);
-  const isModified = useMemo(() => grid.isCellModified(item, col.field), [grid, item, col.field]);
+  // Column kinds are cached per field by the grid (invalidated when the data changes), so they
+  // are read directly — a per-cell memo would go stale across a reload.
+  const isNumeric = grid.isColumnNumeric(col.field);
+  const isDate = grid.isColumnDate(col.field);
+  const isModified = grid.isCellModified(item, col.field);
 
   const [editValue, setEditValue] = useState<string>(String(item[col.field] ?? ''));
   const [isFocused, setIsFocused] = React.useState(false);
   const [showReset, setShowReset] = React.useState(false);
 
-  useEffect(() => {
-    if (!isFocused) {
-      setEditValue(String(item[col.field] ?? ''));
-    }
-  }, [item, col.field, isFocused]);
+  // The editor mirrors the cell's value until the user is typing in it. Derived during render
+  // (the "adjust state on prop change" pattern) rather than in an effect, which cost a second
+  // render per value change.
+  const [mirrored, setMirrored] = useState(item[col.field]);
+  if (!isFocused && mirrored !== item[col.field]) {
+    setMirrored(item[col.field]);
+    setEditValue(String(item[col.field] ?? ''));
+  }
 
   if (col.type === 'row_actions') {
     const deleted = grid.isRowDeleted(item);
