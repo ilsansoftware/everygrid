@@ -53,7 +53,7 @@
     "diffStatus": "Status",
     "diffKey": "Key",
     "diffRow": "Row",
-    "diffDiff": "Diff"
+    "diffChanges": "Diff"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",

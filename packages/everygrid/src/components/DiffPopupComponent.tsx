@@ -9,7 +9,7 @@ interface DiffPopupProps<T extends Record<string, unknown>> {
 }
 
 /**
- * One row of the diff grid — one changed row of the source grid. `diff` is an object the grid
+ * One row of the diff grid — one changed row of the source grid. `changes` is an object the grid
  * shows through its JSON viewer: for an updated row `{field: {from, to}}` per changed cell, for an
  * inserted row the row's values, for a deleted row the row as loaded.
  */
@@ -17,7 +17,7 @@ interface DiffLine extends Record<string, unknown> {
   status: 'inserted' | 'updated' | 'deleted';
   key: string | number | null;
   row: number;
-  diff: Record<string, unknown>;
+  changes: Record<string, unknown>;
 }
 
 /**
@@ -43,7 +43,7 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
     status: r.status,
     key: r.key,
     row: r.index,
-    diff: r.status === 'updated'
+    changes: r.status === 'updated'
       ? Object.fromEntries(r.cells.map(c => [c.field, {from: c.from, to: c.to}]))
       : compact(r.status === 'deleted' ? r.original : r.row),
   }));
@@ -54,11 +54,11 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
     const locale = I18n.getLocale();
     const labels: Record<string, string> = {
       status: I18n.t('grid.diffStatus'), key: I18n.t('grid.diffKey'), row: I18n.t('grid.diffRow'),
-      diff: I18n.t('grid.diffDiff'),
+      changes: I18n.t('grid.diffChanges'),
     };
     // Fixed widths that add up to the popup; the diff object shows as a summary that opens the
     // grid's JSON viewer, so nothing widens the table sideways.
-    const widths: Record<string, number> = {status: 100, key: 110, row: 80, diff: 440};
+    const widths: Record<string, number> = {status: 100, key: 110, row: 80, changes: 440};
     const instance = new Everygrid<DiffLine>({
       targets: [{id: diffId}],   // no title: the popup header already says what this is
       data: lines,

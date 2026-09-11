@@ -53,7 +53,7 @@
     "diffStatus": "상태",
     "diffKey": "키",
     "diffRow": "행",
-    "diffDiff": "변경 내용"
+    "diffChanges": "변경 내용"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",
