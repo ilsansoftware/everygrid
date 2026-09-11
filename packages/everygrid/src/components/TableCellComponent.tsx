@@ -236,11 +236,12 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
           <div className={`flex items-center ${alignRight ? 'justify-end' : ''}`}>
             <select
               className='w-full px-1 py-0.5 text-sm border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'
-              value={String(value)}
+              // An empty cell (an inserted row) shows as unset — a blank option — rather than
+              // reading as "true" when nothing has been chosen yet.
+              value={typeof value === 'boolean' ? String(value) : ''}
               onChange={(e) => {
                 const val = e.target.value;
-                const newVal = (val === 'true');
-                grid.updateData(item, col.field, newVal);
+                grid.updateData(item, col.field, val === '' ? null : val === 'true');
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -252,6 +253,7 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
               autoFocus
               onClick={(e) => e.stopPropagation()}
             >
+              {typeof value !== 'boolean' && <option value=''></option>}
               <option value='true'>true</option>
               <option value='false'>false</option>
             </select>
