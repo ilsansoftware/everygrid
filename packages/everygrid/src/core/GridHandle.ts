@@ -10,8 +10,15 @@ export interface CellChange {
   to: unknown;
 }
 
-/** One row's changes, with the row as it is now and as it was loaded. */
+export type RowStatus = 'added' | 'modified' | 'deleted';
+
+/**
+ * One row's change. `modified`: the row as it is now and as it was loaded, with the cells that
+ * differ. `added`: `row` is the new row (`original` is the same object, `cells` empty).
+ * `deleted`: `original` is the row as loaded (`cells` empty).
+ */
 export interface RowChange<T = Record<string, unknown>> {
+  status: RowStatus;
   index: number;
   key: RowKey;
   row: T;
@@ -26,10 +33,17 @@ export interface ColumnChange<T = Record<string, unknown>> extends CellChange {
   row: T;
 }
 
-/** The minimal payload for a save: per changed row, its key and only the fields that changed. */
+/** One modified row in a patch: its key and only the fields that changed. */
 export interface RowPatch {
   key: RowKey;
   changes: Record<string, unknown>;
+}
+
+/** The minimal payload for a save — what to POST, PATCH and DELETE. */
+export interface Patch<T = Record<string, unknown>> {
+  added: T[];
+  updated: RowPatch[];
+  deleted: RowKey[];
 }
 
 export type CellChangeEvent<T = Record<string, unknown>> = ColumnChange<T>;
@@ -98,32 +112,71 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
     return this.grid.checkHasChanges();
   }
 
-  /** Every changed row with its changed cells. */
+  /** Every changed row — added, modified (with its changed cells) or deleted — in data order. */
   changes(): RowChange<T>[] {
     return this.grid._changedRows(this.id);
   }
 
-  /** Original vs current, summarised: the changed rows and how many cells moved in total. */
-  diff(): {rows: RowChange<T>[]; cells: number} {
+  // Selectors: the changed rows of one kind, as row handles — `g.updated()[0].cell('x').revert()`.
+  added(): RowHandle<T>[] {
+    return this.changes().filter(r => r.status === 'added').map(r => this.row(r.index));
+  }
+
+  updated(): RowHandle<T>[] {
+    return this.changes().filter(r => r.status === 'modified').map(r => this.row(r.index));
+  }
+
+  deleted(): RowHandle<T>[] {
+    return this.changes().filter(r => r.status === 'deleted').map(r => this.row(r.index));
+  }
+
+  /** Original vs current, summarised by kind. */
+  diff(): {added: RowChange<T>[]; modified: RowChange<T>[]; deleted: RowChange<T>[]; cells: number} {
     const rows = this.changes();
-    return {rows, cells: rows.reduce((n, r) => n + r.cells.length, 0)};
+    return {
+      added: rows.filter(r => r.status === 'added'),
+      modified: rows.filter(r => r.status === 'modified'),
+      deleted: rows.filter(r => r.status === 'deleted'),
+      cells: rows.reduce((n, r) => n + r.cells.length, 0),
+    };
   }
 
-  /** What to send to a server: per changed row, its key and only the changed fields. */
-  patch(): RowPatch[] {
-    return this.changes().map(r => ({
-      key: r.key,
-      changes: Object.fromEntries(r.cells.map(c => [c.field, c.to])),
-    }));
+  /**
+   * What to send to a server: the added rows whole, the modified rows as key + changed fields,
+   * the deleted rows as keys.
+   */
+  patch(): Patch<T> {
+    const rows = this.changes();
+    return {
+      added: rows.filter(r => r.status === 'added').map(r => r.row),
+      updated: rows.filter(r => r.status === 'modified').map(r => ({
+        key: r.key,
+        changes: Object.fromEntries(r.cells.map(c => [c.field, c.to])),
+      })),
+      deleted: rows.filter(r => r.status === 'deleted').map(r => r.key),
+    };
   }
 
-  /** Puts every row back to its original. */
+  /** Inserts a row (at the top by default) and returns its handle. Needs `rowActions.addRow`. */
+  addRow(values: Partial<T> = {}, at = 0): RowHandle<T> {
+    if (!this.grid.getRowActions(this.id).addRow) {
+      console.warn(`Everygrid: "${this.id}" has no rowActions.addRow — rows cannot be added.`);
+      return this.row(-1);
+    }
+    const row = this.grid.addRow(this.id, values, at);
+    return this.row(this.data().indexOf(row));
+  }
+
+  /** Puts every row back as loaded: edits undone, added rows dropped, deleted rows restored. */
   revert(): void {
     const el = document.getElementById(this.id);
     if (el) this.grid.reset(el);
   }
 
-  /** Accepts the current values as the new baseline — after a successful save, typically. */
+  /**
+   * Accepts the current state as the new baseline — after a successful save, typically: deleted
+   * rows are removed for good, added rows become ordinary rows, edits are no longer marked.
+   */
   commit(): void {
     this.grid.commit(this.id);
   }
@@ -173,6 +226,41 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     return !!row && Object.keys(row).some(f => this.grid.isCellModified(row, f));
   }
 
+  isAdded(): boolean {
+    const row = this.get();
+    return !!row && this.grid.isRowAdded(row);
+  }
+
+  isDeleted(): boolean {
+    const row = this.get();
+    return !!row && this.grid.isRowDeleted(row);
+  }
+
+  /** `added` / `deleted` / `modified`, or null for a row exactly as loaded. */
+  status(): RowStatus | null {
+    if (this.isAdded()) return 'added';
+    if (this.isDeleted()) return 'deleted';
+    return this.isModified() ? 'modified' : null;
+  }
+
+  /** Marks the row deleted (struck through until commit; revert restores it). Needs `rowActions.deleteRow`. */
+  delete(): boolean {
+    const row = this.get();
+    if (!row) return false;
+    if (!this.grid.getRowActions(this.gridId).deleteRow) {
+      console.warn(`Everygrid: "${this.gridId}" has no rowActions.deleteRow — rows cannot be deleted.`);
+      return false;
+    }
+    this.grid.deleteRow(this.gridId, row);
+    return true;
+  }
+
+  /** Undoes `delete()`. */
+  restore(): void {
+    const row = this.get();
+    if (row) this.grid.restoreRow(this.gridId, row);
+  }
+
   changes(): CellChange[] {
     const row = this.get();
     return row ? this.grid._cellChanges(row) : [];
@@ -192,7 +280,12 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
     return n;
   }
 
+  /** Back as loaded: an added row is dropped, a deleted one restored, edits undone. */
   revert(): void {
+    const row = this.get();
+    if (!row) return;
+    if (this.grid.isRowAdded(row)) { this.grid.deleteRow(this.gridId, row); return; }
+    if (this.grid.isRowDeleted(row)) this.grid.restoreRow(this.gridId, row);
     for (const c of this.changes()) this.cell(c.field).revert();
   }
 }

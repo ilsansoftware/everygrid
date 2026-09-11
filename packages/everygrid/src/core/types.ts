@@ -56,6 +56,18 @@ export interface GridRowKeyConfig {
 }
 
 /**
+ * Row-level editing per grid. `addRow` puts a "+" in the actions column header that inserts an
+ * empty row at the top; `deleteRow` puts a delete button on every row. A deleted row stays on
+ * screen, struck through, until commit removes it or revert brings it back; an added row is
+ * simply dropped by revert. Both show up in `GridHandle.changes()` / `patch()`.
+ */
+export interface GridRowActionsConfig {
+  id: string;
+  addRow?: boolean;
+  deleteRow?: boolean;
+}
+
+/**
  * Default columns for the narrow (mobile) layout, where rows scroll horizontally and each carries a
  * detail button opening the whole row. `cols` lists the field keys to show until the user picks
  * their own (the mobile "Columns" action, same whitelist as desktop); with no entry every column
@@ -315,6 +327,7 @@ export interface GridOptions<T = Record<string, unknown>> {
   mobileColumns?: GridMobileColumnsConfig[];
   editableCols?: EditableColConfig[];
   rowKey?: GridRowKeyConfig[];
+  rowActions?: GridRowActionsConfig[];
   colors?: GridColorConfig[];
   links?: GridLinkConfig[];
   checkbox?: GridCheckboxConfig[];
