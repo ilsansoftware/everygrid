@@ -11,7 +11,7 @@ import {DownloadIcon} from '../icons/DownloadIcon';
 import {SearchIcon} from '../icons/SearchIcon';
 import {SortResetIcon} from '../icons/SortResetIcon';
 import {InsertRowIcon} from '../icons/InsertRowIcon';
-import {DiffIcon} from '../icons/DiffIcon';
+import {ChangesIcon} from '../icons/ChangesIcon';
 
 /** Hard cap on the search box: it grows to this many rows, and edits past it are rejected. */
 const MAX_FILTER_ROWS = 10;
@@ -136,8 +136,8 @@ export interface GridToolbarProps {
   /** Omitted when the grid has no re-fetchable source, which hides the reload button. */
  /** Set when the grid's rowActions allow inserting; the toolbar then ends with a "+ row" button. */
   onInsertRow?: () => void;
-  /** Opens the read-only diff of every change since load; enabled while there are changes. */
-  onShowDiff?: () => void;
+  /** Opens the read-only list of every change since load; enabled while there are changes. */
+  onShowChanges?: () => void;
   onReloadData?: () => void;
   isReloading?: boolean;
   onReset: () => void;
@@ -172,7 +172,7 @@ export const GridToolbarComponent = ({
                                        allCount,
                                        onReloadData,
                                        onInsertRow,
-                                       onShowDiff,
+                                       onShowChanges,
                                        isReloading = false,
                                        onReset,
                                        onResetSort,
@@ -829,7 +829,7 @@ export const GridToolbarComponent = ({
         {onInsertRow && segmentButton(InsertRowIcon, 'row', I18n.t('grid.insertRow'), onInsertRow, {
           disabled: gridActionsDisabled || isExporting,
         })}
-        {onShowDiff && segmentButton(DiffIcon, 'diff', I18n.t('toolbar.diff'), onShowDiff, {
+        {onShowChanges && segmentButton(ChangesIcon, 'changes', I18n.t('toolbar.changes'), onShowChanges, {
           disabled: !hasChanges || gridActionsDisabled || isExporting,
         })}
       </div>

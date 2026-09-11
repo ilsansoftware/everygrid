@@ -546,6 +546,10 @@ makes a composite key joined with `|`). Without it `key` is the row's data index
 and `patch()` the key is read from the row's *original*, so a save can still find the record when
 the key field itself was edited.
 
+A grid that can change (editable columns or row actions) gets a **changes** button in its toolbar:
+a popup with a second grid whose rows are the changes since load — status, key, row, field, before,
+after — with the usual search, sort, column choice and export.
+
 Change tracking costs only what was edited: a row's original is snapshotted on its first edit, so
 `changes()` and `patch()` walk the edited rows, not the dataset.
 

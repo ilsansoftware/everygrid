@@ -110,7 +110,7 @@ ${pj(g?.checkedRows().map(r => r.get()) ?? [])}`,
           ))}
           <button type='button' disabled={none} onClick={() => setDiffOpen(true)}
                   className='ml-auto rounded px-2 py-1 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent'>
-            diff
+            changes
           </button>
         </div>
         {/* Same highlighter and theme as the portal's Code modal. Grows with its content — an inner

@@ -19,7 +19,7 @@
     "indexingPercent": "인덱스 생성 중... {percent}%",
     "indexingRows": "인덱스 생성 중... {count}행",
     "suggestNav": "↓ 진입 · ← → 선택 · Enter 적용 · ↑ 탈출",
-    "diff": "변경 내역"
+    "changes": "변경 내역"
   },
   "grid": {
     "index": "번호",
@@ -48,14 +48,14 @@
     "deleteRow": "행 삭제",
     "restoreRow": "삭제 취소",
     "insertedRows": "추가된 행",
-    "diffSummary": "{rows}행 · {cells}셀",
     "noChanges": "변경 사항이 없습니다.",
-    "diffStatus": "상태",
-    "diffKey": "키",
-    "diffRow": "행",
-    "diffField": "필드",
-    "diffFrom": "변경 전",
-    "diffTo": "변경 후"
+    "changesSummary": "{rows}행 · {cells}셀",
+    "changesStatus": "상태",
+    "changesKey": "키",
+    "changesRow": "행",
+    "changesField": "필드",
+    "changesFrom": "변경 전",
+    "changesTo": "변경 후"
   },
   "pagination": {
     "showing": "{start}-{end} ({total})",
