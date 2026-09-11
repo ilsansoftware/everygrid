@@ -133,7 +133,7 @@ export interface GridToolbarProps {
   filteredCount?: number;
   allCount?: number;
   /** Omitted when the grid has no re-fetchable source, which hides the reload button. */
- /** Set when the grid's rowActions allow inserting; the toolbar then leads with a "+ row" button. */
+ /** Set when the grid's rowActions allow inserting; the toolbar then ends with a "+ row" button. */
   onInsertRow?: () => void;
   onReloadData?: () => void;
   isReloading?: boolean;
@@ -803,9 +803,6 @@ export const GridToolbarComponent = ({
   const iconGroup = (
       <div
           className='inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 divide-x divide-slate-200'>
-        {onInsertRow && segmentButton(InsertRowIcon, 'row', I18n.t('grid.insertRow'), onInsertRow, {
-          disabled: gridActionsDisabled || isExporting,
-        })}
         {onReloadData && segmentButton(ReloadIcon, 'reload', reloadBtnText, onReloadData, {
           disabled: isReloading || gridActionsDisabled || isExporting,
           spinning: isReloading
@@ -825,6 +822,9 @@ export const GridToolbarComponent = ({
         {segmentButton(DownloadIcon, 'export', downloadExcelBtnText,
           () => { if (filteredCount === allCount) onDownloadExcel('all'); else setExportMenuOpen(prev => !prev); },
           {active: exportMenuOpen, disabled: isExporting || isIndexing})}
+        {onInsertRow && segmentButton(InsertRowIcon, 'row', I18n.t('grid.insertRow'), onInsertRow, {
+          disabled: gridActionsDisabled || isExporting,
+        })}
       </div>
   );
 
