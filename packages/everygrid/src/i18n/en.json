@@ -68,6 +68,7 @@
     "detailTitle": "Detail View",
     "textEditorTitle": "Text Editor: {field}",
     "invalidJson": "Invalid JSON format",
+    "reset": "Reset",
     "format": "Format",
     "apply": "Apply",
     "close": "Close",

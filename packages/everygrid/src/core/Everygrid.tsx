@@ -2466,7 +2466,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.activePopupRow = rowData || null;
     this.activePopupRowKey = rowData ? JSON.stringify(rowData) : null;
     this.activePopup = (
-      <PopupComponent onClose={() => this.closePopup()} title={title || I18n.t('popup.detailTitle')}>
+      <PopupComponent maximizable onClose={() => this.closePopup()} title={title || I18n.t('popup.detailTitle')}>
         <pre className='m-0 p-4 text-sm whitespace-pre-wrap wrap-break-word text-slate-700'>{highlightText(text, this.filterText)}</pre>
       </PopupComponent>
     );

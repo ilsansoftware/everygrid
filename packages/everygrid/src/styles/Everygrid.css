@@ -386,6 +386,8 @@
 /* Content-height rectangle for popups with an action footer (the editor) — a square would leave a
    gap above the buttons and force the textarea into an odd shape. */
 .everygrid-popup-auto { @apply w-[720px]; }
+/* Maximized (header ⤢ toggle): fill the viewport, the editor area stretches with it. */
+.everygrid-popup-max { @apply w-[95vw] h-[90vh]; }
 
 .everygrid-popup-content .everygrid-wrapper {
   @apply w-full h-full min-w-full;
@@ -515,7 +517,62 @@
 
 .everygrid-text-editor {
   /* Fill the unified popup width instead of forcing a min-width that would widen the box. */
-  @apply border border-slate-200 p-4 text-xs outline-none w-full h-[300px] font-mono;
+  @apply border border-slate-200 p-4 text-xs outline-none w-full h-[60vh] font-mono resize-none;
+}
+/* Editor popup (auto / max): the body is a flex column so the editor area can shrink on a short
+   viewport (no body scroll — the editor scrolls internally) and stretch when maximized. */
+.everygrid-popup-auto .everygrid-popup-body,
+.everygrid-popup-max .everygrid-popup-body {
+  @apply flex flex-col min-h-0;
+}
+.everygrid-popup-auto .everygrid-text-editor,
+.everygrid-popup-auto .everygrid-json-table-wrap {
+  @apply min-h-0 shrink;
+}
+.everygrid-popup-max .everygrid-text-editor,
+.everygrid-popup-max .everygrid-json-table-wrap {
+  @apply h-auto flex-1 min-h-0;
+}
+
+/* TABLE mode of the text editor popup: a nested key/value table over the JSON tree. */
+.everygrid-json-table-wrap {
+  @apply border border-slate-200 p-2 text-xs w-full h-[60vh] overflow-auto font-mono;
+}
+.everygrid-json-table {
+  @apply border-collapse w-full;
+}
+/* Each cell draws only its right/bottom edge and the root table the top/left one, so a nested
+   table's cells never stack a second line on top of the cell that holds it. */
+.everygrid-json-table-wrap > .everygrid-json-table {
+  @apply border-t border-l border-slate-200;
+}
+.everygrid-json-table td {
+  @apply align-top border-r border-b border-slate-200 p-0;
+}
+.everygrid-json-table .everygrid-json-table td:last-child {
+  @apply border-r-0;
+}
+.everygrid-json-table .everygrid-json-table tr:last-child > td {
+  @apply border-b-0;
+}
+.everygrid-json-table-key {
+  @apply bg-slate-50 w-[120px];
+}
+.everygrid-json-table input {
+  @apply w-full px-2 py-1 bg-transparent outline-none focus:bg-indigo-50 placeholder:text-slate-300;
+}
+.everygrid-json-table-del, .everygrid-json-table-add {
+  @apply w-6 text-center;
+}
+.everygrid-json-table-del button, .everygrid-json-table-add button {
+  @apply px-2 py-1 transition-colors;
+}
+/* Add = blue, remove = a muted red; both step up on hover. */
+.everygrid-json-table-add button {
+  @apply w-full text-blue-500 hover:text-blue-700 hover:bg-blue-50;
+}
+.everygrid-json-table-del button {
+  @apply text-red-300 hover:text-red-600 hover:bg-red-50;
 }
 
 .everygrid-popup-footer {
