@@ -1,6 +1,5 @@
 import {useCallback, useEffect, useRef, useState, type DragEvent, type ChangeEvent, type ClipboardEvent} from 'react';
 import {Everygrid, useGrid} from '@everygrid/grid';
-import LocaleSwitch, {type Locale} from './LocaleSwitch';
 
 type Row = Record<string, unknown>;
 
@@ -47,11 +46,10 @@ type FileInfo = { name: string; bytes: number; rows: number; columns: number };
 // JSON to grid — drop a JSON file or paste JSON text and the grid renders it, columns inferred
 // from the rows.
 export default function SandboxDemo({active}: { active: boolean }) {
-  // Language is per tab: applied through the API whenever this tab is the one on screen.
-  const [locale, setLocale] = useState<Locale>('en');
+  // Language is per tab; this one has no switch, so it pins English whenever it is on screen.
   useEffect(() => {
-    if (active) Everygrid.setLocale(locale);
-  }, [active, locale]);
+    if (active) Everygrid.setLocale('en');
+  }, [active]);
 
   // The grid re-runs this same fetcher on every reload, so the rows it should show live in a ref.
   const rowsRef = useRef<Row[]>([]);
@@ -144,7 +142,6 @@ export default function SandboxDemo({active}: { active: boolean }) {
             toggle, collapsible via the strip between them so the grid can take the full width.
             Stacked the other way round on a narrow screen, input first. */}
         <main className='sandbox-main min-h-150 py-8 bg-white'>
-          <div className='demo-tools w-full'><LocaleSwitch value={locale} onChange={setLocale}/></div>
           <div className='sandbox-grid flex-1 min-w-0 h-[560px] flex flex-col'>
             {/* The grid is mounted from the start (the hook needs its element) but stays hidden until
                 a file has loaded — empty, it would show the library's "check your configuration"
