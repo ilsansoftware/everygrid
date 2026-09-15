@@ -420,6 +420,43 @@ nav button.active .tab-name {
   opacity: 1;
 }
 
+/* JSON to Grid layout. Plain classes rather than `md:` utilities: the library stylesheet loads
+   after the portal's and re-declares `.flex-col` / `.hidden`, which would override `md:flex-row`
+   and `md:flex` here. Phone: input column stacked above the grid. Desktop: grid | toggle | input. */
+.sandbox-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.sandbox-toggle {
+  display: none;
+}
+.sandbox-grid {
+  order: 2;
+}
+/* `display` lives here, not in a `flex` utility: this file sits in the base layer, where the
+   utilities layer would beat `.is-collapsed { display: none }` whatever its specificity. */
+.sandbox-input {
+  display: flex;
+  order: 1;
+}
+@media (width >= 48rem) {
+  .sandbox-main {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .sandbox-grid { order: 1; }
+  .sandbox-toggle { display: flex; order: 2; }
+  .sandbox-input {
+    order: 3;
+    width: 24rem;
+    height: 560px;
+  }
+  .sandbox-input.is-collapsed {
+    display: none;
+  }
+}
+
 /* The sandbox's File | JSON input toggle: the locale switch's segmented control with text tabs. */
 .source-btn {
   width: auto;

@@ -143,9 +143,9 @@ export default function SandboxDemo({active}: { active: boolean }) {
         {/* Grid on the left; the input column on the right, one of two behind a File | JSON
             toggle, collapsible via the strip between them so the grid can take the full width.
             Stacked the other way round on a narrow screen, input first. */}
-        <main className='min-h-150 flex flex-col gap-4 py-8 bg-white md:flex-row md:flex-wrap'>
+        <main className='sandbox-main min-h-150 py-8 bg-white'>
           <div className='demo-tools w-full'><LocaleSwitch value={locale} onChange={setLocale}/></div>
-          <div className='order-2 md:order-1 flex-1 min-w-0 h-[560px] flex flex-col'>
+          <div className='sandbox-grid flex-1 min-w-0 h-[560px] flex flex-col'>
             {/* The grid is mounted from the start (the hook needs its element) but stays hidden until
                 a file has loaded — empty, it would show the library's "check your configuration"
                 hint, which is the wrong message here. Virtual scrolling needs a bounded height. */}
@@ -161,7 +161,7 @@ export default function SandboxDemo({active}: { active: boolean }) {
 
           <button
               type='button'
-              className='hidden md:flex order-2 w-5 h-[560px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+              className='sandbox-toggle w-5 h-[560px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-700'
               aria-expanded={panelOpen}
               aria-controls='sandbox-input'
               title={panelOpen ? 'Hide input' : 'Show input'}
@@ -170,7 +170,7 @@ export default function SandboxDemo({active}: { active: boolean }) {
             {panelOpen ? '\u203a' : '\u2039'}
           </button>
 
-          <div id='sandbox-input' className={`order-1 md:order-3 flex flex-col gap-4 md:w-96 md:h-[560px]${panelOpen ? '' : ' md:hidden'}`}>
+          <div id='sandbox-input' className={`sandbox-input flex-col gap-4${panelOpen ? '' : ' is-collapsed'}`}>
             <div className='locale-btn-group' role='group' aria-label='Input'>
               {(['file', 'json'] as const).map((id) => (
                   <button
