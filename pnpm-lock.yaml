@@ -48,8 +48,8 @@ importers:
   demo/portal:
     dependencies:
       '@everygrid/grid':
-        specifier: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-8a3609d6ace7.tgz
-        version: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-8a3609d6ace7.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-81d233bc7ebb.tgz
+        version: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-81d233bc7ebb.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       marked:
         specifier: ^18.0.12
         version: 18.0.12
@@ -336,8 +336,8 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-8a3609d6ace7.tgz':
-    resolution: {integrity: sha512-Z3ehBy/aM4CCR8RUxbwc4bagMnIOQ619Cu1ubsyGmdamVgYsR2EW7Vnp2hoYIvnZaGRywjO4/vU6+Uuq1PxE5A==, tarball: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-8a3609d6ace7.tgz}
+  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-81d233bc7ebb.tgz':
+    resolution: {integrity: sha512-8hlBAckETRwJ/F5O2ya0/PvNwsN4/IlaTfpE5RUYrvYuWnmkbd3tC3IeAncXOQGI2kBeOdSIfV/OqQYDdbhX+Q==, tarball: https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-81d233bc7ebb.tgz}
     version: 0.4.7
     peerDependencies:
       react: '>=18'
@@ -2684,7 +2684,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-8a3609d6ace7.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@everygrid/grid@https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.4.7-81d233bc7ebb.tgz(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
