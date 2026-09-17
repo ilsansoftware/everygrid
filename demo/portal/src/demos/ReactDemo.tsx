@@ -1,6 +1,7 @@
-import {useEffect, useState} from 'react';
+import {useEffect} from 'react';
 import {Everygrid, useGrid} from '@everygrid/grid';
-import LocaleSwitch, {type Locale} from './LocaleSwitch';
+import LocaleSwitch from './LocaleSwitch';
+import {usePersistedLocale} from './useLocale';
 import ChangesPanel from './ChangesPanel';
 
 // React demo — grids driven directly by the Everygrid API from a React component. (The two heavy
@@ -9,7 +10,7 @@ import ChangesPanel from './ChangesPanel';
 // everygrid.config.json.
 export default function ReactDemo({active}: { active: boolean }) {
   // Language is per tab: applied through the API whenever this tab is the one on screen.
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale, setLocale] = usePersistedLocale();
   useEffect(() => {
     if (active) Everygrid.setLocale(locale);
   }, [active, locale]);

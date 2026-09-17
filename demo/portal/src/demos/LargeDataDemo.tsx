@@ -1,6 +1,7 @@
-import {useEffect, useState} from 'react';
+import {useEffect} from 'react';
 import {Everygrid, useGrid} from '@everygrid/grid';
-import LocaleSwitch, {type Locale} from './LocaleSwitch';
+import LocaleSwitch from './LocaleSwitch';
+import {usePersistedLocale} from './useLocale';
 
 // Large-data demo — the streaming 1.6M-row grid on its own tab. Its config sets `dataLimit: 'auto'`,
 // so on a phone the library stops the stream at a device-safe count (and shows a banner) instead of
@@ -8,7 +9,7 @@ import LocaleSwitch, {type Locale} from './LocaleSwitch';
 // URL string fetcher → streamed (device-safe) instead of buffering ~100MB.
 export default function LargeDataDemo({active}: { active: boolean }) {
   // Language is per tab: applied through the API whenever this tab is the one on screen.
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale, setLocale] = usePersistedLocale();
   useEffect(() => {
     if (active) Everygrid.setLocale(locale);
   }, [active, locale]);

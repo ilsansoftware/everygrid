@@ -1,13 +1,14 @@
 import {useEffect, useState} from 'react';
 import {Everygrid, useGrid} from '@everygrid/grid';
-import LocaleSwitch, {type Locale} from './LocaleSwitch';
+import LocaleSwitch from './LocaleSwitch';
+import {usePersistedLocale} from './useLocale';
 import RowCountPicker from './RowCountPicker';
 import {makeVirtualGridData, resolveRowCount} from './virtualGridData';
 
 // Virtual-scroll demo — renders only the rows in view, on its own tab.
 export default function VirtualScrollDemo({active}: { active: boolean }) {
   // Language is per tab: applied through the API whenever this tab is the one on screen.
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale, setLocale] = usePersistedLocale();
   useEffect(() => {
     if (active) Everygrid.setLocale(locale);
   }, [active, locale]);

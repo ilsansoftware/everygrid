@@ -19,8 +19,8 @@
   <main>
     <div class='page-tools'>
       <div class='locale-btn-group' role='group' aria-label='Language'>
-        <button type='button' class='locale-btn' data-locale='ko' title='한국어'>🇰🇷</button>
         <button type='button' class='locale-btn active' data-locale='en' title='English'>🇺🇸</button>
+        <button type='button' class='locale-btn' data-locale='ko' title='한국어'>🇰🇷</button>
       </div>
     </div>
     <div id='demo-grid'></div>
@@ -30,11 +30,19 @@
 
 <script>
   (function ($, everygrid) {
-    // Language toggle: setLocale switches every grid on the page and re-renders it. Explicit 'en' at
-    // start so the grids and the toggle agree, whatever the browser language.
-    everygrid.setLocale('en');
+    // Language toggle: setLocale switches every grid on the page and re-renders it. The choice is
+    // kept under the portal's own key, so a reload comes back in the same language instead of
+    // falling back to the browser's; an explicit value at start keeps the grids and the toggle in
+    // step whatever that language is.
+    var LOCALE_KEY = 'eg-portal-locale';
+    var saved = localStorage.getItem(LOCALE_KEY);
+    var locale = saved === 'ko' || saved === 'en' ? saved : 'en';
+    everygrid.setLocale(locale);
+    $('.locale-btn').removeClass('active');
+    $(".locale-btn[data-locale='" + locale + "']").addClass('active');
     $('.locale-btn').on('click', function () {
       everygrid.setLocale($(this).data('locale'));
+      localStorage.setItem(LOCALE_KEY, $(this).data('locale'));
       $('.locale-btn').removeClass('active');
       $(this).addClass('active');
     });
