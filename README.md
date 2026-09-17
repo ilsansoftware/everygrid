@@ -1,7 +1,7 @@
 # Everygrid
 
 A config-driven React data grid. Filtering, sorting and paging over millions of rows run in a
-Rust → WASM engine inside a Web Worker, so the UI never blocks.
+**Rust - WASM engine** inside a Web Worker, so the UI never blocks.
 
 ## Installation
 

@@ -60,7 +60,9 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, subtitl
 
   return (
     <div className='everygrid-popup-overlay'>
-      <div className={`everygrid-popup-content everygrid-popup-${isMax ? 'max' : size}`}>
+      {/* The size class always stays: maximizing only overrides the width, so the box keeps the
+          height its size asked for. */}
+      <div className={`everygrid-popup-content everygrid-popup-${size}${isMax ? ' everygrid-popup-max' : ''}`}>
         <div className='everygrid-popup-header flex items-center justify-between'>
           <div className='flex items-center gap-4'>
             {title && <h3 className='m-0'>{title}</h3>}

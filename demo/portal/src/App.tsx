@@ -341,7 +341,7 @@ export default function App() {
 
         <footer className='portal-footer'>
           <span className='portal-footer-brand'>Everygrid</span>
-          <span className='portal-footer-tagline'>Config-driven data grid · Rust → WASM</span>
+          <span className='portal-footer-tagline'>Config-driven data grid on WASM</span>
           <span className='portal-footer-copy'>© {new Date().getFullYear()}</span>
         </footer>
 

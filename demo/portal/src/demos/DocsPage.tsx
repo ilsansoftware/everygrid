@@ -47,7 +47,7 @@ const COPYABLE_SECTIONS = new Set(['Installation', 'Quick Start']);
 /** The technical case for the library, above the README: what is different and why it matters. */
 const HIGHLIGHTS: { title: string; body: string; tag: string }[] = [
   {
-    tag: 'Rust → WASM',
+    tag: 'Rust - WASM',
     title: 'The heavy lifting is not in JavaScript',
     body: 'Filtering, sorting and paging run in a Rust engine compiled to WebAssembly, inside a Web '
         + 'Worker. A million rows sort in the worker while the page stays responsive; the main thread '

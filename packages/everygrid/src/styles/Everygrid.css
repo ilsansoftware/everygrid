@@ -386,8 +386,10 @@
 /* Content-height rectangle for popups with an action footer (the editor) — a square would leave a
    gap above the buttons and force the textarea into an odd shape. */
 .everygrid-popup-auto { @apply w-[720px]; }
-/* Maximized (header ⤢ toggle): fill the viewport, the editor area stretches with it. */
-.everygrid-popup-max { @apply w-[95vw] h-[90vh]; }
+/* Maximized (header ⤢ toggle): widen to the viewport only. The size class stays on the element, so
+   the height is whatever that size already asked for — growing it too made the same popup a
+   different shape depending on whether it sat in the page or in a (shorter) demo iframe. */
+.everygrid-popup-max { @apply w-[95vw]; }
 
 .everygrid-popup-content .everygrid-wrapper {
   @apply w-full h-full min-w-full;
@@ -519,19 +521,15 @@
   /* Fill the unified popup width instead of forcing a min-width that would widen the box. */
   @apply border border-slate-200 p-4 text-xs outline-none w-full h-[60vh] font-mono resize-none;
 }
-/* Editor popup (auto / max): the body is a flex column so the editor area can shrink on a short
-   viewport (no body scroll — the editor scrolls internally) and stretch when maximized. */
-.everygrid-popup-auto .everygrid-popup-body,
-.everygrid-popup-max .everygrid-popup-body {
+/* Editor popup: the body is a flex column so the editor area can shrink on a short viewport
+   (no body scroll — the editor scrolls internally). Maximizing only widens, so the editor keeps
+   its own height in both states. */
+.everygrid-popup-auto .everygrid-popup-body {
   @apply flex flex-col min-h-0;
 }
 .everygrid-popup-auto .everygrid-text-editor,
 .everygrid-popup-auto .everygrid-json-table-wrap {
   @apply min-h-0 shrink;
-}
-.everygrid-popup-max .everygrid-text-editor,
-.everygrid-popup-max .everygrid-json-table-wrap {
-  @apply h-auto flex-1 min-h-0;
 }
 
 /* TABLE mode of the text editor popup: a nested key/value table over the JSON tree. */
