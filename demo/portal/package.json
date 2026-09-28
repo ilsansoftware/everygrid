@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@everygrid/grid": "0.4.9",
+    "@everygrid/grid": "0.5.0",
     "marked": "^18.0.12",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.5",
