@@ -12,8 +12,7 @@
  */
 import {ExcelView} from '../core/ExcelView';
 import {zipSync} from 'fflate';
-
-const ROWS_PER_FILE = 200000;
+import {ROWS_PER_FILE} from './exportConstants';
 
 type InMsg =
   | {type: 'init'; baseName: string; expectedFiles: number; relational?: boolean; keyField?: string}

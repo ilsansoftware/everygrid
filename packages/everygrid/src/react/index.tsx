@@ -12,6 +12,12 @@ type Fetcher = string | (() => Promise<Record<string, unknown>[]>);
 // cancel the teardown before it runs — and so a real unmount tears down from a timeout, never
 // synchronously while React is rendering (which would warn on the grid's own React root).
 const pendingUnmount = new Map<string, ReturnType<typeof setTimeout>>();
+// resetAutoInit already destroys every grid; a teardown still pending from before it must not fire
+// afterwards and unmount a grid mounted anew under the same id.
+Everygrid._resetHooks.add(() => {
+  pendingUnmount.forEach(timer => clearTimeout(timer));
+  pendingUnmount.clear();
+});
 
 /**
  * Mount an Everygrid grid for the life of the component that renders its `<div id={id}/>`.

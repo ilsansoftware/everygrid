@@ -220,16 +220,6 @@
   height: 40px;
 }
 
-/* Form Elements */
-.everygrid-input {
-  @apply w-full h-full border-b border-slate-200 px-4 py-2 text-sm outline-none bg-transparent text-slate-600 min-w-max;
-  @apply hover:border-slate-300 focus:border-b-slate-700 focus:bg-slate-50/50 transition-all;
-}
-
-.everygrid-input-container {
-  @apply relative w-full h-full;
-}
-
 /* Native <select> chrome, made predictable. The moment a select gets a border/padding/radius,
    Chrome drops the platform control and draws its own arrow glued to the right edge, ignoring
    padding-right — so the text is inset and the arrow is not, and the box looks off. Every
@@ -338,10 +328,6 @@
 
 .everygrid-pinned-table-container .everygrid-table tbody td {
   @apply overflow-visible! relative!;
-}
-
-.everygrid-nested-container {
-  @apply w-full border-slate-200 p-2 bg-slate-50 overflow-x-auto overscroll-x-none text-center;
 }
 
 .everygrid-nested-table {
@@ -640,10 +626,6 @@ button {
   }
 }
 
-.everygrid-pagination-info {
-  @apply font-medium;
-}
-
 .everygrid-resizer {
   @apply absolute top-0 right-0 w-1.5 h-full cursor-col-resize select-none z-10 hover:bg-slate-300/50 hover:w-1.5 transition-all duration-150;
   touch-action: none;
@@ -655,15 +637,6 @@ button {
 
 .everygrid-resizer.is-resizing {
   @apply bg-slate-400/50 w-1.5;
-}
-
-/* Resize Guide Line */
-.everygrid-resize-guide {
-  @apply absolute top-0 w-px bg-slate-400/50 z-50 pointer-events-none hidden;
-}
-
-.everygrid-resize-guide.active {
-  @apply block;
 }
 
 .everygrid-table-container {
@@ -897,17 +870,6 @@ button {
   @apply text-slate-400 italic;
 }
 
-
-/* Indeterminate indexing bar — used when the payload size is unknown (e.g. a compressed
-   response), so no honest percentage exists to render. */
-.everygrid-indeterminate {
-  animation: everygrid-indeterminate 1.2s ease-in-out infinite;
-}
-
-@keyframes everygrid-indeterminate {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
-}
 
 /* Diff popup (toolbar "diff"): a second grid, mounted inside the popup, shows the changes. The
    popup supplies the frame, so the grid drops its own outer border, rounding and bottom padding

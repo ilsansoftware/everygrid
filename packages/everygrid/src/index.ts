@@ -33,7 +33,7 @@ export type {
   GridRowActionsConfig,
   GridToolbarConfig,
   GridLinkConfig,
-  IEverygrid,
+  EverygridPublic as IEverygrid,
   GridLoadProgress,
   ServerFetchParams,
   ServerFetchResult,

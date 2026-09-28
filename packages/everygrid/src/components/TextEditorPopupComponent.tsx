@@ -1,4 +1,4 @@
-import {useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {I18n} from '../i18n/I18n';
 import { MaximizeToggle, PopupComponent } from './PopupComponent';
 
@@ -147,6 +147,8 @@ export const TextEditorPopupComponent = ({
   const [error, setError] = useState<string | null>(null);
   const [maximized, setMaximized] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const caretTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(caretTimer.current), []);
 
   const handleSave = () => {
     const rawValue = value.trim();
@@ -278,7 +280,8 @@ export const TextEditorPopupComponent = ({
             const newValue = value.substring(0, start) + '  ' + value.substring(end);
             setValue(newValue);
 
-            setTimeout(() => {
+            clearTimeout(caretTimer.current);
+            caretTimer.current = setTimeout(() => {
               if (textareaRef.current) {
                 textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 2;
               }

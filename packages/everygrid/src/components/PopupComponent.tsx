@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {I18n} from '../i18n/I18n';
 
 interface PopupProps {
@@ -48,10 +48,13 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, subtitl
   const [ownMaximized, setOwnMaximized] = useState(false);
   const isMax = maximized ?? ownMaximized;
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
   const copyJson = () => {
     void navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 1500);
     });
   };
 

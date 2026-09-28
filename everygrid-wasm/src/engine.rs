@@ -51,6 +51,11 @@ pub struct GridEngine {
     /// Lazily built per column on first sort request for that column.
     col_index: HashMap<String, Vec<Vec<usize>>>,
 
+    /// Per-column rows lacking that column (ascending row index), built alongside
+    /// `col_index`. Sort-only paging appends them after the buckets in both directions,
+    /// the same place the filtered path and `sort_indices_by_col` put them.
+    col_missing: HashMap<String, Vec<usize>>,
+
     /// Interned column names and cell values shared across all rows (see RowData.fields).
     interner: Interner,
 }
@@ -78,6 +83,7 @@ impl GridEngine {
             filtered_base_valid: false,
             sort_key: None,
             col_index: HashMap::new(),
+            col_missing: HashMap::new(),
             interner: Interner::default(),
         }
     }
@@ -118,10 +124,10 @@ impl GridEngine {
         self.filtered_base_valid = false;
         self.sort_key = None;
         self.col_index.clear();
+        self.col_missing.clear();
         self.interner.clear();
     }
 
-    /// Eagerly build all indices (called explicitly if needed).
     // -----------------------------------------------------------------------
     // Filter + sort state
     // -----------------------------------------------------------------------
@@ -152,83 +158,7 @@ impl GridEngine {
     // -----------------------------------------------------------------------
 
     pub fn get_page(&self, page: usize, page_size: usize) -> Result<JsValue, JsError> {
-        if page_size == 0 {
-            return Ok(JsValue::from_str("[]"));
-        }
-        let start = page * page_size;
-
-        // Collect borrowed row references (no per-row allocation); serialize once below.
-        let rows: Vec<&RowData> = if self.is_filtered {
-            let total = self.filtered_indices.len();
-            if start >= total {
-                return Ok(JsValue::from_str("[]"));
-            }
-            let end = (start + page_size).min(total);
-            self.filtered_indices[start..end]
-                .iter()
-                .map(|&i| &self.raw_data[i])
-                .collect()
-        } else if self.is_sort_only {
-            if let Some(ref key) = self.sort_key {
-                let col = &key.col;
-                let asc = key.asc;
-                let total = self.raw_data.len();
-                if start >= total {
-                    return Ok(JsValue::from_str("[]"));
-                }
-                let need = page_size.min(total - start);
-                let mut result: Vec<&RowData> = Vec::with_capacity(need);
-                if let Some(buckets) = self.col_index.get(col) {
-                    let mut skip = start;
-                    if asc {
-                        'outer_asc: for bucket in buckets.iter() {
-                            for &ri in bucket {
-                                if skip > 0 {
-                                    skip -= 1;
-                                    continue;
-                                }
-                                result.push(&self.raw_data[ri]);
-                                if result.len() >= need {
-                                    break 'outer_asc;
-                                }
-                            }
-                        }
-                    } else {
-                        'outer_desc: for bucket in buckets.iter().rev() {
-                            for &ri in bucket {
-                                if skip > 0 {
-                                    skip -= 1;
-                                    continue;
-                                }
-                                result.push(&self.raw_data[ri]);
-                                if result.len() >= need {
-                                    break 'outer_desc;
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    let end = (start + page_size).min(total);
-                    result = self.raw_data[start..end].iter().collect();
-                }
-                result
-            } else {
-                let total = self.raw_data.len();
-                if start >= total {
-                    return Ok(JsValue::from_str("[]"));
-                }
-                let end = (start + page_size).min(total);
-                self.raw_data[start..end].iter().collect()
-            }
-        } else {
-            let total = self.raw_data.len();
-            if start >= total {
-                return Ok(JsValue::from_str("[]"));
-            }
-            let end = (start + page_size).min(total);
-            self.raw_data[start..end].iter().collect()
-        };
-
+        let rows = self.page_rows(page, page_size);
         let json_str = serde_json::to_string(&rows).map_err(|e| JsError::new(&e.to_string()))?;
         Ok(JsValue::from_str(&json_str))
     }
@@ -240,25 +170,19 @@ impl GridEngine {
         if page_size == 0 {
             return Ok(JsValue::from_str("[]"));
         }
-        let start = page * page_size;
+        let Some(start) = page.checked_mul(page_size) else {
+            return Ok(JsValue::from_str("[]"));
+        };
         let total = self.raw_data.len();
         if start >= total {
             return Ok(JsValue::from_str("[]"));
         }
-        let end = (start + page_size).min(total);
+        let end = start.saturating_add(page_size).min(total);
         let rows: Vec<&RowData> = self.raw_data[start..end].iter().collect();
         let json_str = serde_json::to_string(&rows).map_err(|e| JsError::new(&e.to_string()))?;
         Ok(JsValue::from_str(&json_str))
     }
 
-    /// Replaces rows in place. `indices` are raw (unfiltered, unsorted) row positions —
-    /// the order `get_raw_page` returns, which is the order JS holds its data in — and
-    /// `rows_json` is a JSON array of replacement objects, positionally matched to them.
-    ///
-    /// This exists so a cell edit does not have to go through `set_data`, which re-uploads
-    /// and re-parses the whole dataset (and drives the indexing progress UI) to change one
-    /// value. Out-of-range indices are skipped rather than failing the batch, so a stale
-    /// index from a concurrent reload cannot break an otherwise valid edit.
     /// Inserts rows at `index` (clamped to the end), in the order given — the row-add path.
     pub fn insert_rows(&mut self, index: u32, rows_json: &str) -> Result<(), JsError> {
         let values: Vec<serde_json::Value> =
@@ -282,24 +206,38 @@ impl GridEngine {
 
     /// Removes the rows at `indices` (raw positions; duplicates and out-of-range are ignored).
     pub fn remove_rows(&mut self, indices: Vec<u32>) {
-        let mut sorted: Vec<usize> = indices
+        let doomed: Vec<usize> = indices
             .into_iter()
             .map(|i| i as usize)
             .filter(|&i| i < self.raw_data.len())
             .collect();
-        if sorted.is_empty() {
+        if doomed.is_empty() {
             return;
         }
-        sorted.sort_unstable();
-        sorted.dedup();
-        // Highest first, so each removal leaves the lower positions untouched.
-        for &i in sorted.iter().rev() {
-            self.raw_data.remove(i);
+        // Keep-mask + one retain: O(n) instead of a Vec::remove shift per index.
+        // Duplicates just clear the same flag twice.
+        let mut keep = vec![true; self.raw_data.len()];
+        for &i in &doomed {
+            keep[i] = false;
         }
+        let mut pos = 0usize;
+        self.raw_data.retain(|_| {
+            let k = keep[pos];
+            pos += 1;
+            k
+        });
         self.invalidate_indices();
         self.recompute();
     }
 
+    /// Replaces rows in place. `indices` are raw (unfiltered, unsorted) row positions —
+    /// the order `get_raw_page` returns, which is the order JS holds its data in — and
+    /// `rows_json` is a JSON array of replacement objects, positionally matched to them.
+    ///
+    /// This exists so a cell edit does not have to go through `set_data`, which re-uploads
+    /// and re-parses the whole dataset (and drives the indexing progress UI) to change one
+    /// value. Out-of-range indices are skipped rather than failing the batch, so a stale
+    /// index from a concurrent reload cannot break an otherwise valid edit.
     pub fn update_rows(&mut self, indices: Vec<u32>, rows_json: &str) -> Result<(), JsError> {
         let values: Vec<serde_json::Value> =
             serde_json::from_str(rows_json).map_err(|e| JsError::new(&e.to_string()))?;
@@ -396,9 +334,64 @@ impl GridEngine {
         Ok(())
     }
 
+    /// The rows of one page of the current view (filtered, sort-only, or raw), borrowed —
+    /// `get_page` serializes them once. An overflowing `page * page_size` is an empty page.
+    fn page_rows(&self, page: usize, page_size: usize) -> Vec<&RowData> {
+        if page_size == 0 {
+            return Vec::new();
+        }
+        // usize is 32-bit on wasm32, so a large page number can overflow.
+        let Some(start) = page.checked_mul(page_size) else {
+            return Vec::new();
+        };
+
+        if self.is_filtered {
+            let total = self.filtered_indices.len();
+            if start >= total {
+                return Vec::new();
+            }
+            let end = start.saturating_add(page_size).min(total);
+            return self.filtered_indices[start..end]
+                .iter()
+                .map(|&i| &self.raw_data[i])
+                .collect();
+        }
+
+        let total = self.raw_data.len();
+        if start >= total {
+            return Vec::new();
+        }
+        let end = start.saturating_add(page_size).min(total);
+
+        if self.is_sort_only {
+            if let Some(ref key) = self.sort_key {
+                if let Some(buckets) = self.col_index.get(&key.col) {
+                    // Buckets forward for asc, reversed for desc (indices ascending within a
+                    // bucket either way), then the rows lacking the column — last in both
+                    // directions, as in the filtered path. Without them the view came up
+                    // short of get_total_count(), leaving the last pages short or empty.
+                    let missing = self.col_missing.get(&key.col).map_or(&[][..], Vec::as_slice);
+                    let present: Box<dyn Iterator<Item = &usize>> = if key.asc {
+                        Box::new(buckets.iter().flatten())
+                    } else {
+                        Box::new(buckets.iter().rev().flatten())
+                    };
+                    return present
+                        .chain(missing)
+                        .skip(start)
+                        .take(end - start)
+                        .map(|&ri| &self.raw_data[ri])
+                        .collect();
+                }
+            }
+        }
+        self.raw_data[start..end].iter().collect()
+    }
+
     /// Invalidate all lazy indices when data changes.
     fn invalidate_indices(&mut self) {
         self.col_index.clear();
+        self.col_missing.clear();
         self.filtered_base_valid = false;
     }
 
@@ -412,13 +405,15 @@ impl GridEngine {
         // Decorate: (value, row_idx) for every row that has this column.
         let hint = self.raw_data.first().and_then(|r| r.col_pos(col));
         let mut deco: Vec<(FieldVal, usize)> = Vec::with_capacity(self.raw_data.len());
+        let mut missing: Vec<usize> = Vec::new();
         for (row_idx, row) in self.raw_data.iter().enumerate() {
             let val = match hint {
                 Some(h) => row.get_at(col, h),
                 None => row.get(col),
             };
-            if let Some(v) = val {
-                deco.push((v.clone(), row_idx));
+            match val {
+                Some(v) => deco.push((v.clone(), row_idx)),
+                None => missing.push(row_idx),
             }
         }
         // Sort by value; ties broken by ascending row index for a stable display order.
@@ -436,6 +431,7 @@ impl GridEngine {
             }
         }
         self.col_index.insert(col.to_string(), buckets);
+        self.col_missing.insert(col.to_string(), missing);
     }
 
     /// Direct comparison sort of a set of row indices by `col`, matching the column-index
@@ -581,5 +577,53 @@ impl GridEngine {
 
         self.filtered_indices = indices;
         self.is_filtered = true;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GridEngine;
+
+    fn engine(json: &str) -> GridEngine {
+        let mut e = GridEngine::new();
+        e.parse_and_append_bytes(json.as_bytes()).unwrap();
+        e
+    }
+
+    fn ids(e: &GridEngine, page: usize, page_size: usize) -> Vec<String> {
+        let rows = e.page_rows(page, page_size);
+        let v: serde_json::Value = serde_json::from_str(&serde_json::to_string(&rows).unwrap()).unwrap();
+        v.as_array().unwrap().iter().map(|r| r["id"].to_string()).collect()
+    }
+
+    const DATA: &str = r#"[{"id":0,"n":3},{"id":1},{"id":2,"n":1},{"id":3},{"id":4,"n":2}]"#;
+
+    #[test]
+    fn sort_only_pages_include_rows_missing_the_column() {
+        let mut e = engine(DATA);
+        e.set_filter_and_sort("", "n", true);
+        assert_eq!(ids(&e, 0, 10), ["2", "4", "0", "1", "3"]);
+        assert_eq!(ids(&e, 2, 2), ["3"]);
+        assert_eq!(e.get_total_count(), 5);
+        e.set_filter_and_sort("", "n", false);
+        assert_eq!(ids(&e, 0, 10), ["0", "4", "2", "1", "3"]);
+        assert_eq!(ids(&e, 1, 2), ["2", "1"]);
+    }
+
+    #[test]
+    fn page_offset_overflow_is_an_empty_page() {
+        let e = engine(DATA);
+        assert!(e.page_rows(usize::MAX, 2).is_empty());
+        assert!(e.page_rows(1, usize::MAX).is_empty());
+        assert_eq!(ids(&e, 0, usize::MAX).len(), 5);
+    }
+
+    #[test]
+    fn remove_rows_drops_each_listed_index_once() {
+        let mut e = engine(DATA);
+        e.set_filter_and_sort("", "n", true);
+        e.remove_rows(vec![4, 0, 4, 99]);
+        assert_eq!(e.get_raw_count(), 3);
+        assert_eq!(ids(&e, 0, 10), ["2", "1", "3"]);
     }
 }

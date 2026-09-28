@@ -17,11 +17,17 @@ import GridWorker from './GridEngineWorker?worker';
 
 const _encoder = new TextEncoder();
 
+/** Name of the error that in-flight requests reject with once the engine is terminated on purpose.
+ *  Callers can check it (see isEngineTerminated) to stay quiet after an intentional destroy. */
+export const ENGINE_TERMINATED = 'EngineTerminated';
+
+export function isEngineTerminated(err: unknown): boolean {
+  return err instanceof Error && err.name === ENGINE_TERMINATED;
+}
+
 // ---- GridEngineWasm ------------------------------------------------------------
 
 export class GridEngineWasm {
-  // Healthcheck: log once, the first time an engine comes up, to confirm the WASM pipeline works.
-  private static healthLogged = false;
   private readonly engineId: string;
   private readonly worker: Worker;
   private seq = 0;
@@ -47,7 +53,16 @@ export class GridEngineWasm {
     };
     this.worker.onerror = (err) => {
       console.error('[GridEngineWasm] Worker error:', err);
+      this.rejectAllPending(new Error(`[GridEngineWasm] Worker error: ${err.message || 'unknown'}`));
     };
+  }
+
+  // Settles every in-flight request so nothing awaits a worker that will never answer.
+  private rejectAllPending(error: Error): void {
+    const handlers = [...this.pending.values()];
+    this.pending.clear();
+    this.progressCallback = undefined;
+    handlers.forEach(h => h.reject(error));
   }
 
   private send(req: Omit<WorkerRequest, 'seq'>, transfer?: Transferable[]): Promise<unknown> {
@@ -68,16 +83,12 @@ export class GridEngineWasm {
     const instance = new GridEngineWasm(engineId);
     if (onProgress) instance.progressCallback = onProgress;
     await instance.send({ id: engineId, cmd: 'init' });
-    if (!GridEngineWasm.healthLogged) {
-      GridEngineWasm.healthLogged = true;
-      console.log('[everygrid] WASM engine ready...');
-    }
     return instance;
   }
 
   /** Loads the full dataset. Runs in the worker — non-blocking. */
   async setData(data: unknown[], reportProgress = true): Promise<void> {
-    // Send batches sequentially to prevent interleaving with other grid's chunks in the shared worker.
+    // Send batches sequentially so chunks arrive in order at this engine's worker.
     const BATCH = 10_000;
     const totalBatches = Math.ceil(data.length / BATCH) || 1;
     const cb = reportProgress ? this.progressCallback : undefined;
@@ -197,5 +208,8 @@ export class GridEngineWasm {
    *  Each grid has its own worker, so this only affects this engine. */
   terminate(): void {
     this.worker.terminate();
+    const err = new Error('[GridEngineWasm] Engine terminated');
+    err.name = ENGINE_TERMINATED;
+    this.rejectAllPending(err);
   }
 }

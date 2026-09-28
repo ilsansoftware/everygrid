@@ -2,8 +2,8 @@
  * GridEngineWorker.ts
  * Web Worker script — runs inside a dedicated worker thread.
  * Loads the Rust WASM module and handles postMessage commands from the main thread.
- * Each GridEngine instance is keyed by an `id` so one worker can serve multiple grids.
- * Each grid has its own independent command queue to prevent interleaving.
+ * Each GridEngineWasm owns its own dedicated worker; engines here are still keyed by `id`
+ * and queued per id, so commands never interleave.
  */
 
 import init, { GridEngine } from 'everygrid-wasm';
@@ -152,7 +152,11 @@ let _wasmInitPromise: Promise<void> | undefined;
 
 function ensureWasmOnce(): Promise<void> {
   if (!_wasmInitPromise) {
-    _wasmInitPromise = init().then(() => {});
+    _wasmInitPromise = init().then(() => {}, (err: unknown) => {
+      // Don't cache a failed init — let the next request retry it.
+      _wasmInitPromise = undefined;
+      throw err;
+    });
   }
   return _wasmInitPromise;
 }
@@ -161,17 +165,25 @@ async function processGridQueue(id: string) {
   if (_gridProcessing.get(id)) return;
   _gridProcessing.set(id, true);
 
-  // Wait for WASM to be ready once, then drain the queue synchronously.
-  await ensureWasmOnce();
-
   const queue = getQueue(id);
-  while (queue.length > 0) {
-    const event = queue.shift()!;
-    // handleMessage is fully synchronous — no await, no microtask checkpoint.
-    handleMessage(event);
+  try {
+    // Wait for WASM to be ready once, then drain the queue synchronously.
+    await ensureWasmOnce();
+    while (queue.length > 0) {
+      const event = queue.shift()!;
+      // handleMessage is fully synchronous — no await, no microtask checkpoint.
+      handleMessage(event);
+    }
+  } catch (err) {
+    // WASM init failed — answer every queued request so the main thread doesn't hang.
+    const error = `WASM init failed: ${err instanceof Error ? err.message : String(err)}`;
+    for (const event of queue.splice(0)) {
+      const resp: WorkerResponse = { id, seq: event.data.seq, ok: false, error };
+      self.postMessage(resp);
+    }
+  } finally {
+    _gridProcessing.set(id, false);
   }
-
-  _gridProcessing.set(id, false);
 }
 
 self.onmessage = (event: MessageEvent<WorkerRequest>) => {

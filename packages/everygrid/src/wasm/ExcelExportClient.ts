@@ -6,8 +6,7 @@
 // The `?worker` suffix tells Vite to bundle the file as a Worker entry point.
 // (For the standalone UMD build vite.config rewrites this to `?worker&inline`.)
 import ExportWorker from './ExportWorker?worker';
-
-const ROWS_PER_FILE = 200000;
+import { ROWS_PER_FILE } from './exportConstants';
 
 export interface ExportResult {
   bytes: Uint8Array;

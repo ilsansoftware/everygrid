@@ -1,5 +1,5 @@
 import {I18n} from '../i18n/I18n';
-import type {CSSProperties, KeyboardEvent, ReactElement} from 'react';
+import type {CSSProperties, KeyboardEvent, ReactElement, RefObject} from 'react';
 import type {KeyTree} from '../core/types';
 import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
@@ -113,6 +113,52 @@ const breakPoints = (mirror: HTMLElement, base: string): number[] => {
   const second = lineStarts(mirror, staged, true).map(i => toBase[i]);
   return [...new Set([...first, ...second])].sort((a, b) => a - b);
 };
+
+interface SuggestionDropdownProps {
+  listRef: RefObject<HTMLDivElement | null>;
+  style?: CSSProperties;
+  suggestions: string[];
+  suggestIndex: number;
+  suggestEntered: boolean;
+  isMobile: boolean;
+  labelOf?: (key: string) => string;
+  onPick: (item: string) => void;
+}
+
+// The filter box's key/operator suggestion chips. A component of its own so the chip handlers
+// (which touch the toolbar's refs) are only wired up as event callbacks, never run during render.
+const SuggestionDropdown = ({listRef, style, suggestions, suggestIndex, suggestEntered, isMobile, labelOf, onPick}: SuggestionDropdownProps) => (
+  <div
+      ref={listRef}
+      style={style}
+      className={`flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 ${isMobile ? '' : 'shadow-lg'}`}>
+    {suggestions.map((k, i) => {
+      const isOp = k === '&&' || k === '||';
+      const selected = suggestEntered && i === suggestIndex;
+      // Operators read as connectors, not fields — set apart by chip colour only.
+      const tone = selected
+        ? 'bg-indigo-100 text-indigo-700'
+        : isOp
+          ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+          : 'bg-slate-100 text-slate-600 hover:bg-slate-200';
+      const label = isOp ? null : labelOf?.(k);
+      return (
+        <button
+            key={k}
+            type='button'
+            // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
+            onMouseDown={e => { e.preventDefault(); onPick(k); }}
+            className={`shrink-0 rounded font-medium ${tone} ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-2 py-0.5 text-[11px]'}`}
+        >{k}{label && label !== k ? <span className='ml-1 opacity-60'>({label})</span> : null}</button>
+      );
+    })}
+    {/* Arrow-key hint only applies on desktop (touch just taps a chip); it also forces a wrap
+        that would break the mobile single-row strip. */}
+    {!isMobile && (
+      <div className='basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none'>{I18n.t('toolbar.suggestNav')}</div>
+    )}
+  </div>
+);
 
 export interface GridToolbarProps {
   isExcelViewMode: boolean;
@@ -765,36 +811,15 @@ export const GridToolbarComponent = ({
             — they grow the toolbar together as one grouped control. */}
         {!statusText && suggestions.length > 0 && (() => {
           const list = (
-            <div
-                ref={dropRef}
+            <SuggestionDropdown
+                listRef={dropRef}
                 style={isMobile ? undefined : (dropStyle ?? undefined)}
-                className={`flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 ${isMobile ? '' : 'shadow-lg'}`}>
-              {suggestions.map((k, i) => {
-                const isOp = k === '&&' || k === '||';
-                const selected = suggestEntered && i === suggestIndex;
-                // Operators read as connectors, not fields — set apart by chip colour only.
-                const tone = selected
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : isOp
-                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200';
-                const label = isOp ? null : labelOf?.(k);
-                return (
-                  <button
-                      key={k}
-                      type='button'
-                      // onMouseDown (not onClick): fires before the textarea's blur, so focus/caret stay put.
-                      onMouseDown={e => { e.preventDefault(); applySuggestion(k); }}
-                      className={`shrink-0 rounded font-medium ${tone} ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-2 py-0.5 text-[11px]'}`}
-                  >{k}{label && label !== k ? <span className='ml-1 opacity-60'>({label})</span> : null}</button>
-                );
-              })}
-              {/* Arrow-key hint only applies on desktop (touch just taps a chip); it also forces a wrap
-                  that would break the mobile single-row strip. */}
-              {!isMobile && (
-                <div className='basis-full mt-0.5 px-1 text-[10px] text-slate-400 select-none'>{I18n.t('toolbar.suggestNav')}</div>
-              )}
-            </div>
+                suggestions={suggestions}
+                suggestIndex={suggestIndex}
+                suggestEntered={suggestEntered}
+                isMobile={isMobile}
+                labelOf={labelOf}
+                onPick={applySuggestion}/>
           );
           if (isMobile) return list;
           return dropStyle ? createPortal(list, document.body) : null;

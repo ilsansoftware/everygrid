@@ -129,10 +129,10 @@ The standalone build is one self-contained file — React, the WASM engine, the 
 are all inlined — exposed as `window.Everygrid`. No stylesheet, no React script tags, no build step.
 
 ```html
-<!-- newest compatible 0.4.x — pin an exact version (e.g. @0.4.9) for production -->
-<script src="https://cdn.jsdelivr.net/npm/@everygrid/grid@0.4"></script>
+<!-- newest compatible 0.5.x — pin an exact version (e.g. @0.5.0) for production -->
+<script src="https://cdn.jsdelivr.net/npm/@everygrid/grid@0.5"></script>
 <!-- or the same file via unpkg:
-<script src="https://unpkg.com/@everygrid/grid@0.4"></script> -->
+<script src="https://unpkg.com/@everygrid/grid@0.5"></script> -->
 
 <div id="user-grid"></div>
 

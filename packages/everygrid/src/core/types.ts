@@ -218,6 +218,8 @@ export interface GridLinkConfig {
   cols: string[];
 }
 
+/** A grid instance as the library's own components see it — including the `_`-prefixed internals.
+ *  Consumers get {@link EverygridPublic} (exported as `IEverygrid` from the package entry). */
 export interface IEverygrid<T extends Record<string, unknown>> {
   options: GridOptions<T>;
   pinnedColumns: Set<string>;
@@ -247,14 +249,13 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   _dataSource: Map<string, string | (() => Promise<Record<string, unknown>[]>)>;
   _reloading: Map<string, 'button' | 'silent'>;
   reloadData(containerId: string): Promise<void>;
-  _indexingAllRows: Map<string, Record<string, unknown>[]>;
   _indexingStage: Map<string, 'indexing' | 'ready'>;
   _indexingProgress: Map<string, number>;
   _wasStreaming: Set<string>;
   /** Targets with a data load in flight, on any load path. */
   _loading: Set<string>;
 
-  renderGrid(container: HTMLElement, _updatePinned?: boolean): void;
+  renderGrid(container: HTMLElement): void;
 
 
   resetCell(item: T, field: string, container: HTMLElement): void;
@@ -407,3 +408,6 @@ export interface GridOptions<T = Record<string, unknown>> {
   onDataChange?: (data: Record<string, unknown>[], originalData: Record<string, unknown>[]) => void;
   onCellClick?: (rowData: Record<string, unknown>, field: string) => void;
 }
+
+/** The public shape of a grid instance: IEverygrid without its `_`-prefixed internals. */
+export type EverygridPublic<T extends Record<string, unknown>> = Omit<IEverygrid<T>, `_${string}`>;

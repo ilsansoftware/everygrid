@@ -9,10 +9,22 @@ CYAN="\033[36m"
 YELLOW="\033[33m"
 BLUE="\033[34m"
 
-export PATH="/usr/local/n/versions/node/24.11.1/bin:/usr/local/lib/node_modules/corepack/shims:/opt/homebrew/bin:/usr/local/bin:$HOME/.cargo/bin:$PATH"
+for cmd in aws node pnpm; do
+  if ! command -v "$cmd" > /dev/null 2>&1; then
+    echo "deploy.sh: '$cmd' not found on PATH" >&2; exit 1
+  fi
+done
 
-BUCKET="everygrid-823624329122-ap-northeast-2-an"
-DIST_ID="E3PAL1L8WK3ZZ7"
+# BUCKET / DIST_ID live in an untracked scripts/deploy.env (template: scripts/deploy.env.example).
+DEPLOY_ENV="$(dirname "$0")/deploy.env"
+if [ -f "$DEPLOY_ENV" ]; then
+  # shellcheck source=/dev/null
+  . "$DEPLOY_ENV"
+fi
+if [ -z "${BUCKET:-}" ] || [ -z "${DIST_ID:-}" ]; then
+  echo "deploy.sh: BUCKET and DIST_ID must be set — copy scripts/deploy.env.example to scripts/deploy.env and fill it in" >&2
+  exit 1
+fi
 
 # The library itself ships through npm (scripts/publish-npm.sh) — this deploys only the demo site,
 # built against that npm release exactly as an outside consumer gets it: the React demo installs

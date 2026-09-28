@@ -1,5 +1,5 @@
 import '../styles/Everygrid.css';
-import {GridEngineWasm} from '../wasm/GridEngineWasm';
+import {GridEngineWasm, isEngineTerminated} from '../wasm/GridEngineWasm';
 import {EverygridComponent} from '../components/EverygridComponent';
 import {isJsonString, parseIfJson} from './utils';
 import {GridHandle, type GridEvents, type RowKey, type CellChange, type RowChange} from './GridHandle';
@@ -38,6 +38,14 @@ const VIRTUAL_BLOCK_SIZE = 200;
 /** Blocks kept per grid before the oldest are evicted (200 × 60 = 12k rows). */
 const VIRTUAL_BLOCK_CACHE_MAX = 60;
 
+/** A target entry is either a bare id or a config object carrying one. */
+const targetIdOf = (t: string | {id: string}): string => (typeof t === 'string' ? t : t.id);
+
+/** Logs an error unless it is destroy() terminating the engine — that one is intentional. */
+const logEngineError = (e: unknown): void => {
+  if (!isEngineTerminated(e)) console.error(e);
+};
+
 export class Everygrid<T extends Record<string, unknown> = Record<string, unknown>> implements IEverygrid<T> {
   public static readonly POPUP_OVERLAY_CLASS = 'everygrid-popup-overlay';
   public static readonly POPUP_CONTENT_CLASS = 'everygrid-popup-content';
@@ -54,12 +62,17 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // creation instead of each running createRoot on the container (React StrictMode double-invoke).
   private static _mounting: Map<string, Promise<Everygrid | null>> = new Map();
   public static I18n = I18n;
-  public static options: GridOptions = { targets: [] };
+  // Run by resetAutoInit, so wrappers holding their own deferred work (the React hook's pending
+  // unmounts) can drop it along with the instances it would have touched.
+  public static _resetHooks: Set<() => void> = new Set();
   readonly options: GridOptions<T>;
   public hiddenFieldsMap: Map<string, Set<string>> = new Map(); // Manages hidden fields per targetId
   public displayColsMap: Map<string, Set<string>> = new Map(); // Column selector whitelist per targetId (empty = show all)
   public exportState: Map<string, {done: number; total: number}> = new Map(); // Excel export progress (files done/total) per targetId
   private _exportControllers: Map<string, AbortController> = new Map(); // aborts in-flight exports (terminates the worker) on re-export or destroy
+  // Instance-wide, not per target like the maps around them: the components read these without a
+  // target id, and an instance is one target in practice — mount/createGrid/autoInit each build one
+  // per target, and the data, edits and inserted rows they act on are instance-wide as well.
   public pinnedColumns: Set<string> = new Set(); // Manages pinned columns
   public commaSeparatedFields: Set<string> = new Set(); // Manages comma-separated columns
   public linkFields: Set<string> = new Set(); // Manages link-converted columns
@@ -93,13 +106,16 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private _inserted: T[] = [];
   private _deletedRows: Set<T> = new Set();
   public checkedValues: Map<string, Set<unknown>> = new Map(); // Manages checked values per targetId (checkbox config)
-  private syncTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private syncRafId: number | undefined;
   private roots: Map<HTMLElement, Root> = new Map();
   private subscribers: Set<() => void> = new Set();
   private domObserver: MutationObserver | null = null;
+  // refreshAll's lazy-render observer for this instance; replaced per call, disconnected on destroy.
+  private _refreshObserver: IntersectionObserver | null = null;
   // Set by destroy(). Pending polls check it so an unmounted grid stops working immediately
   // instead of spinning out its timeout.
   public _destroyed = false;
+  // Instance-wide like pinnedColumns — see the note there.
   public filterText: string = '';
   private _wasmEngines: Map<string, GridEngineWasm> = new Map();
   private _wasmEngineReady: Map<string, boolean> = new Map();
@@ -160,7 +176,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private _loadSeq: Map<string, number> = new Map();
   // Raw (unfiltered) total per containerId — updated after each WASM handoff/filter
   public _wasmRawTotal: Map<string, number> = new Map();
-  public _indexingAllRows: Map<string, Record<string, unknown>[]> = new Map();
   // Indexing stage: 'indexing' while build_index runs, 'ready' when done
   public _indexingStage: Map<string, 'indexing' | 'ready'> = new Map();
   // Indexing progress: 0–100
@@ -203,7 +218,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     }
 
     this.options.targets?.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const id = targetIdOf(idConfig);
       const links = typeof idConfig === 'object' ? idConfig.links : undefined;
       if (links) {
         links.forEach(col => this.linkFields.add(col));
@@ -218,7 +233,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Register instances by target ID
     if (this.options.targets) {
       this.options.targets.forEach(idConfig => {
-        const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+        const id = targetIdOf(idConfig);
         Everygrid.instances.set(id, this);
       });
     }
@@ -229,9 +244,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Skip engine creation for grids with no data source at all (empty grids)
     if (this.options.data === undefined && !this.options.dataUrl) return;
 
-    const targetIds = (this.options.targets ?? []).map(idConfig =>
-      typeof idConfig === 'string' ? idConfig : idConfig.id
-    );
+    const targetIds = (this.options.targets ?? []).map(targetIdOf);
     targetIds.forEach(id => {
       GridEngineWasm.create(id, (stage, progress) => {
         if (stage === 'ready') {
@@ -240,6 +253,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           const el100 = document.getElementById(id);
           if (el100) this.renderGrid(el100);
           setTimeout(() => {
+            if (this._destroyed) return;
             this._indexingStage.set(id, 'ready');
             const elDone = document.getElementById(id);
             if (elDone) this.renderGrid(elDone);
@@ -251,6 +265,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           if (el) this.renderGrid(el);
         }
       }).then(engine => {
+        // Destroyed while the worker was starting: destroy() never saw this engine, so free it here.
+        if (this._destroyed) { engine.terminate(); return; }
         this._wasmEngines.set(id, engine);
         this._wasmEngineReady.set(id, true);
         // `this.options.data` is read here, not at construction, so by now a fetcher's rows may
@@ -265,18 +281,17 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           (this.options as { data: unknown[] }).data = capped;
           this._loadIntoEngine(id, engine, capped as unknown[]).then(() => {
             this._wasmDataLoaded.set(id, true);
-            this.applyWasmFilter(id).catch(console.error);
-          }).catch(console.error);
+            this.applyWasmFilter(id).catch(logEngineError);
+          }).catch(logEngineError);
         } else if (!this._wasmDataLoaded.get(id)) {
-          this.applyWasmFilter(id).catch(console.error);
+          this.applyWasmFilter(id).catch(logEngineError);
         }
       }).catch(err => {
-        console.warn(`Everygrid: WASM engine init failed for ${id}:`, err);
+        if (!isEngineTerminated(err)) console.warn(`Everygrid: WASM engine init failed for ${id}:`, err);
       });
     });
   }
 
-  /** Unmounts every grid and forgets all loaded config — the next loadConfig re-fetches. */
   /**
    * Re-fetches a mounted grid's data from the source it was created with, in place.
    *
@@ -290,10 +305,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     await instance?.reloadData(id, opts);
   }
 
-  /**
-   * A handle onto a mounted grid's data — `Everygrid.get('users').row(3).cell('score').set(90)`.
-   * Null when nothing is mounted under that id. See GridHandle.
-   */
   /** The instance behind a target id (tests and tooling; the handle is the API). */
   public static instances_get<D extends Record<string, unknown> = Record<string, unknown>>(id: string): Everygrid<D> {
     const instance = Everygrid.instances.get(id) as Everygrid<D> | undefined;
@@ -301,11 +312,16 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return instance;
   }
 
+  /**
+   * A handle onto a mounted grid's data — `Everygrid.get('users').row(3).cell('score').set(90)`.
+   * Null when nothing is mounted under that id. See GridHandle.
+   */
   public static get<D extends Record<string, unknown> = Record<string, unknown>>(id: string): GridHandle<D> | null {
     const instance = Everygrid.instances.get(id) as Everygrid<D> | undefined;
     return instance ? new GridHandle<D>(instance, id) : null;
   }
 
+  /** Unmounts every grid and forgets all loaded config — the next loadConfig re-fetches. */
   public static resetAutoInit(): void {
     // Destroy all existing instances before clearing to free WASM engines and React roots
     Everygrid.instances.forEach(instance => {
@@ -315,6 +331,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     Everygrid.instances.clear();
     Everygrid._targetRegistry.clear();
     Everygrid._configCache.clear();
+    Everygrid._mounting.clear();
+    Everygrid._resetHooks.forEach(hook => hook());
   }
 
   /**
@@ -497,7 +515,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       void Everygrid._afterPaint()
         .then(fetcherOrUrl)
         .then(rows => instance._setRows(targetId, rows))
-        .catch(err => console.warn('Everygrid: fetcher failed for', targetId, err))
+        .catch(err => { if (!isEngineTerminated(err)) console.warn('Everygrid: fetcher failed for', targetId, err); })
         .finally(() => {
           instance._loading.delete(targetId);
           const el = document.getElementById(targetId);
@@ -597,7 +615,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         const isLarge = isNaN(declaredLength) || declaredLength >= Everygrid.LARGE_PAYLOAD_BYTES;
         if (isLarge) {
           await Everygrid._streamJsonToWasm(this, targetId, res.body, contentLength).catch(err => {
-            console.warn('Everygrid: streaming load failed for', targetId, err);
+            if (!isEngineTerminated(err)) console.warn('Everygrid: streaming load failed for', targetId, err);
           });
         } else {
           try {
@@ -605,12 +623,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
             const rows: Record<string, unknown>[] = Array.isArray(json) ? json : [json];
             await this._setRows(targetId, rows);
           } catch (err) {
-            console.warn('Everygrid: fetch/parse failed for', targetId, err);
+            if (!isEngineTerminated(err)) console.warn('Everygrid: fetch/parse failed for', targetId, err);
           }
         }
       }
     } catch (err) {
-      console.warn('Everygrid: fetch failed for', targetId, err);
+      if (!isEngineTerminated(err)) console.warn('Everygrid: fetch failed for', targetId, err);
     } finally {
       this._loading.delete(targetId);
       const el = document.getElementById(targetId);
@@ -696,21 +714,21 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     for (const id of this._targetIds()) {
       const eng = this._wasmEngines.get(id);
       if (eng && this._wasmEngineReady.get(id)) {
-        void op(eng).then(() => this.applyWasmFilter(id)).catch(console.error);
+        void op(eng).then(() => this.applyWasmFilter(id)).catch(logEngineError);
       }
     }
   }
 
   /** The ids this instance renders into. */
   private _targetIds(): string[] {
-    return (this.options.targets ?? []).map(t => (typeof t === 'string' ? t : t.id));
+    return (this.options.targets ?? []).map(targetIdOf);
   }
 
   /** Re-renders this instance's targets that are in the DOM. */
-  private _rerenderTargets(pinnedChanged = false): void {
+  private _rerenderTargets(): void {
     for (const id of this._targetIds()) {
       const el = document.getElementById(id);
-      if (el) this.renderGrid(el, pinnedChanged);
+      if (el) this.renderGrid(el);
     }
   }
 
@@ -833,7 +851,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // publishes rows at the end (via applyWasmFilter), so the swap is atomic either way.
     this._streamRows.delete(containerId);
     this._streamTotal.delete(containerId);
-    this._indexingAllRows.delete(containerId);
     this._indexingProgress.delete(containerId);
     this._wasmDataLoaded.set(containerId, false);
     this.currentPage.set(containerId, 1);
@@ -867,7 +884,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         await this._setRows(containerId, await source());
       }
     } catch (err) {
-      console.warn('Everygrid: reload failed for', containerId, err);
+      if (!isEngineTerminated(err)) console.warn('Everygrid: reload failed for', containerId, err);
       // Nothing more is coming — leaving the stage on 'indexing' would show a progress UI
       // that can never finish.
       this._indexingStage.set(containerId, 'ready');
@@ -923,16 +940,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     let totalBytes = 0;
 
     // Wait for the WASM engine, which is created asynchronously during init().
-    const engine = await new Promise<GridEngineWasm | undefined>(resolve => {
-      const existing = instance._wasmEngines.get(targetId);
-      if (existing) { resolve(existing); return; }
-      const start = Date.now();
-      const poll = setInterval(() => {
-        const eng = instance._wasmEngines.get(targetId);
-        if (eng) { clearInterval(poll); resolve(eng); }
-        else if (instance._destroyed || Date.now() - start > 10000) { clearInterval(poll); resolve(undefined); }
-      }, 50);
-    });
+    const engine = await instance._awaitEngine(targetId);
     if (!engine) {
       console.warn('Everygrid: WASM engine not ready for streaming', targetId);
       reader.releaseLock();
@@ -966,6 +974,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       while (true) {
         const {done, value} = await reader.read();
         if (done) break;
+        // Unmounted mid-download: stop pulling bytes into a terminated worker.
+        if (instance._destroyed) {
+          reader.cancel().catch(() => {});
+          return;
+        }
         totalBytes += value.byteLength;
         // Transfer raw bytes to the worker — the main thread does NO parsing.
         total = await engine.streamChunk(value);
@@ -987,8 +1000,6 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           instance._indexingProgress.set(targetId, Math.min(99, Math.round((totalBytes / contentLength) * 100)));
         }
       }
-      console.log(`Everygrid: streaming complete for ${targetId}, total rows: ${total}`);
-
       // Pre-set raw total so toolbar/pagination stay visible through the handoff.
       instance._wasmRawTotal.set(targetId, total);
       instance._indexingProgress.set(targetId, 99);
@@ -1012,7 +1023,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // Populate the first page from WASM (suppressProcessing: initial load, not a user action).
       await instance.applyWasmFilter(targetId, true);
     } catch (e) {
-      console.warn(`Everygrid: streaming load failed for ${targetId}`, e);
+      if (!isEngineTerminated(e)) console.warn(`Everygrid: streaming load failed for ${targetId}`, e);
       instance._indexingStage.set(targetId, 'ready');
       doRender();
     } finally {
@@ -1043,7 +1054,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       (instance.options as { data: unknown[] }).data = rows;
       instance.initOriginalDataMap();
     } catch (e) {
-      console.warn('Everygrid: could not materialize streamed rows for', targetId, e);
+      if (!isEngineTerminated(e)) console.warn('Everygrid: could not materialize streamed rows for', targetId, e);
     }
   }
 
@@ -1060,18 +1071,22 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
       const el = targets.reduce<HTMLElement | null>((found, t) => {
         if (found) return found;
-        const id = typeof t === 'string' ? t : t.id;
+        const id = targetIdOf(t);
         return document.getElementById(id);
       }, null);
 
-      if (!el) return;
+      if (!el || g._destroyed) return;
 
+      g._refreshObserver?.disconnect();
       const observer = new IntersectionObserver(([entry], obs) => {
         if (entry.isIntersecting) {
           obs.disconnect();
-          g.init().catch((err: unknown) => console.error('Everygrid.refreshAll error:', err));
+          if (g._refreshObserver === obs) g._refreshObserver = null;
+          if (g._destroyed) return;
+          g.init().catch((err: unknown) => { if (!isEngineTerminated(err)) console.error('Everygrid.refreshAll error:', err); });
         }
       }, {threshold: 0});
+      g._refreshObserver = observer;
 
       observer.observe(el);
     });
@@ -1086,7 +1101,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     Everygrid.instances.forEach(grid => {
       const g = grid as Everygrid;
       (g.options.targets ?? []).forEach(t => {
-        const id = typeof t === 'string' ? t : t.id;
+        const id = targetIdOf(t);
         const el = document.getElementById(id);
         if (el) g.renderGrid(el);
       });
@@ -1154,7 +1169,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.activePopupRowKey = null;
     const {targets} = this.options;
     targets?.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const id = targetIdOf(idConfig);
       const container = document.getElementById(id);
       if (container) this.renderGrid(container);
     });
@@ -1612,12 +1627,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const engine = this._wasmEngines.get(containerId);
       if (engine && this._wasmEngineReady.get(containerId)) {
         this._loadIntoEngine(containerId, engine, this.options.data as unknown[]).then(() => {
-          this.applyWasmFilter(containerId).catch(console.error);
-        }).catch(console.error);
+          this.applyWasmFilter(containerId).catch(logEngineError);
+        }).catch(logEngineError);
       }
       this._rerender(containerId);
     } catch (err) {
-      console.error('Everygrid: serverFetcher failed:', err);
+      if (!isEngineTerminated(err)) console.error('Everygrid: serverFetcher failed:', err);
     } finally {
       this._serverFetching.set(containerId, false);
     }
@@ -1719,7 +1734,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /** @deprecated Replaced by applyWasmFilter */
   public applyWasmState(containerId: string): void {
-    this.applyWasmFilter(containerId).catch(console.error);
+    this.applyWasmFilter(containerId).catch(logEngineError);
   }
 
   /** For rendering: reads and returns the current page data directly from the WASM engine or JS stream rows */
@@ -1785,17 +1800,17 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const {targets} = this.options;
     const targetList = container ? [{id: container.id}] : (targets ?? []);
     targetList.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const id = targetIdOf(idConfig);
       this.currentPage.set(id, 1);
       const paginationConfig = this.getPagination(id);
       if (paginationConfig?.serverSide && this.options.serverFetcher) {
-        this.fetchServerPage(id).catch(console.error);
+        this.fetchServerPage(id).catch(logEngineError);
       } else if (this._streamRows.has(id) || this._streamTotal.has(id)) {
         // Streaming mode (JS rows or count-only): filter/sort in JS, just re-render
         const el = document.getElementById(id);
         if (el) this.renderGrid(el);
       } else {
-        this.applyWasmFilter(id).catch(console.error);
+        this.applyWasmFilter(id).catch(logEngineError);
       }
     });
   }
@@ -2050,7 +2065,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this._scheduleVirtualRender(containerId);
     }).catch(err => {
       pending.delete(key);
-      console.error('Everygrid: virtual block fetch failed:', err);
+      if (!isEngineTerminated(err)) console.error('Everygrid: virtual block fetch failed:', err);
     });
   }
 
@@ -2367,7 +2382,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.subscribers.forEach(cb => cb());
   }
 
-  public renderGrid(container: HTMLElement, _updatePinned: boolean = true) {
+  public renderGrid(container: HTMLElement) {
+    // Late callbacks (engine progress, timers, fetches) must not recreate a root after destroy.
+    if (this._destroyed) return;
     this.notify();
     const root = this.getRoot(container);
     root.render(<EverygridComponent grid={this} container={container}/>);
@@ -2412,11 +2429,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       return;
     }
 
-    if (this.syncTimeoutId) {
-      window.cancelAnimationFrame(this.syncTimeoutId);
+    if (this.syncRafId !== undefined) {
+      window.cancelAnimationFrame(this.syncRafId);
     }
 
-    this.syncTimeoutId = window.requestAnimationFrame(() => {
+    this.syncRafId = window.requestAnimationFrame(() => {
       const mainTable = container.querySelector('.everygrid-table-container:not(.everygrid-pinned-table-container) .everygrid-table') as HTMLTableElement;
       const pinnedTable = container.querySelector('.everygrid-pinned-table-container .everygrid-table') as HTMLTableElement;
 
@@ -2439,7 +2456,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           }
         });
       }
-      this.syncTimeoutId = undefined;
+      this.syncRafId = undefined;
     });
   }
 
@@ -2455,7 +2472,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.activePopup = null;
     const {targets} = this.options;
     targets?.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const id = targetIdOf(idConfig);
       const container = document.getElementById(id);
       if (container) this.renderGrid(container);
     });
@@ -2472,7 +2489,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     );
     const {targets} = this.options;
     targets?.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const id = targetIdOf(idConfig);
       const container = document.getElementById(id);
       if (container) this.renderGrid(container);
     });
@@ -2494,7 +2511,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     );
     const {targets} = this.options;
     targets?.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const id = targetIdOf(idConfig);
       const container = document.getElementById(id);
       if (container) this.renderGrid(container);
     });
@@ -2550,7 +2567,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         this.options.onDataChange(this.options.data, this._originalData());
       }
 
-      this._rerenderTargets(this.pinnedColumns.has(field));
+      this._rerenderTargets();
 
       const gridId = this._firstTargetId();
       this._emit('cellChange', {index: idx, key: this._keyOf(gridId, newRow, idx), field, from, to: newRow[field], row: newRow});
@@ -2669,12 +2686,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const paginationConfig = this.getPagination(containerId);
     if (paginationConfig?.serverSide && this.options.serverFetcher) {
       this.currentPage.set(containerId, 1);
-      this.fetchServerPage(containerId).catch(console.error);
+      this.fetchServerPage(containerId).catch(logEngineError);
     } else if (this._streamRows.has(containerId)) {
       this.currentPage.set(containerId, 1);
       this.renderGrid(container);
     } else {
-      this.applyWasmFilter(containerId).catch(console.error);
+      this.applyWasmFilter(containerId).catch(logEngineError);
     }
   }
 
@@ -2687,7 +2704,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.currentPage.set(containerId, page);
     const paginationConfig = this.getPagination(containerId);
     if (paginationConfig?.serverSide && this.options.serverFetcher) {
-      this.fetchServerPage(containerId).catch(err => console.error(err));
+      this.fetchServerPage(containerId).catch(logEngineError);
     } else if (this._streamUrl.has(containerId)) {
       // Streaming mode: data is already in memory, just re-render
       const container = document.getElementById(containerId);
@@ -2695,24 +2712,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     } else if (this._indexingStage.get(containerId) === 'indexing') {
       // During indexing: if WASM data is already loaded, use WASM directly
       if (this._wasmDataLoaded.get(containerId)) {
-        this.applyWasmFilter(containerId, true).catch(console.error);
+        this.applyWasmFilter(containerId, true).catch(logEngineError);
       } else {
-        // WASM not ready yet — slice from JS allRows if available
-        const indexingRows = this._indexingAllRows.get(containerId);
-        const paginationConfig = this.getPagination(containerId);
-        const pageSize = (paginationConfig?.pageSize && paginationConfig.pageSize > 0) ? paginationConfig.pageSize : 10;
-        const start = (page - 1) * pageSize;
-        if (indexingRows) {
-          this._wasmPageCache.set(containerId, { rows: indexingRows.slice(start, start + pageSize), total: indexingRows.length });
-        } else {
-          // No allRows (e.g. small grid whose Worker finalize is blocked by large grid).
-          // Slice from the full cached data if available, otherwise just re-render.
-          const existingCache = this._wasmPageCache.get(containerId);
-          if (existingCache) {
-            // We don't have allRows but we know the total — re-render with current cache
-            // The page number is already saved; once indexing completes applyWasmFilter will correct it.
-          }
-        }
+        // WASM not ready yet — re-render with the current cache. The page number is already
+        // saved; once indexing completes applyWasmFilter will correct it.
         const container = document.getElementById(containerId);
         if (container) this.renderGrid(container);
       }
@@ -2720,7 +2723,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // On page change, fetch only the new page from WASM — the filter/sort result is
       // already computed and cached, so we just slice it (O(pageSize)) instead of
       // rescanning every row via applyWasmFilter's filter+sort recompute.
-      this.fetchWasmPage(containerId).catch(console.error);
+      this.fetchWasmPage(containerId).catch(logEngineError);
     }
   }
 
@@ -2870,11 +2873,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     }
 
     const foundAll = targets.every(id => {
-      const targetId = typeof id === 'string' ? id : id.id;
+      const targetId = targetIdOf(id);
       return document.getElementById(targetId);
     });
     if (foundAll) {
-      this.init().catch(err => console.error('Everygrid init error:', err));
+      this.init().catch(err => { if (!isEngineTerminated(err)) console.error('Everygrid init error:', err); });
       return true;
     }
     return false;
@@ -2891,7 +2894,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Fetch data from dataUrl if provided
     if (dataUrl && !this.options.data) {
       // Mark every target as loading so this path shows the same skeleton as the others.
-      const ids = targets.map(t => typeof t === 'string' ? t : t.id);
+      const ids = targets.map(targetIdOf);
       ids.forEach(id => this._loading.add(id));
       try {
         const response = await fetch(dataUrl);
@@ -2907,20 +2910,20 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
     // Sync data to WASM engine (per containerId, only if not yet loaded)
     targets.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const id = targetIdOf(idConfig);
       const engine = this._wasmEngines.get(id);
       if (engine && this._wasmEngineReady.get(id) && this.options.data && !this._wasmDataLoaded.get(id)) {
         void this._loadIntoEngine(id, engine, this.options.data as unknown[])
           .then(() => { this._wasmDataLoaded.set(id, true); })
-          .catch(err => console.warn(`Everygrid: WASM setData failed for ${id}:`, err));
+          .catch(err => { if (!isEngineTerminated(err)) console.warn(`Everygrid: WASM setData failed for ${id}:`, err); });
       }
     });
 
     targets.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const id = targetIdOf(idConfig);
       const container = document.getElementById(id);
       if (container) {
-        this.applyWasmFilter(id).catch(console.error);
+        this.applyWasmFilter(id).catch(logEngineError);
       }
     });
   }
@@ -2942,10 +2945,16 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     this.domObserver = null;
 
     // Cancel pending requestAnimationFrame
-    if (this.syncTimeoutId !== undefined) {
-      window.cancelAnimationFrame(this.syncTimeoutId);
-      this.syncTimeoutId = undefined;
+    if (this.syncRafId !== undefined) {
+      window.cancelAnimationFrame(this.syncRafId);
+      this.syncRafId = undefined;
     }
+
+    // Stop timers and observers that would otherwise fire into a dead grid.
+    this._processingTimer.forEach(timer => clearTimeout(timer));
+    this._processingTimer.clear();
+    this._refreshObserver?.disconnect();
+    this._refreshObserver = null;
 
     // Unmount React roots
     this.roots.forEach(root => root.unmount());
@@ -2957,7 +2966,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Remove from the static instances map, and release the target so it can be mounted again —
     // destroy() has to be the exact inverse of construction for client-owned lifecycles to work.
     this.options.targets?.forEach(idConfig => {
-      const id = typeof idConfig === 'string' ? idConfig : idConfig.id;
+      const id = targetIdOf(idConfig);
       Everygrid.instances.delete(id);
       Everygrid._initializedTargets.delete(id);
     });

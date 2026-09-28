@@ -2,6 +2,10 @@
 name = "everygrid-wasm"
 version = "0.1.0"
 edition = "2021"
+description = "Filter/sort/paginate engine for the Everygrid data grid, compiled to WebAssembly"
+license = "MIT"
+repository = "https://github.com/ilsansoftware/everygrid"
+publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]

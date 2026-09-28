@@ -12,9 +12,6 @@ use crate::row::RowData;
 use crate::text::str_contains_ci;
 use crate::value::FieldVal;
 
-/// Split `input` on `sep`, but only at parenthesis depth 0, so '&&'/'||' inside a `col(...)`
-/// group are not treated as top-level separators. `sep`, '(' and ')' are all ASCII, so byte
-/// scanning never lands mid-UTF-8-char.
 /// Split an expression on AND boundaries at paren depth 0: both `&&` and a `.` that immediately
 /// follows a `)` (the sibling-key chain, e.g. `subRole(front).years(=1)`). A `.` inside a value or
 /// parens (e.g. `email(a.b)`, `salary(>3.14)`) is NOT a boundary.
@@ -69,6 +66,9 @@ fn split_dot(input: &str) -> Vec<String> {
     parts
 }
 
+/// Split `input` on `sep`, but only at parenthesis depth 0, so '&&'/'||' inside a `col(...)`
+/// group are not treated as top-level separators. `sep`, '(' and ')' are all ASCII, so byte
+/// scanning never lands mid-UTF-8-char.
 fn split_top_level(input: &str, sep: &str) -> Vec<String> {
     let bytes = input.as_bytes();
     let sep_bytes = sep.as_bytes();

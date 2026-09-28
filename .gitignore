@@ -15,7 +15,8 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
+*.iml
 .DS_Store
 *.suo
 *.ntvs*
@@ -32,6 +33,11 @@ everygrid-wasm/target/
 .ai
 
 
-# Markdown (keep README only)
-*.md
-!README.md
+# Private notes (agent/personal instructions — not project docs)
+CLAUDE.md
+
+# Deploy secrets (bucket/distribution ids) — see scripts/deploy.env.example
+scripts/deploy.env
+
+# ~1GB output of scripts/big-json-maker.cjs
+scripts/large_table_data.json
