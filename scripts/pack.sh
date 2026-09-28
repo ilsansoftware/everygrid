@@ -1,6 +1,6 @@
 #!/bin/bash
 # Stage a clean, consumer-installable @everygrid/grid tarball from the built workspace.
-# Sourced by deploy.sh (CDN) and publish-npm.sh (npm registry) so both ship the same bytes.
+# Sourced by publish-npm.sh.
 # Leaves: VERSION, PACK_TMP, OUT_TMP, GRID_STAGE, INT_TGZ_NAME (in $OUT_TMP), sha12().
 GRID_DIR="packages/everygrid"
 WASM_DIR="everygrid-wasm/pkg"

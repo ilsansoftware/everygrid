@@ -2,3 +2,5 @@ packages:
   - 'packages/*'
   - 'demo/portal'
   - 'everygrid-wasm/pkg'
+minimumReleaseAgeExclude:
+  - '@everygrid/grid'

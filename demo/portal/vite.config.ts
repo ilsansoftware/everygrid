@@ -11,18 +11,20 @@ import path from 'path';
 //   dev      workspace source, via the        workspace dist/everygrid.standalone.js,
 //            alias below — edits in           served at /lib/ (pair with `pnpm demo`,
 //            packages/everygrid apply live    which runs the library build in --watch)
-//   build    the @everygrid/grid dependency   $EVERYGRID_CDN — the deployed standalone
-//            — a CDN tarball URL, resolved
+//   build    the @everygrid/grid dependency   jsDelivr, same npm version (or $EVERYGRID_CDN)
+//            — the npm release, resolved
 //            through its own exports map
 //
 // The alias is deliberately dev-only. package.json depends on the published tarball by URL
 // rather than workspace:*, so a production build consumes @everygrid/grid exactly as an
 // outside consumer would; aliasing it away in `vite build` would defeat that entirely.
-// The rolling pointer, not a versioned URL: deploy.sh overrides this with the immutable
-// /packages/everygrid.standalone-<version>-<hash>.js it just published, so this only applies
-// to a plain `vite build`. Hardcoding a version here meant a version bump left it silently
-// pointing at the previous release — which still resolves, so nothing would ever fail loudly.
-const CDN_STANDALONE = 'https://d3886c7yrxubj8.cloudfront.net/latest/everygrid.standalone.js';
+// The npm release's standalone via jsDelivr, pinned to the exact version the React demo installed
+// — read from the dependency, not hardcoded, so a version bump can't leave the html demos silently
+// on the previous release while the React demo moves on. $EVERYGRID_CDN overrides it.
+const INSTALLED_VERSION = JSON.parse(
+  readFileSync(path.resolve(__dirname, 'node_modules/@everygrid/grid/package.json'), 'utf-8'),
+).version;
+const CDN_STANDALONE = `https://cdn.jsdelivr.net/npm/@everygrid/grid@${INSTALLED_VERSION}/dist/everygrid.standalone.js`;
 const LOCAL_STANDALONE = path.resolve(__dirname, '../../packages/everygrid/dist/everygrid.standalone.js');
 const DEV_STANDALONE_URL = '/lib/everygrid.standalone.js';
 

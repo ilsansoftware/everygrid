@@ -5,12 +5,8 @@ A config-driven React data grid. Filtering, sorting and paging over millions of 
 
 ## Installation
 
-The package is `@everygrid/grid`. It is served from its own CDN rather than the npm registry: every
-deploy publishes an immutable tarball at `/packages/everygrid-grid-<version>-<hash>.tgz`, which is
-what you install and what your lockfile pins.
-
 ```bash
-npm install https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-0.3.3-eba737af4404.tgz
+npm install @everygrid/grid
 ```
 
 React 18+ is a peer dependency. For a plain `<script>` page with no bundler, see [CDN Usage](#cdn-usage).
@@ -20,7 +16,7 @@ React 18+ is a peer dependency. For a plain `<script>` page with no bundler, see
 ### 1. Install the library
 
 ```bash
-npm install https://d3886c7yrxubj8.cloudfront.net/packages/everygrid-grid-<version>-<hash>.tgz
+npm install @everygrid/grid
 ```
 
 ### 2. Import CSS
@@ -130,10 +126,10 @@ The standalone build is one self-contained file — React, the WASM engine, the 
 are all inlined — exposed as `window.Everygrid`. No stylesheet, no React script tags, no build step.
 
 ```html
-<!-- rolling: always the newest build -->
-<script src="https://d3886c7yrxubj8.cloudfront.net/latest/everygrid.standalone.js"></script>
-<!-- or pinned: an immutable, hash-named build, e.g.
-<script src="https://d3886c7yrxubj8.cloudfront.net/packages/everygrid.standalone-0.3.3-964c98a78fd2.js"></script> -->
+<!-- pinned to a release (recommended) -->
+<script src="https://cdn.jsdelivr.net/npm/@everygrid/grid@0.4.7"></script>
+<!-- or the same file via unpkg:
+<script src="https://unpkg.com/@everygrid/grid@0.4.7"></script> -->
 
 <div id="user-grid"></div>
 

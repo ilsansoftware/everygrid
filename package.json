@@ -8,7 +8,7 @@
     "demo/portal"
   ],
   "scripts": {
-    "deploy": "pnpm run build && bash scripts/deploy.sh",
+    "deploy": "bash scripts/deploy.sh",
     "publish:npm": "pnpm run build && bash scripts/publish-npm.sh",
     "build:wasm": "cd everygrid-wasm && wasm-pack build --target web --quiet",
     "build:everygrid": "pnpm --filter ./packages/everygrid build",
