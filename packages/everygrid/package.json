@@ -7,7 +7,7 @@
   "homepage": "https://d3886c7yrxubj8.cloudfront.net/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/leeey/everygrid.git",
+    "url": "git+https://github.com/ilsansoftware/everygrid.git",
     "directory": "packages/everygrid"
   },
   "bugs": {
