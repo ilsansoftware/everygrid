@@ -89,8 +89,11 @@ nav::-webkit-scrollbar {
   gap: 6px;
   flex-shrink: 0;
 }
-.tool-tabs button {
+.tool-tabs button,
+.tool-tabs a {
   height: 40px;
+  box-sizing: border-box;
+  text-decoration: none;
   padding: 0 12px;
   background: #2a2b3d;
   border: 1px solid rgba(148, 163, 184, 0.22);
@@ -100,7 +103,8 @@ nav::-webkit-scrollbar {
   align-items: center;
   transition: background 0.15s, border-color 0.15s;
 }
-.tool-tabs button:hover {
+.tool-tabs button:hover,
+.tool-tabs a:hover {
   background: #3a3c55;
   border-color: rgba(148, 163, 184, 0.45);
 }
@@ -109,7 +113,8 @@ nav::-webkit-scrollbar {
   border-color: rgba(148, 163, 184, 0.38);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
-.tool-tabs button .tab-label {
+.tool-tabs button .tab-label,
+.tool-tabs a .tab-label {
   position: relative;
   white-space: nowrap;
   font-size: 12px;
@@ -119,6 +124,7 @@ nav::-webkit-scrollbar {
   color: #cbd5e1;
 }
 .tool-tabs button:hover .tab-label,
+.tool-tabs a:hover .tab-label,
 .tool-tabs button.active .tab-label {
   color: #ffffff;
 }

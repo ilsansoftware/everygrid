@@ -3,6 +3,9 @@
 A config-driven React data grid. Filtering, sorting and paging over millions of rows run in a
 **Rust - WASM engine** inside a Web Worker, so the UI never blocks.
 
+**[Live demo & API docs →](https://d3886c7yrxubj8.cloudfront.net/)** — React, vanilla JS and jQuery demos, a
+1.6M-row virtual-scroll grid, and JSON-to-grid.
+
 ## Installation
 
 ```bash
@@ -126,10 +129,10 @@ The standalone build is one self-contained file — React, the WASM engine, the 
 are all inlined — exposed as `window.Everygrid`. No stylesheet, no React script tags, no build step.
 
 ```html
-<!-- pinned to a release (recommended) -->
-<script src="https://cdn.jsdelivr.net/npm/@everygrid/grid@0.4.7"></script>
+<!-- newest compatible 0.4.x — pin an exact version (e.g. @0.4.8) for production -->
+<script src="https://cdn.jsdelivr.net/npm/@everygrid/grid@0.4"></script>
 <!-- or the same file via unpkg:
-<script src="https://unpkg.com/@everygrid/grid@0.4.7"></script> -->
+<script src="https://unpkg.com/@everygrid/grid@0.4"></script> -->
 
 <div id="user-grid"></div>
 
@@ -169,6 +172,7 @@ apply to every grid in the file.
 |-------|------|-------------|
 | `id` | `string` | The DOM element id the grid mounts into |
 | `title` | `string` | Heading shown above the grid |
+| `data` | `object[]` | Rows inline in the config — for small static grids that need no fetcher |
 | `links` | `string[]` | Fields rendered as links |
 | `editableCols` | `string[]` | Fields the reader may edit |
 | `rowKey` | `string \| string[]` | Field (or fields) that identify a row — what `patch()` and change events report as `key`. Without it, the row's data index |
@@ -655,11 +659,9 @@ I18n.setLocale('en');   // 'en' | 'ko'
 
 ## Versioning
 
-Every deploy publishes immutable, hash-named artifacts (`/packages/everygrid-grid-<version>-<hash>.tgz`
-and `/packages/everygrid.standalone-<version>-<hash>.js`), so the exact bytes are always
-addressable; `/latest/everygrid.standalone.js` is a mutable pointer at the newest build. The version
-is a compatibility promise, not a build id — it moves only when the public API does, and several
-deploys may share one version.
+Releases are published to npm as [`@everygrid/grid`](https://www.npmjs.com/package/@everygrid/grid);
+the `<script>` build is served from the same release by jsDelivr / unpkg. npm versions are immutable,
+so every release gets a new version number.
 
 The public API is the exports of `@everygrid/grid`, the config schema (`types.ts`), the
 `everygrid.config.json` contract and the `window.Everygrid` global. While at `0.x`, npm's caret makes
