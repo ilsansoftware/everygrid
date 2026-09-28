@@ -1,6 +1,6 @@
 {
   "name": "@everygrid/grid",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "description": "Config-driven React data grid with a Rust/WASM engine in a Web Worker — filter, sort and paginate millions of rows without blocking the UI.",
   "author": "Ilsan Software <support@ilsansoftware.com> (https://ilsansoftware.com)",
   "license": "MIT",

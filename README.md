@@ -3,8 +3,8 @@
 A config-driven React data grid. Filtering, sorting and paging over millions of rows run in a
 **Rust - WASM engine** inside a Web Worker, so the UI never blocks.
 
-**[Live demo & API docs →](https://d3886c7yrxubj8.cloudfront.net/)** — React, vanilla JS and jQuery demos, a
-1.6M-row virtual-scroll grid, and JSON-to-grid.
+<p><a href="https://d3886c7yrxubj8.cloudfront.net/" target="_blank" rel="noopener"><strong>Live demo &amp; API docs</strong></a>:
+React, vanilla JS and jQuery demos, a 1.6M-row virtual-scroll grid, and JSON-to-grid.</p>
 
 ## Installation
 
@@ -129,7 +129,7 @@ The standalone build is one self-contained file — React, the WASM engine, the 
 are all inlined — exposed as `window.Everygrid`. No stylesheet, no React script tags, no build step.
 
 ```html
-<!-- newest compatible 0.4.x — pin an exact version (e.g. @0.4.8) for production -->
+<!-- newest compatible 0.4.x — pin an exact version (e.g. @0.4.9) for production -->
 <script src="https://cdn.jsdelivr.net/npm/@everygrid/grid@0.4"></script>
 <!-- or the same file via unpkg:
 <script src="https://unpkg.com/@everygrid/grid@0.4"></script> -->
