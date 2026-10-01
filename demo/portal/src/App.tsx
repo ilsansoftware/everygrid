@@ -288,12 +288,6 @@ export default function App() {
           <span className='nav-divider' aria-hidden='true'/>
           {/* Tools stand outside the capsule as buttons of their own. */}
           <div className='tool-tabs'>{tabsOf('tool').map(renderTab)}</div>
-          {/* The published package — an external link, styled like the tool buttons. */}
-          <div className='tool-tabs'>
-            <a href='https://www.npmjs.com/package/@everygrid/grid' target='_blank' rel='noopener' title='@everygrid/grid on npm'>
-              <span className='tab-label'>npm ↗</span>
-            </a>
-          </div>
           {isNarrow && codeButton}
         </header>
 
