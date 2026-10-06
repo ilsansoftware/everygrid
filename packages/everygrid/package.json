@@ -4,7 +4,7 @@
   "description": "Config-driven React data grid with a Rust/WASM engine in a Web Worker — filter, sort and paginate millions of rows without blocking the UI.",
   "author": "Ilsan Software <support@ilsansoftware.com> (https://ilsansoftware.com)",
   "license": "MIT",
-  "homepage": "https://d3886c7yrxubj8.cloudfront.net/",
+  "homepage": "https://d3886c7yrxubj8.cloudfront.net",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ilsansoftware/everygrid.git",
@@ -27,6 +27,9 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/src/index.d.ts",
+  "bin": {
+    "everygrid": "./bin/everygrid.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
@@ -42,7 +45,8 @@
   "unpkg": "./dist/everygrid.standalone.js",
   "jsdelivr": "./dist/everygrid.standalone.js",
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "sideEffects": [
     "*.css"

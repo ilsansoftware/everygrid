@@ -30,6 +30,19 @@ npm install @everygrid/grid
 import '@everygrid/grid/css';
 ```
 
+> **Shortcut for steps 3 and 4:** let the CLI write both files.
+>
+> ```bash
+> npx @everygrid/grid init                                        # public/everygrid.config.json, no grids yet
+> npx @everygrid/grid create-config user-grid                    # public/everygrid-config-user-grid.json + entry
+> npx @everygrid/grid create-config user-grid --data users.json  # also English column labels from your data
+> ```
+>
+> It writes into `./public` (or `--dir <dir>`), adds the new file to an existing
+> `everygrid.config.json` instead of replacing it, and never overwrites a grid config unless you
+> pass `--force`. Nothing runs on install — only when you call it. `npx @everygrid/grid --help` lists
+> the options.
+
 ### 3. Create your grid config file
 
 Create a JSON file anywhere in your project's `public/` directory, e.g. `public/everygrid-config-users.json`:
