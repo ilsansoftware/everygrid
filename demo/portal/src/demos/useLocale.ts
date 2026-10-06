@@ -1,9 +1,10 @@
 import {useCallback, useState} from 'react';
+import {Everygrid} from '@everygrid/grid';
 import type {Locale} from './LocaleSwitch';
 
-/** Where the portal has always kept the chosen language — one key for every demo, the html ones
- *  included, so a reload (and a hop between tabs) comes back in the language that was on screen. */
-const LOCALE_KEY = 'eg-portal-locale';
+/** The key `bindLocaleControls({persist: true})` uses in the html demos — shared, so a reload (and
+ *  a hop between tabs) comes back in the language that was on screen. */
+const LOCALE_KEY = Everygrid.LOCALE_STORAGE_KEY;
 
 function initialLocale(): Locale {
   const saved = localStorage.getItem(LOCALE_KEY);

@@ -1116,6 +1116,179 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public static setLocale(locale: 'ko' | 'en'): void {
     I18n.setLocale(locale);
     Everygrid.rerenderAll();
+    Everygrid.localeListeners.forEach(fn => fn(locale));
+  }
+
+  /** localStorage key {@link bindLocaleControls} uses for `persist: true`. */
+  public static readonly LOCALE_STORAGE_KEY = 'everygrid:locale';
+
+  // Bound locale controls, told about every switch so a select and a button group bound
+  // separately (or a switch from setLocale/listenForLocale) all stay in step.
+  private static readonly localeListeners = new Set<(locale: 'ko' | 'en') => void>();
+
+  /**
+   * Wire language controls to {@link setLocale}: a `<select>` (option values `'ko'`/`'en'`) and/or
+   * buttons carrying `data-locale="ko"|"en"`. Choosing one switches every grid; the controls are
+   * kept showing the current locale — the select's value, and `activeClass` + `aria-pressed` on
+   * the matching button. Returns a function that unbinds.
+   *
+   * @param target a selector, an element, or a list of them (NodeList, array, jQuery object).
+   * @param opts.persist remember the choice in localStorage and restore it here: `true` uses the
+   *   built-in key ({@link LOCALE_STORAGE_KEY}), a string uses that key instead.
+   * @param opts.defaultLocale applied when nothing is restored; otherwise the browser's language.
+   * @param opts.activeClass class for the current button; defaults to `'active'`.
+   * @param opts.onChange called after each switch made through these controls.
+   */
+  public static bindLocaleControls(
+    target: string | Element | ArrayLike<Element>,
+    opts: {
+      persist?: boolean | string;
+      defaultLocale?: 'ko' | 'en';
+      activeClass?: string;
+      onChange?: (locale: 'ko' | 'en') => void;
+    } = {},
+  ): () => void {
+    const els: Element[] = typeof target === 'string'
+      ? Array.from(document.querySelectorAll(target))
+      : target instanceof Element ? [target] : Array.from(target);
+    const activeClass = opts.activeClass ?? 'active';
+    const valid = (v: unknown): v is 'ko' | 'en' => v === 'ko' || v === 'en';
+    const storageKey = opts.persist === true ? Everygrid.LOCALE_STORAGE_KEY : opts.persist || null;
+
+    // Runs on every switch, wherever it came from, so what is saved is always what is on screen.
+    const sync = (locale: 'ko' | 'en', save = true) => {
+      if (save && storageKey) {
+        try { localStorage.setItem(storageKey, locale); } catch { /* storage blocked */ }
+      }
+      els.forEach(el => {
+        if (el instanceof HTMLSelectElement) {
+          el.value = locale;
+        } else if (el instanceof HTMLElement && el.dataset.locale) {
+          const on = el.dataset.locale === locale;
+          el.classList.toggle(activeClass, on);
+          el.setAttribute('aria-pressed', String(on));
+        }
+      });
+    };
+    const choose = (v: unknown) => {
+      if (!valid(v)) return;
+      Everygrid.setLocale(v);
+      opts.onChange?.(v);
+    };
+
+    const unbinds = els.map(el => {
+      const isSelect = el instanceof HTMLSelectElement;
+      const type = isSelect ? 'change' : 'click';
+      const handler = () => choose(isSelect ? el.value : (el as HTMLElement).dataset.locale);
+      el.addEventListener(type, handler);
+      return () => el.removeEventListener(type, handler);
+    });
+    Everygrid.localeListeners.add(sync);
+
+    let saved: string | null = null;
+    if (storageKey) {
+      try { saved = localStorage.getItem(storageKey); } catch { /* storage blocked */ }
+    }
+    const initial = valid(saved) ? saved : opts.defaultLocale;
+    if (initial) {
+      Everygrid.setLocale(initial);
+    } else {
+      // Show what the grids will show: the browser's language, unless already set explicitly.
+      I18n.initFromBrowser();
+      sync(I18n.getLocale(), false); // not a choice yet — keep following the browser until one is made
+    }
+
+    return () => {
+      unbinds.forEach(fn => fn());
+      Everygrid.localeListeners.delete(sync);
+    };
+  }
+
+  /**
+   * Draw a language switch into `container` and wire it with {@link bindLocaleControls} — the
+   * zero-markup alternative to binding your own controls. `type: 'button'` (default) is a flag
+   * toggle, `'select'` a dropdown. Styled by Everygrid.css (`.everygrid-locale-*`). Returns a
+   * function that unbinds and removes it.
+   *
+   * @param container a selector or the element to draw into.
+   * @param opts.display what each choice shows: `'icon'` (flag), `'text'` (language name) or
+   *   `'both'`. Defaults to `'icon'` for buttons, `'text'` for the select (which then gets a globe).
+   * @param opts.labels text per locale, replacing what `display` would show.
+   *   Other options are those of {@link bindLocaleControls}.
+   */
+  public static mountLocaleSwitch(
+    container: string | Element,
+    opts: {
+      type?: 'button' | 'select';
+      display?: 'icon' | 'text' | 'both';
+      labels?: Partial<Record<'ko' | 'en', string>>;
+      persist?: boolean | string;
+      defaultLocale?: 'ko' | 'en';
+      onChange?: (locale: 'ko' | 'en') => void;
+    } = {},
+  ): () => void {
+    const host = typeof container === 'string' ? document.querySelector(container) : container;
+    if (!host) {
+      console.warn(`[Everygrid] mountLocaleSwitch: no element matches ${String(container)}`);
+      return () => {};
+    }
+    const locales = [
+      {id: 'en', flag: '🇺🇸', name: 'English'},
+      {id: 'ko', flag: '🇰🇷', name: '한국어'},
+    ] as const;
+    const svg = (cls: string, size: number, stroke: number, body: string) =>
+      `<svg class='${cls}' xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 24 24' ` +
+      `fill='none' stroke='currentColor' stroke-width='${stroke}' stroke-linecap='round' stroke-linejoin='round'>${body}</svg>`;
+
+    const isSelect = opts.type === 'select';
+    const display = opts.display ?? (isSelect ? 'text' : 'icon');
+    const label = (l: typeof locales[number]) => opts.labels?.[l.id]
+      ?? (display === 'icon' ? l.flag : display === 'text' ? l.name : `${l.flag} ${l.name}`);
+
+    let root: HTMLElement;
+    let controls: Element[];
+    if (isSelect) {
+      root = document.createElement('label');
+      root.className = 'everygrid-locale-select';
+      const select = document.createElement('select');
+      select.setAttribute('aria-label', 'Language');
+      locales.forEach(l => select.add(new Option(label(l), l.id)));
+      // The globe stands in for a flag only when the options carry none.
+      if (display === 'text') root.insertAdjacentHTML('beforeend', svg('everygrid-locale-globe', 14, 2.5,
+        "<circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/>" +
+        "<path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/>"));
+      else root.classList.add('everygrid-locale-select-plain');
+      root.append(select);
+      root.insertAdjacentHTML('beforeend', svg('everygrid-locale-chevron', 12, 3, "<path d='m6 9 6 6 6-6'/>"));
+      controls = [select];
+    } else {
+      root = document.createElement('div');
+      root.className = 'everygrid-locale-switch';
+      root.setAttribute('role', 'group');
+      root.setAttribute('aria-label', 'Language');
+      controls = locales.map(l => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = display === 'icon' ? 'everygrid-locale-btn' : 'everygrid-locale-btn everygrid-locale-btn-text';
+        btn.dataset.locale = l.id;
+        btn.title = l.name;
+        btn.textContent = label(l);
+        root.append(btn);
+        return btn;
+      });
+    }
+    host.append(root);
+
+    const unbind = Everygrid.bindLocaleControls(controls, {
+      persist: opts.persist,
+      defaultLocale: opts.defaultLocale,
+      activeClass: 'everygrid-locale-active',
+      onChange: opts.onChange,
+    });
+    return () => {
+      unbind();
+      root.remove();
+    };
   }
 
   // Message type for cross-window (iframe) locale sync — namespaced so it can't collide with the

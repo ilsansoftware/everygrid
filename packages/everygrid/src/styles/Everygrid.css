@@ -903,3 +903,34 @@ button {
 .everygrid-copy-btn.is-copied {
   @apply border-emerald-600 bg-emerald-600 text-white;
 }
+
+/* --- Language switch (Everygrid.mountLocaleSwitch) -------------------------------------------- */
+.everygrid-locale-switch {
+  @apply inline-flex box-border h-[34px] p-[3px] rounded-lg border border-slate-200 bg-slate-100;
+}
+.everygrid-locale-btn {
+  @apply flex items-center justify-center w-[34px] h-[26px] rounded-md border-0 bg-transparent cursor-pointer
+    text-[1.05rem] leading-none opacity-45 hover:opacity-80;
+}
+.everygrid-locale-btn-text {
+  @apply w-auto px-2.5 text-xs font-medium text-slate-700;
+}
+.everygrid-locale-btn.everygrid-locale-active {
+  @apply bg-white opacity-100 shadow-[0_1px_2px_rgba(15,23,42,0.15)];
+}
+.everygrid-locale-select {
+  @apply relative inline-flex items-center box-border h-[34px] rounded-lg border border-slate-200 bg-white
+    text-sm text-slate-700;
+}
+.everygrid-locale-select select {
+  @apply h-full appearance-none border-0 bg-transparent pl-8 pr-7 text-inherit cursor-pointer outline-none;
+}
+.everygrid-locale-select-plain select {
+  @apply pl-3;
+}
+.everygrid-locale-globe {
+  @apply absolute left-2.5 pointer-events-none;
+}
+.everygrid-locale-chevron {
+  @apply absolute right-2.5 pointer-events-none;
+}

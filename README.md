@@ -655,6 +655,24 @@ grid.reloadData('my-grid-id', {silent: true, discard: true});   // or Everygrid.
 import { I18n } from '@everygrid/grid';
 I18n.initFromBrowser(); // auto-detect browser language
 I18n.setLocale('en');   // 'en' | 'ko'
+
+// Language switch, drawn for you: an empty element in, a flag toggle (or a dropdown) out.
+// Same options as bindLocaleControls below, plus type ('button' | 'select'), display (flag 'icon',
+// name 'text' or 'both'; default icon for buttons, text for the select) and labels.
+Everygrid.mountLocaleSwitch('#lang', {type: 'button', defaultLocale: 'en', persist: true});
+Everygrid.mountLocaleSwitch('#lang', {type: 'select', display: 'both'}); // 'icon' | 'text' | 'both'
+Everygrid.mountLocaleSwitch('#lang', {type: 'button', labels: {en: 'EN', ko: 'KO'}}); // your own text
+
+// Or wire your own markup: a <select> (option values 'ko'/'en') and/or buttons with data-locale="ko|en".
+// Choosing one calls Everygrid.setLocale; the controls keep showing the current locale (select
+// value, or activeClass + aria-pressed on the button). Returns an unbind function.
+Everygrid.bindLocaleControls('.locale-btn', {
+  persist: true,               // optional: remember the choice across reloads
+                               //   (true = built-in key 'everygrid:locale', or pass your own key string)
+  defaultLocale: 'en',         // optional: when nothing is saved (else the browser's language)
+  activeClass: 'active',       // optional, default 'active'
+  onChange: locale => {},      // optional
+});
 ```
 
 ---
