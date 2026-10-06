@@ -914,3 +914,241 @@ nav button.active .tab-name {
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   min-width: max-content;
 }
+
+/* --- Theming demo (ThemeDemo.tsx) --------------------------------------------------------------- */
+.theme-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+}
+.theme-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+.theme-field b { color: #334155; font-weight: 600; }
+.theme-field input[type='range'] { width: 140px; height: 34px; accent-color: #0f172a; }
+.theme-seg {
+  display: inline-flex;
+  height: 34px;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f1f5f9;
+}
+.theme-seg button {
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+}
+.theme-seg button.active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15);
+}
+.theme-swatches { display: flex; gap: 8px; height: 34px; align-items: center; }
+.theme-swatches button {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #cbd5e1;
+  cursor: pointer;
+}
+.theme-swatches button.active { box-shadow: 0 0 0 2px #0f172a; }
+.theme-reset {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #475569;
+  cursor: pointer;
+}
+/* Backdrop for the grid, drawn from the grid's own tokens so it follows the mode and radius. */
+.theme-stage {
+  padding: 24px;
+  border-radius: var(--everygrid-radius-xl);
+  background: var(--everygrid-neutral-50);
+  transition: background-color 0.2s;
+}
+.theme-css {
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0f172a;
+}
+.theme-css-head {
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  border-bottom: 1px solid #1e293b;
+}
+.theme-css pre {
+  margin: 0;
+  padding: 14px;
+  max-height: 320px;
+  overflow: auto;
+  font: 0.75rem/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #e2e8f0;
+}
+
+/* --- Phone header & navigation drawer ----------------------------------------------------------
+   Below 640px the tab bar gives way to ☰ · current tab · code, and the tabs move into a drawer. */
+.mobile-header {
+  gap: 8px;
+}
+.drawer-toggle {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #3a3b52;
+  border-radius: 8px;
+  background: #2a2b3d;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+.mobile-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0);
+  visibility: hidden;
+  transition: background-color 0.2s, visibility 0.2s;
+}
+.drawer-overlay.open {
+  background: rgba(15, 23, 42, 0.45);
+  visibility: visible;
+}
+.drawer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: min(300px, 84vw);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px 24px;
+  overflow-y: auto;
+  background: #1a1b2e;
+  color: #e2e8f0;
+  transform: translateX(-100%);
+  transition: transform 0.2s ease-out;
+}
+.drawer-overlay.open .drawer {
+  transform: none;
+}
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+.drawer-brand {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.drawer-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.drawer-section h3 {
+  margin: 14px 8px 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b93b0;
+}
+.drawer-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #cbd5e1;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.drawer-item.active {
+  background: #2f3048;
+  color: #fff;
+}
+.drawer-item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.drawer-item-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.drawer-item-caption {
+  font-size: 0.75rem;
+  color: #8b93b0;
+}
+
+/* Breathing room for every demo page: the content box used to run edge to edge below 1280px. */
+.demo-scroll .max-w-7xl {
+  padding-inline: 24px;
+}
+@media (max-width: 640px) {
+  .demo-scroll .max-w-7xl {
+    padding-inline: 12px;
+  }
+  .theme-stage {
+    padding: 10px;
+  }
+  .theme-controls {
+    gap: 14px;
+  }
+}
+.theme-docs-link {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4f46e5;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.theme-docs-link:hover {
+  text-decoration: underline;
+}

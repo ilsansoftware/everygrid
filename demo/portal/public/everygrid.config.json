@@ -7,6 +7,7 @@
     "./react/everygrid-config-large-data-grid.json",
     "./react/everygrid-config-virtual-grid.json",
     "./react/everygrid-config-empty-grid.json",
-    "./react/everygrid-config-sandbox-grid.json"
+    "./react/everygrid-config-sandbox-grid.json",
+    "./react/everygrid-config-theme-grid.json"
   ]
 }

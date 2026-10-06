@@ -5,15 +5,17 @@ import ReactDemo from './demos/ReactDemo';
 import LargeDataDemo from './demos/LargeDataDemo';
 import VirtualScrollDemo from './demos/VirtualScrollDemo';
 import SandboxDemo from './demos/SandboxDemo';
+import ThemeDemo from './demos/ThemeDemo';
 import DocsPage from './demos/DocsPage';
 import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
 import virtualSrc from './demos/VirtualScrollDemo.tsx?raw';
+import themeSrc from './demos/ThemeDemo.tsx?raw';
 
-type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual' | 'sandbox' | 'docs';
+type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual' | 'sandbox' | 'theme' | 'docs';
 
 // React-based tabs (rendered inline) vs. iframe demos.
-const REACT_TABS: TabId[] = ['react', 'large', 'virtual', 'sandbox', 'docs'];
+const REACT_TABS: TabId[] = ['react', 'large', 'virtual', 'sandbox', 'theme', 'docs'];
 
 // Tabs whose grid streams/indexes long enough to be worth a progress indicator on the nav button —
 // keyed to the grid's container id so App can poll Everygrid.getLoadProgress while the tab is hidden.
@@ -32,11 +34,14 @@ function compactCount(n: number): string {
 
 // `icon` tabs show a favicon with a short name beside it; `label` tabs (the React-only heavy demos)
 // show text alone. `caption` is the one-liner under the page title.
-// Header order: docs first, then the demo capsules, then the sandbox tool — each section parted by
+// Header order: docs first, then the demo capsules, then the sandbox tool, then theming — each section parted by
 // a divider. `tool` tabs are standalone buttons outside a capsule.
 // Demos share a labelled capsule each: the framework demos, then the scale demos.
-type TabGroup = 'demo' | 'scale' | 'tool' | 'docs';
+type TabGroup = 'demo' | 'scale' | 'tool' | 'style' | 'docs';
 const GROUP_LABEL: Partial<Record<TabGroup, string>> = {demo: 'Demo', scale: 'Performance'};
+// Section headings in the phone drawer, which lists every group (docs first, unlabelled).
+const DRAWER_GROUPS: TabGroup[] = ['docs', 'demo', 'scale', 'tool', 'style'];
+const DRAWER_LABEL: Partial<Record<TabGroup, string>> = {...GROUP_LABEL, tool: 'Tools', style: 'Customize'};
 const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: string; label?: string; group?: TabGroup }[] = [
   {id: 'react', title: 'Demo - React', icon: '/react/favicon.ico', name: 'React'},
   {id: 'vanilla', title: 'Demo - Vanilla JS', icon: '/vanilla/favicon.ico', name: 'JS'},
@@ -44,6 +49,7 @@ const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: 
   {id: 'large', title: 'Large Data', caption: 'streaming 1.6M rows', label: 'large\ndata', group: 'scale'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll', group: 'scale'},
   {id: 'sandbox', title: 'JSON to Grid', caption: 'drop a file, get a grid', label: 'json to grid', group: 'tool'},
+  {id: 'theme', title: 'Theming', caption: 'CSS tokens, dark mode', label: 'theming', group: 'style'},
   {id: 'docs', title: 'API Docs', label: 'api docs', group: 'docs'},
 ];
 
@@ -58,11 +64,12 @@ const CODE_META: Record<TabId, { lang: string; label: string }> = {
   large: {lang: 'tsx', label: 'tsx'},
   virtual: {lang: 'tsx', label: 'tsx'},
   sandbox: {lang: 'tsx', label: 'tsx'},
+  theme: {lang: 'tsx', label: 'tsx'},
   docs: {lang: 'tsx', label: 'tsx'},
 };
 
 function isTabId(v: string | null): v is TabId {
-  return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual' || v === 'sandbox' || v === 'docs';
+  return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual' || v === 'sandbox' || v === 'theme' || v === 'docs';
 }
 
 // Tabs dropped on a phone: the large-data demo streams 1.6M rows, too heavy to feature on mobile.
@@ -83,6 +90,8 @@ function initialTab(): TabId {
 export default function App() {
   const [tab, setTab] = useState<TabId>(initialTab);
   const [modalOpen, setModalOpen] = useState(false);
+  // Phone navigation: the tab bar does not fit, so the tabs live in a drawer behind ☰.
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const frameRefs = useRef<Partial<Record<TabId, HTMLIFrameElement | null>>>({});
   // Source of each HTML demo, once fetched. State rather than a ref, so the modal can
   // derive its text during render instead of a ref read + setState round trip.
@@ -104,6 +113,7 @@ export default function App() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
   if (isNarrow && MOBILE_HIDDEN_TABS.includes(tab)) setTab('react');
+  if (!isNarrow && drawerOpen) setDrawerOpen(false);
 
   // Synced during rendering rather than in an effect, to avoid a cascading render.
   if (!mounted.has(tab)) setMounted(new Set(mounted).add(tab));
@@ -181,6 +191,7 @@ export default function App() {
   const codeText = tab === 'react' ? reactSrc
       : tab === 'large' ? largeSrc
           : tab === 'virtual' ? virtualSrc
+              : tab === 'theme' ? themeSrc
               : (codeByTab[tab] ?? 'Loading...');
 
   // Fetch a html demo's source the first time its modal is opened (React tabs are bundled).
@@ -208,6 +219,16 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [modalOpen]);
+
+  // …and the drawer.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawerOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawerOpen]);
 
   const meta = CODE_META[tab];
 
@@ -246,6 +267,33 @@ export default function App() {
       );
   };
 
+  // A drawer row: the tab's icon (if it has one), title and caption, plus the same loading badge
+  // the tab bar shows for a grid still streaming on a tab you have left.
+  const renderDrawerItem = (t: typeof TABS[number]) => {
+    const gid = PROGRESS_GRID_OF_TAB[t.id];
+    const prog = gid ? loadProgress[gid] : undefined;
+    const loading = !!prog?.active && t.id !== tab;
+    return (
+      <button key={t.id} type='button' className={`drawer-item${t.id === tab ? ' active' : ''}`}
+              aria-current={t.id === tab ? 'page' : undefined}
+              onClick={() => {
+                setTab(t.id);
+                setDrawerOpen(false);
+              }}>
+        {t.icon && <img src={t.icon} width={20} height={20} alt=''/>}
+        <span className='drawer-item-text'>
+          <span className='drawer-item-title'>{t.title.replace(/^Demo - /, '')}</span>
+          {t.caption && <span className='drawer-item-caption'>{t.caption}</span>}
+        </span>
+        {loading && (
+          <span className='tab-progress-badge'>
+            {prog!.percent >= 0 ? `${prog!.percent}%` : compactCount(prog!.rowsLoaded)}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   // Lives beside the page title, next to the demo it shows the source of; the header keeps it only
   // on a phone, where the title row is dropped. Tools have no demo source, so there it is not shown.
   const codeButton = NO_CODE_TABS.includes(tab) ? null : (
@@ -272,6 +320,19 @@ export default function App() {
 
   return (
       <>
+        {isNarrow ? (
+          <header className='mobile-header'>
+            <button type='button' className='drawer-toggle' aria-label='Open navigation'
+                    aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}>
+              <svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor'
+                   strokeWidth='2' strokeLinecap='round'>
+                <path d='M4 6h16M4 12h16M4 18h16'/>
+              </svg>
+            </button>
+            <span className='mobile-title'>{current?.title.replace(/^Demo - /, '')}</span>
+            {codeButton}
+          </header>
+        ) : (
         <header>
           {/* The wordmark is the docs link. */}
           <h1><a href='#docs' onClick={(e) => { e.preventDefault(); setTab('docs'); }}>everygrid</a></h1>
@@ -288,8 +349,32 @@ export default function App() {
           <span className='nav-divider' aria-hidden='true'/>
           {/* Tools stand outside the capsule as buttons of their own. */}
           <div className='tool-tabs'>{tabsOf('tool').map(renderTab)}</div>
-          {isNarrow && codeButton}
+          {/* Theming is about the grid's look rather than a data tool, so it stands apart. */}
+          <span className='nav-divider' aria-hidden='true'/>
+          <div className='tool-tabs'>{tabsOf('style').map(renderTab)}</div>
         </header>
+        )}
+
+        {/* Phone navigation. Always rendered while narrow so it can slide; inert when closed. */}
+        {isNarrow && (
+          <div className={`drawer-overlay${drawerOpen ? ' open' : ''}`} onClick={() => setDrawerOpen(false)}
+               inert={!drawerOpen}>
+            <aside className='drawer' role='dialog' aria-modal='true' aria-label='Navigation'
+                   onClick={(e) => e.stopPropagation()}>
+              <div className='drawer-head'>
+                <span className='drawer-brand'>everygrid</span>
+                <button type='button' className='drawer-close' aria-label='Close navigation'
+                        onClick={() => setDrawerOpen(false)}>×</button>
+              </div>
+              {DRAWER_GROUPS.map((group) => (
+                <section key={group} className='drawer-section'>
+                  {DRAWER_LABEL[group] && <h3>{DRAWER_LABEL[group]}</h3>}
+                  {tabsOf(group).map(renderDrawerItem)}
+                </section>
+              ))}
+            </aside>
+          </div>
+        )}
 
         <div className='demo-panel'>
           {/* Heading sits OUTSIDE the scroll area (fixed above), otherwise a grid's sticky header
@@ -316,6 +401,8 @@ export default function App() {
                           <VirtualScrollDemo active={t.id === tab}/>
                       ) : t.id === 'sandbox' ? (
                           <SandboxDemo active={t.id === tab}/>
+                      ) : t.id === 'theme' ? (
+                          <ThemeDemo active={t.id === tab}/>
                       ) : (
                           <DocsPage/>
                       )}
