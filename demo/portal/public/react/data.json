@@ -81,22 +81,22 @@
       "multi_format_payloads": [
         {
           "format_type": "escaped_json_string",
-          "description": "JSON 내부에 문자열로 압축해 밀어넣은 또 다른 구조화 데이터",
+          "description": "Another structured document, packed into a JSON string",
           "raw_data": "{\"user\":{\"id\":\"usr_882\",\"profile\":{\"name\":\"Kim\",\"settings\":\"{\\\"theme\\\":\\\"dark\\\",\\\"notif\\\":true}\"}},\"status\":\"active\"}"
         },
         {
           "format_type": "csv_string",
-          "description": "쉼표와 줄바꿈(\\n)으로 구분된 테이블형 데이터 문자열",
+          "description": "Tabular data as one string, separated by commas and newlines (\\n)",
           "raw_data": "id,product_name,qty,price,discontinued\n101,Gaming Mouse,2,45.00,false\n102,Mechanical Keyboard,1,120.50,false\n103,USB-C Hub,null,15.00,true"
         },
         {
           "format_type": "xml_string",
-          "description": "과거 레거시 시스템에서 받아온 XML 데이터 문자열",
+          "description": "An XML string received from a legacy system",
           "raw_data": "<response><status>SUCCESS</status><transaction><id>TX_9901</id><amount currency=\"KRW\">55000</amount></transaction></response>"
         },
         {
           "format_type": "base64_encoded",
-          "description": "바이너리나 텍스트를 디코딩해야 볼 수 있도록 암호화/인코딩된 데이터",
+          "description": "Encoded data that has to be decoded before it can be read",
           "raw_data": "eyJhZ2VudCI6ICJNYWNCb29rIFBybyIsICJpY19udW1iZXIiOiA0ODkyMTMwLCAidGFnccontextIjogWyJhcHBsZSIsICJtMyJdfQ=="
         }
       ],
