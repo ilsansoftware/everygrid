@@ -1,0 +1,47 @@
+# Publish @everygrid/grid to npm when a version tag (v0.5.1, …) is pushed.
+# Auth is npm trusted publishing (OIDC) — no token is stored anywhere. The trusted publisher on
+# npmjs.com must name this repo and this file (publish.yml); renaming it breaks publishing.
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # OIDC token for npm trusted publishing (also signs provenance)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag must match packages/everygrid version
+        run: |
+          VERSION=$(node -p "require('./packages/everygrid/package.json').version")
+          if [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} != package version v${VERSION}"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4 # version from root package.json "packageManager"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # trusted publishing needs npm >= 11.5.1
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: everygrid-wasm
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm publish:npm
