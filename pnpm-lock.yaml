@@ -48,8 +48,8 @@ importers:
   demo/portal:
     dependencies:
       '@everygrid/grid':
-        specifier: 0.5.0
-        version: 0.5.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 0.5.1
+        version: 0.5.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       marked:
         specifier: ^18.0.12
         version: 18.0.12
@@ -336,8 +336,8 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@everygrid/grid@0.5.0':
-    resolution: {integrity: sha512-PrempXfb0b2x4An05y6vjrg1FVdRkiRGV6Z1ttAEq9KKX1xi2UDfsumReYyQX2x/yAaIalda2oalZUr00SCxhQ==}
+  '@everygrid/grid@0.5.1':
+    resolution: {integrity: sha512-G9EBTGULuRGGml8zX1W2PomwpK0WpYvbkyFrytOk+MEOKAMtKwwHc7zt/ycTSS2PcYqxcFwzGmKQpoANSra8rA==}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
@@ -2683,7 +2683,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@everygrid/grid@0.5.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@everygrid/grid@0.5.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
