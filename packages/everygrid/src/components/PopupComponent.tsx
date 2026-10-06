@@ -97,7 +97,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, subtitl
           {viewMode === 'table' ? (
             isXml ? (
               <pre
-                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto max-h-full min-h-full whitespace-pre-wrap break-all'>
+                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-line overflow-auto max-h-full min-h-full whitespace-pre-wrap break-all'>
                 {data as string}
               </pre>
             ) : (
@@ -120,7 +120,7 @@ const PopupComponent: React.FC<PopupProps> = ({onClose, title, subtitle, subtitl
                   otherwise widen the pre past the popup and scroll the whole body sideways; the pre
                   scrolls on its own instead. */}
               <pre
-                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-slate-200 overflow-auto flex-1 min-w-0 w-full'>
+                className='m-0 p-4 font-mono text-xs bg-slate-50 rounded border border-line overflow-auto flex-1 min-w-0 w-full'>
                 {JSON.stringify(data, null, 2)}
               </pre>
             </div>

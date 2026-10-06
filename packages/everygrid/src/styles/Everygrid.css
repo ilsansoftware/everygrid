@@ -20,8 +20,10 @@
    instead of silently bypassing the theme. */
 @theme inline {
   --color-*: initial;
-  --color-white: #fff;
-  --color-black: #000;
+  --color-white: var(--everygrid-surface); /* bg-white is the grid's surface: dark in dark mode */
+  --color-on-accent: var(--everygrid-on-accent);
+  --color-line: var(--everygrid-border); /* border-line: every grid border and divider */
+  --color-black: var(--everygrid-scrim); /* bg-black/… is the modal backdrop: dark in both modes */
   --color-transparent: transparent;
   --color-current: currentColor;
   --color-slate-50: var(--everygrid-neutral-50); --color-slate-100: var(--everygrid-neutral-100); --color-slate-200: var(--everygrid-neutral-200); --color-slate-300: var(--everygrid-neutral-300); --color-slate-400: var(--everygrid-neutral-400);
@@ -77,7 +79,15 @@
     --everygrid-header-color: var(--everygrid-neutral-600);
     --everygrid-header-bg: var(--everygrid-neutral-50);
     --everygrid-body-color: var(--everygrid-neutral-600);
-    --everygrid-body-bg: #ffffff;
+    --everygrid-body-bg: var(--everygrid-surface);
+
+    /* Surfaces and text on solid colour. */
+    --everygrid-surface: #fff;      /* panels, cells, popups — what bg-white means here */
+    --everygrid-on-accent: #fff;    /* text on solid accent/success buttons */
+    --everygrid-scrim: oklch(20.8% 0.042 265.755); /* modal backdrop, shown at 30% */
+    --everygrid-border: var(--everygrid-neutral-200); /* cell, header and panel borders */
+    --everygrid-header-font-weight: 600;
+    /* --everygrid-header-font-size: unset → inherits the grid's size */
 
     /* Palettes. Tailwind's default values, renamed by role. Each scale runs light (50) to dark (900). */
     /* neutral — text, borders, header/row backgrounds (no hue implied: any scale fits) */
@@ -109,6 +119,67 @@
   }
 }
 
+/* --- Dark mode ----------------------------------------------------------------------------------
+   Opt-in, by attribute on any ancestor — usually <html> (Everygrid.setTheme does that):
+     data-everygrid-theme="dark"   always dark
+     data-everygrid-theme="auto"   follows the OS (prefers-color-scheme)
+   The same tokens, dark values: neutrals run the other way (50 is now the darkest), colour scales
+   swap tints for shades (50 → 950 …) and keep their solid steps solid, so `on-accent` stays white. */
+@layer everygrid.base {
+  [data-everygrid-theme="dark"] {
+    --everygrid-surface: oklch(20.8% 0.042 265.755);
+    --everygrid-neutral-50: oklch(24.3% 0.042 263); --everygrid-neutral-100: oklch(27.9% 0.041 260.031); --everygrid-neutral-200: oklch(37.2% 0.044 257.287); --everygrid-neutral-300: oklch(44.6% 0.043 257.281); --everygrid-neutral-400: oklch(55.4% 0.046 257.417);
+    --everygrid-neutral-500: oklch(70.4% 0.04 256.788); --everygrid-neutral-600: oklch(86.9% 0.022 252.894); --everygrid-neutral-700: oklch(92.9% 0.013 255.508); --everygrid-neutral-800: oklch(96.8% 0.007 247.896); --everygrid-neutral-900: oklch(98.4% 0.003 247.858);
+    --everygrid-accent-50: oklch(25.7% 0.09 281.288); --everygrid-accent-100: oklch(35.9% 0.144 278.697); --everygrid-accent-200: oklch(39.8% 0.195 277.366); --everygrid-accent-300: oklch(45.7% 0.24 277.023); --everygrid-accent-400: oklch(51.1% 0.262 276.966);
+    --everygrid-accent-500: oklch(58.5% 0.233 277.117); --everygrid-accent-600: oklch(58.5% 0.233 277.117); --everygrid-accent-700: oklch(67.3% 0.182 276.935); --everygrid-accent-800: oklch(78.5% 0.115 274.713); --everygrid-accent-900: oklch(87% 0.065 274.039);
+    --everygrid-info-50: oklch(28.2% 0.091 267.935); --everygrid-info-100: oklch(37.9% 0.146 265.522); --everygrid-info-200: oklch(42.4% 0.199 265.638); --everygrid-info-300: oklch(48.8% 0.243 264.376); --everygrid-info-400: oklch(54.6% 0.245 262.881);
+    --everygrid-info-500: oklch(62.3% 0.214 259.815); --everygrid-info-600: oklch(62.3% 0.214 259.815); --everygrid-info-700: oklch(70.7% 0.165 254.624); --everygrid-info-800: oklch(80.9% 0.105 251.813); --everygrid-info-900: oklch(88.2% 0.059 254.128);
+    --everygrid-danger-50: oklch(25.8% 0.092 26.042); --everygrid-danger-100: oklch(39.6% 0.141 25.723); --everygrid-danger-200: oklch(44.4% 0.177 26.899); --everygrid-danger-300: oklch(50.5% 0.213 27.518); --everygrid-danger-400: oklch(57.7% 0.245 27.325);
+    --everygrid-danger-500: oklch(63.7% 0.237 25.331); --everygrid-danger-600: oklch(63.7% 0.237 25.331); --everygrid-danger-700: oklch(70.4% 0.191 22.216); --everygrid-danger-800: oklch(80.8% 0.114 19.571); --everygrid-danger-900: oklch(88.5% 0.062 18.334);
+    --everygrid-success-50: oklch(26.2% 0.051 172.552); --everygrid-success-100: oklch(37.8% 0.077 168.94); --everygrid-success-200: oklch(43.2% 0.095 166.913); --everygrid-success-300: oklch(50.8% 0.118 165.612); --everygrid-success-400: oklch(59.6% 0.145 163.225);
+    --everygrid-success-500: oklch(69.6% 0.17 162.48); --everygrid-success-600: oklch(69.6% 0.17 162.48); --everygrid-success-700: oklch(76.5% 0.177 163.223); --everygrid-success-800: oklch(84.5% 0.143 164.978); --everygrid-success-900: oklch(90.5% 0.093 164.15);
+    --everygrid-warning-50: oklch(27.9% 0.077 45.635); --everygrid-warning-100: oklch(41.4% 0.112 45.904); --everygrid-warning-200: oklch(47.3% 0.137 46.201); --everygrid-warning-300: oklch(55.5% 0.163 48.998); --everygrid-warning-400: oklch(66.6% 0.179 58.318);
+    --everygrid-warning-500: oklch(76.9% 0.188 70.08); --everygrid-warning-600: oklch(76.9% 0.188 70.08); --everygrid-warning-700: oklch(82.8% 0.189 84.429); --everygrid-warning-800: oklch(87.9% 0.169 91.605); --everygrid-warning-900: oklch(92.4% 0.12 95.746);
+    --everygrid-notice-50: oklch(26.6% 0.079 36.259); --everygrid-notice-100: oklch(40.8% 0.123 38.172); --everygrid-notice-200: oklch(47% 0.157 37.304); --everygrid-notice-300: oklch(55.3% 0.195 38.402); --everygrid-notice-400: oklch(64.6% 0.222 41.116);
+    --everygrid-notice-500: oklch(70.5% 0.213 47.604); --everygrid-notice-600: oklch(70.5% 0.213 47.604); --everygrid-notice-700: oklch(75% 0.183 55.934); --everygrid-notice-800: oklch(83.7% 0.128 66.29); --everygrid-notice-900: oklch(90.1% 0.076 70.697);
+    --everygrid-highlight-50: oklch(28.6% 0.066 53.813); --everygrid-highlight-100: oklch(42.1% 0.095 57.708); --everygrid-highlight-200: oklch(47.6% 0.114 61.907); --everygrid-highlight-300: oklch(55.4% 0.135 66.442); --everygrid-highlight-400: oklch(68.1% 0.162 75.834);
+    --everygrid-highlight-500: oklch(79.5% 0.184 86.047); --everygrid-highlight-600: oklch(79.5% 0.184 86.047); --everygrid-highlight-700: oklch(85.2% 0.199 91.936); --everygrid-highlight-800: oklch(90.5% 0.182 98.111); --everygrid-highlight-900: oklch(94.5% 0.129 101.54);
+    /* Derived tokens resolve where they are declared, so they are re-declared here. */
+    --everygrid-header-color: var(--everygrid-neutral-600); --everygrid-header-bg: var(--everygrid-neutral-50);
+    --everygrid-body-color: var(--everygrid-neutral-600); --everygrid-body-bg: var(--everygrid-surface);
+    --everygrid-border: var(--everygrid-neutral-200);
+    --everygrid-scrim: #000;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    [data-everygrid-theme="auto"] {
+      --everygrid-surface: oklch(20.8% 0.042 265.755);
+      --everygrid-neutral-50: oklch(24.3% 0.042 263); --everygrid-neutral-100: oklch(27.9% 0.041 260.031); --everygrid-neutral-200: oklch(37.2% 0.044 257.287); --everygrid-neutral-300: oklch(44.6% 0.043 257.281); --everygrid-neutral-400: oklch(55.4% 0.046 257.417);
+      --everygrid-neutral-500: oklch(70.4% 0.04 256.788); --everygrid-neutral-600: oklch(86.9% 0.022 252.894); --everygrid-neutral-700: oklch(92.9% 0.013 255.508); --everygrid-neutral-800: oklch(96.8% 0.007 247.896); --everygrid-neutral-900: oklch(98.4% 0.003 247.858);
+      --everygrid-accent-50: oklch(25.7% 0.09 281.288); --everygrid-accent-100: oklch(35.9% 0.144 278.697); --everygrid-accent-200: oklch(39.8% 0.195 277.366); --everygrid-accent-300: oklch(45.7% 0.24 277.023); --everygrid-accent-400: oklch(51.1% 0.262 276.966);
+      --everygrid-accent-500: oklch(58.5% 0.233 277.117); --everygrid-accent-600: oklch(58.5% 0.233 277.117); --everygrid-accent-700: oklch(67.3% 0.182 276.935); --everygrid-accent-800: oklch(78.5% 0.115 274.713); --everygrid-accent-900: oklch(87% 0.065 274.039);
+      --everygrid-info-50: oklch(28.2% 0.091 267.935); --everygrid-info-100: oklch(37.9% 0.146 265.522); --everygrid-info-200: oklch(42.4% 0.199 265.638); --everygrid-info-300: oklch(48.8% 0.243 264.376); --everygrid-info-400: oklch(54.6% 0.245 262.881);
+      --everygrid-info-500: oklch(62.3% 0.214 259.815); --everygrid-info-600: oklch(62.3% 0.214 259.815); --everygrid-info-700: oklch(70.7% 0.165 254.624); --everygrid-info-800: oklch(80.9% 0.105 251.813); --everygrid-info-900: oklch(88.2% 0.059 254.128);
+      --everygrid-danger-50: oklch(25.8% 0.092 26.042); --everygrid-danger-100: oklch(39.6% 0.141 25.723); --everygrid-danger-200: oklch(44.4% 0.177 26.899); --everygrid-danger-300: oklch(50.5% 0.213 27.518); --everygrid-danger-400: oklch(57.7% 0.245 27.325);
+      --everygrid-danger-500: oklch(63.7% 0.237 25.331); --everygrid-danger-600: oklch(63.7% 0.237 25.331); --everygrid-danger-700: oklch(70.4% 0.191 22.216); --everygrid-danger-800: oklch(80.8% 0.114 19.571); --everygrid-danger-900: oklch(88.5% 0.062 18.334);
+      --everygrid-success-50: oklch(26.2% 0.051 172.552); --everygrid-success-100: oklch(37.8% 0.077 168.94); --everygrid-success-200: oklch(43.2% 0.095 166.913); --everygrid-success-300: oklch(50.8% 0.118 165.612); --everygrid-success-400: oklch(59.6% 0.145 163.225);
+      --everygrid-success-500: oklch(69.6% 0.17 162.48); --everygrid-success-600: oklch(69.6% 0.17 162.48); --everygrid-success-700: oklch(76.5% 0.177 163.223); --everygrid-success-800: oklch(84.5% 0.143 164.978); --everygrid-success-900: oklch(90.5% 0.093 164.15);
+      --everygrid-warning-50: oklch(27.9% 0.077 45.635); --everygrid-warning-100: oklch(41.4% 0.112 45.904); --everygrid-warning-200: oklch(47.3% 0.137 46.201); --everygrid-warning-300: oklch(55.5% 0.163 48.998); --everygrid-warning-400: oklch(66.6% 0.179 58.318);
+      --everygrid-warning-500: oklch(76.9% 0.188 70.08); --everygrid-warning-600: oklch(76.9% 0.188 70.08); --everygrid-warning-700: oklch(82.8% 0.189 84.429); --everygrid-warning-800: oklch(87.9% 0.169 91.605); --everygrid-warning-900: oklch(92.4% 0.12 95.746);
+      --everygrid-notice-50: oklch(26.6% 0.079 36.259); --everygrid-notice-100: oklch(40.8% 0.123 38.172); --everygrid-notice-200: oklch(47% 0.157 37.304); --everygrid-notice-300: oklch(55.3% 0.195 38.402); --everygrid-notice-400: oklch(64.6% 0.222 41.116);
+      --everygrid-notice-500: oklch(70.5% 0.213 47.604); --everygrid-notice-600: oklch(70.5% 0.213 47.604); --everygrid-notice-700: oklch(75% 0.183 55.934); --everygrid-notice-800: oklch(83.7% 0.128 66.29); --everygrid-notice-900: oklch(90.1% 0.076 70.697);
+      --everygrid-highlight-50: oklch(28.6% 0.066 53.813); --everygrid-highlight-100: oklch(42.1% 0.095 57.708); --everygrid-highlight-200: oklch(47.6% 0.114 61.907); --everygrid-highlight-300: oklch(55.4% 0.135 66.442); --everygrid-highlight-400: oklch(68.1% 0.162 75.834);
+      --everygrid-highlight-500: oklch(79.5% 0.184 86.047); --everygrid-highlight-600: oklch(79.5% 0.184 86.047); --everygrid-highlight-700: oklch(85.2% 0.199 91.936); --everygrid-highlight-800: oklch(90.5% 0.182 98.111); --everygrid-highlight-900: oklch(94.5% 0.129 101.54);
+      /* Derived tokens resolve where they are declared, so they are re-declared here. */
+      --everygrid-header-color: var(--everygrid-neutral-600); --everygrid-header-bg: var(--everygrid-neutral-50);
+      --everygrid-body-color: var(--everygrid-neutral-600); --everygrid-body-bg: var(--everygrid-surface);
+      --everygrid-border: var(--everygrid-neutral-200);
+      --everygrid-scrim: #000;
+    color-scheme: dark;
+    }
+  }
+}
+
 @layer everygrid.components {
   /* Base Grid Styles */
   .everygrid-wrapper {
@@ -117,7 +188,7 @@
   }
 
   .everygrid-table {
-    @apply w-auto min-w-full text-left text-sm bg-white border border-slate-200 border-collapse;
+    @apply w-auto min-w-full text-left text-sm bg-white border border-line border-collapse;
   }
 
   .everygrid-table.is-resizing {
@@ -125,10 +196,12 @@
   }
 
   .everygrid-table thead th {
-    @apply px-1 py-1 font-semibold whitespace-nowrap sticky top-0
-    text-left z-30 overflow-hidden border-l border-b border-slate-200;
-    color: var(--everygrid-header-color, inherit) !important;
-    background-color: var(--everygrid-header-bg, var(--everygrid-neutral-50)) !important;
+    @apply px-1 py-1 whitespace-nowrap sticky top-0
+    text-left z-30 overflow-hidden border-l border-b border-line;
+    color: var(--everygrid-header-color, inherit);
+    background-color: var(--everygrid-header-bg, var(--everygrid-neutral-50));
+    font-weight: var(--everygrid-header-font-weight);
+    font-size: var(--everygrid-header-font-size, inherit);
     box-sizing: border-box;
     /* border-box, NOT padding-box: the table is `border-collapse: collapse`, so the header's
        borders belong to the table — which is not sticky and scrolls away underneath. With the
@@ -136,7 +209,7 @@
        transparent and the rows sliding under the header showed through it as a moving sliver.
        Painting the background across the border box closes that band for good. */
     background-clip: border-box;
-    border-top: 1px solid var(--everygrid-neutral-200);
+    border-top: 1px solid var(--everygrid-border);
     min-width: 50px;
   }
 
@@ -151,9 +224,10 @@
   }
 
   .everygrid-table tbody td {
-    @apply px-1 py-1 relative align-middle bg-white border-l border-b border-slate-200
+    @apply px-1 py-1 relative align-middle border-l border-b border-line
     transition-all;
-    color: var(--everygrid-body-color, var(--everygrid-neutral-600)) !important;
+    color: var(--everygrid-body-color, var(--everygrid-neutral-600));
+    background-color: var(--everygrid-body-bg, var(--everygrid-surface));
     min-height: 41px;
     box-sizing: border-box;
     border-top: 0;
@@ -259,8 +333,11 @@
     position: sticky;
     right: 0;
     z-index: 2;
-    background-color: #fff;
-    border-left: 1px solid var(--everygrid-neutral-200);
+    background-color: var(--everygrid-surface);
+    border-left: 1px solid var(--everygrid-border);
+    /* With border-collapse the sticky cell paints a pixel or two short of the scroller's right
+       edge, and the columns scrolling underneath showed through that sliver. Paint past it. */
+    box-shadow: 4px 0 0 0 var(--everygrid-surface);
   }
 
   /* The detail column header, pinned both to the top (like every header) and the right. */
@@ -268,8 +345,9 @@
     position: sticky;
     right: 0;
     z-index: 31; /* above the sibling headers (z-30) as they scroll under it */
-    border-left: 1px solid var(--everygrid-neutral-200);
-    background-color: var(--everygrid-header-bg, var(--everygrid-neutral-50)) !important;
+    border-left: 1px solid var(--everygrid-border);
+    background-color: var(--everygrid-header-bg, var(--everygrid-neutral-50));
+    box-shadow: 4px 0 0 0 var(--everygrid-header-bg, var(--everygrid-neutral-50)); /* as the cells below */
   }
 
   /* Mobile: a value rendered as a button/link (e.g. the "N items" popup tag) must keep its full box.
@@ -321,7 +399,7 @@
   }
 
   .everygrid-mobile-menu {
-    @apply absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-30 min-w-[180px] py-1 flex flex-col;
+    @apply absolute right-0 top-full mt-1 bg-white border border-line rounded-lg shadow-lg z-30 min-w-[180px] py-1 flex flex-col;
   }
 
   .everygrid-link {
@@ -351,7 +429,7 @@
   }
 
   .everygrid-skeleton-head {
-    @apply bg-slate-50 border-slate-200;
+    @apply bg-slate-50 border-line;
   }
 
   .everygrid-skeleton-head span {
@@ -403,27 +481,27 @@
   }
 
   .everygrid-nested-table {
-    @apply min-w-full w-auto border border-slate-200 text-[11px] border-collapse;
+    @apply min-w-full w-auto border border-line text-[11px] border-collapse;
     --everygrid-header-color: var(--everygrid-neutral-600);
     --everygrid-header-bg: var(--everygrid-neutral-50);
     --everygrid-body-color: var(--everygrid-neutral-600);
-    --everygrid-body-bg: #ffffff;
+    --everygrid-body-bg: var(--everygrid-surface);
     color: var(--everygrid-body-color);
     background-color: var(--everygrid-body-bg);
   }
 
   .everygrid-nested-table th {
-    @apply p-2 border border-slate-200 text-slate-500! bg-slate-50! whitespace-nowrap font-semibold text-xs text-left;
+    @apply p-2 border border-line text-slate-500! bg-slate-50! whitespace-nowrap font-semibold text-xs text-left;
   }
 
   .everygrid-nested-table td {
-    @apply p-2 border border-slate-200 bg-white! font-normal text-slate-600! text-xs;
+    @apply p-2 border border-line bg-white! font-normal text-slate-600! text-xs;
   }
 
 
   /* Modals */
   .everygrid-popup-overlay {
-    @apply fixed inset-0 bg-slate-900/30 flex items-center justify-center z-40 p-4;
+    @apply fixed inset-0 bg-black/30 flex items-center justify-center z-40 p-4;
     /* Portalled to <body>, so set the font here too — otherwise the modal inherits the host page's
        font instead of the grid's and the two look mismatched. */
     font-family: var(--everygrid-font);
@@ -520,11 +598,11 @@
      its content (min-width: max-content), which pushed the whole popup body sideways — the copy
      row landed mid-scroll and the text's left edge was off-screen. */
   .everygrid-popup-content pre:not(.whitespace-pre-wrap) {
-    @apply min-w-0 w-full bg-slate-50 border-slate-200;
+    @apply min-w-0 w-full bg-slate-50 border-line;
   }
 
   .everygrid-popup-header {
-    @apply flex items-center justify-between p-4 border-b border-slate-200 bg-white rounded-t-lg;
+    @apply flex items-center justify-between p-4 border-b border-line bg-white rounded-t-lg;
   }
 
   .everygrid-popup-header h3 {
@@ -534,7 +612,7 @@
   /* Source strip under the popup header (e.g. the config file a grid came from). Its own full-width
      row, so a long URL truncates instead of pushing the view toggle and close button around. */
   .everygrid-popup-subtitle {
-    @apply px-4 py-1.5 text-[11px] font-mono text-slate-500 bg-slate-50 border-b border-slate-200 truncate;
+    @apply px-4 py-1.5 text-[11px] font-mono text-slate-500 bg-slate-50 border-b border-line truncate;
   }
 
   .everygrid-popup-close {
@@ -542,7 +620,7 @@
   }
 
   .everygrid-popup-btn {
-    @apply px-2 py-1 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-50 transition-colors whitespace-nowrap inline-flex items-center justify-center;
+    @apply px-2 py-1 text-xs font-medium text-slate-600 bg-white border border-line rounded hover:bg-slate-50 transition-colors whitespace-nowrap inline-flex items-center justify-center;
     min-height: 24px;
   }
 
@@ -564,20 +642,20 @@
      Here the table draws only the top and left edge and every cell only its right and bottom, so
      each grid line is drawn exactly once. */
   .excel-format-table {
-    @apply border-separate border-spacing-0 border-t border-l border-r-0 border-b-0 border-slate-200 w-full;
+    @apply border-separate border-spacing-0 border-t border-l border-r-0 border-b-0 border-line w-full;
   }
 
   .excel-format-table thead th {
-    @apply border-l-0 border-t-0 border-b border-r border-slate-200;
+    @apply border-l-0 border-t-0 border-b border-r border-line;
   }
 
   .excel-format-table tbody td {
-    @apply border-l-0 border-t-0 border-b border-r border-slate-200;
+    @apply border-l-0 border-t-0 border-b border-r border-line;
   }
 
   .everygrid-text-editor {
     /* Fill the unified popup width instead of forcing a min-width that would widen the box. */
-    @apply border border-slate-200 p-4 text-xs outline-none w-full h-[60vh] font-mono resize-none;
+    @apply border border-line p-4 text-xs outline-none w-full h-[60vh] font-mono resize-none;
   }
   /* Editor popup: the body is a flex column so the editor area can shrink on a short viewport
      (no body scroll — the editor scrolls internally). Maximizing only widens, so the editor keeps
@@ -592,7 +670,7 @@
 
   /* TABLE mode of the text editor popup: a nested key/value table over the JSON tree. */
   .everygrid-json-table-wrap {
-    @apply border border-slate-200 p-2 text-xs w-full h-[60vh] overflow-auto font-mono;
+    @apply border border-line p-2 text-xs w-full h-[60vh] overflow-auto font-mono;
   }
   .everygrid-json-table {
     @apply border-collapse w-full;
@@ -600,10 +678,10 @@
   /* Each cell draws only its right/bottom edge and the root table the top/left one, so a nested
      table's cells never stack a second line on top of the cell that holds it. */
   .everygrid-json-table-wrap > .everygrid-json-table {
-    @apply border-t border-l border-slate-200;
+    @apply border-t border-l border-line;
   }
   .everygrid-json-table td {
-    @apply align-top border-r border-b border-slate-200 p-0;
+    @apply align-top border-r border-b border-line p-0;
   }
   .everygrid-json-table .everygrid-json-table td:last-child {
     @apply border-r-0;
@@ -632,7 +710,7 @@
   }
 
   .everygrid-popup-footer {
-    @apply mt-0 p-4 border-t border-slate-200 bg-slate-50/50 flex justify-end gap-2;
+    @apply mt-0 p-4 border-t border-line bg-slate-50/50 flex justify-end gap-2;
   }
 
   /* Base elements */
@@ -681,11 +759,11 @@
   }
 
   .everygrid-pagination-btn {
-    @apply px-2 py-1 border border-slate-200 bg-white text-slate-600 rounded hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[32px] flex items-center justify-center;
+    @apply px-2 py-1 border border-line bg-white text-slate-600 rounded hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[32px] flex items-center justify-center;
   }
 
   .everygrid-pagination-btn.active {
-    @apply bg-indigo-600 text-white border-indigo-600 font-bold;
+    @apply bg-indigo-600 text-on-accent border-indigo-600 font-bold;
   }
 
   /* Bigger, easier touch targets for the pager on small screens. */
@@ -728,7 +806,7 @@
      position modifiers below apply. z-index because the body is a later sibling and would
      otherwise paint over a panel that overlaps it. */
   .everygrid-panel {
-    @apply relative z-10 bg-white border-x border-slate-200;
+    @apply relative z-10 bg-white border-x border-line;
   }
 
   .everygrid-panel-top {
@@ -873,8 +951,8 @@
   }
 
   .everygrid-pinned-table-container thead th {
-    @apply sticky top-0 z-50 border-t border-l border-b border-slate-200;
-    background-color: var(--everygrid-header-bg, var(--everygrid-neutral-50)) !important;
+    @apply sticky top-0 z-50 border-t border-l border-b border-line;
+    background-color: var(--everygrid-header-bg, var(--everygrid-neutral-50));
     box-sizing: border-box;
     min-width: 50px;
     transform: none !important;
@@ -882,7 +960,7 @@
     /* Same reasoning as the main header: draw the separator on the sticky cell, not via a
        collapsed border that scrolls away. (This one never clipped its background to the padding
        box, so it had no sliver to begin with.) */
-    box-shadow: inset 0 -1px 0 0 var(--everygrid-neutral-200);
+    box-shadow: inset 0 -1px 0 0 var(--everygrid-border);
   }
 
   .everygrid-pinned-table-container thead th:last-child {
@@ -890,7 +968,7 @@
   }
 
   .everygrid-pinned-table-container td:last-child {
-    @apply border-r border-slate-200;
+    @apply border-r border-line;
   }
 
   /* JSON / long-text popup body (PopupComponent) — monospace, code-like. Scoped to its OWN class so
@@ -973,12 +1051,12 @@
     @apply bg-slate-50 text-slate-900;
   }
   .everygrid-copy-btn.is-copied {
-    @apply border-emerald-600 bg-emerald-600 text-white;
+    @apply border-emerald-600 bg-emerald-600 text-on-accent;
   }
 
   /* --- Language switch (Everygrid.mountLocaleSwitch) -------------------------------------------- */
   .everygrid-locale-switch {
-    @apply inline-flex box-border h-[34px] p-[3px] rounded-lg border border-slate-200 bg-slate-100;
+    @apply inline-flex box-border h-[34px] p-[3px] rounded-lg border border-line bg-slate-100;
   }
   .everygrid-locale-btn {
     @apply flex items-center justify-center w-[34px] h-[26px] rounded-md border-0 bg-transparent cursor-pointer
@@ -991,7 +1069,7 @@
     @apply bg-white opacity-100 shadow-sm;
   }
   .everygrid-locale-select {
-    @apply relative inline-flex items-center box-border h-[34px] rounded-lg border border-slate-200 bg-white
+    @apply relative inline-flex items-center box-border h-[34px] rounded-lg border border-line bg-white
       text-sm text-slate-700;
   }
   .everygrid-locale-select select {
@@ -1001,9 +1079,9 @@
     @apply pl-3;
   }
   .everygrid-locale-globe {
-    @apply absolute left-2.5 pointer-events-none;
+    @apply absolute left-2.5 w-3.5 h-3.5 pointer-events-none;
   }
   .everygrid-locale-chevron {
-    @apply absolute right-2.5 pointer-events-none;
+    @apply absolute right-2.5 w-3 h-3 pointer-events-none;
   }
 }

@@ -1,5 +1,6 @@
-export const SortDownIcon = () => (
-  <svg viewBox='-0.52 3.63 16.74 16.74' fill='currentColor' xmlns='http://www.w3.org/2000/svg'>
+import {icon} from './registry';
+export const SortDownIcon = icon('sortDown', ({className}: {className?: string}) => (
+  <svg className={className} viewBox='-0.52 3.63 16.74 16.74' fill='currentColor' xmlns='http://www.w3.org/2000/svg'>
     <path d='M8 5.25C8.41421 5.25 8.75 5.58579 8.75 6L8.75 16.1492L11.4616 13.3529C11.7499 13.0555 12.2247 13.0482 12.5221 13.3366C12.8195 13.6249 12.8268 14.0997 12.5384 14.3971L8.53843 18.5221C8.39717 18.6678 8.20291 18.75 8 18.75C7.79709 18.75 7.60283 18.6678 7.46158 18.5221L3.46158 14.3971C3.17322 14.0997 3.18053 13.6249 3.47789 13.3366C3.77526 13.0482 4.25007 13.0555 4.53843 13.3529L7.25 16.1492L7.25 6C7.25 5.58579 7.58579 5.25 8 5.25Z' />
   </svg>
-);
+));

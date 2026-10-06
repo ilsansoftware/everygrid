@@ -1,5 +1,6 @@
+import {icon} from './registry';
 /** Toolbar "diff": the code brackets, in the toolbar's stroke weight and box. */
-export const DiffIcon = ({className}: {className?: string}) => (
+export const DiffIcon = icon('diff', ({className}: {className?: string}) => (
   <svg
     viewBox='-1.5 -1.5 27 27'
     fill='none'
@@ -14,4 +15,4 @@ export const DiffIcon = ({className}: {className?: string}) => (
     <path d='m16 6 5 6-5 6' />
     <path d='M14 4l-4 16' />
   </svg>
-);
+));

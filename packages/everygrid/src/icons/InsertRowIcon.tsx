@@ -1,5 +1,6 @@
+import {icon} from './registry';
 /** Toolbar "insert row": a plus, drawn with the same stroke weight and box as the other toolbar icons. */
-export const InsertRowIcon = ({className}: {className?: string}) => (
+export const InsertRowIcon = icon('insertRow', ({className}: {className?: string}) => (
   <svg
     viewBox='-1.5 -1.5 27 27'
     fill='none'
@@ -12,4 +13,4 @@ export const InsertRowIcon = ({className}: {className?: string}) => (
     <line x1='12' y1='4' x2='12' y2='20' />
     <line x1='4' y1='12' x2='20' y2='12' />
   </svg>
-);
+));

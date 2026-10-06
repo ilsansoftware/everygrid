@@ -1,4 +1,5 @@
-export const ColumnsIcon = ({className}: {className?: string}) => (
+import {icon} from './registry';
+export const ColumnsIcon = icon('columns', ({className}: {className?: string}) => (
   <svg
     viewBox='-1.5 -1.5 27 27'
     fill='none'
@@ -12,4 +13,4 @@ export const ColumnsIcon = ({className}: {className?: string}) => (
     <rect x='2' y='2' width='20' height='20' rx='0' />
     <line x1='12' y1='2' x2='12' y2='22' />
   </svg>
-);
+));

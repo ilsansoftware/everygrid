@@ -1,6 +1,7 @@
 import type {IEverygrid} from '../core/types';
 import {cloneElement, useEffect, useLayoutEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
+import {withPortalTheme} from '../core/portalTheme';
 import {EmptyGridPlaceholder} from './EmptyGridPlaceholderComponent.tsx';
 import {GridToolbarComponent} from './GridToolbarComponent';
 import {GridTableComponent} from './GridTableComponent';
@@ -443,7 +444,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
             not a transient status. */}
         {!showSkeleton && dataLimited && (
           <div className='everygrid-data-limit-banner shrink-0'>
-            <InfoIcon/>
+            <InfoIcon className='w-5 h-5 mr-2'/>
             <span>{dataLimited.total != null
               ? I18n.t('grid.dataLimited', {shown: dataLimited.shown.toLocaleString(), total: dataLimited.total.toLocaleString()})
               : I18n.t('grid.dataLimitedStream', {shown: dataLimited.shown.toLocaleString()})}</span>
@@ -539,16 +540,16 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
       </div>
       {/* Clone so each render passes a fresh element reference; otherwise React's same-element
           bailout skips re-rendering the stored popup and it never picks up locale/state changes. */}
-      {grid.activePopup && createPortal(cloneElement(grid.activePopup), document.body)}
+      {grid.activePopup && createPortal(withPortalTheme(container, cloneElement(grid.activePopup)), document.body)}
       {/* Nested-table popup built here so it uses the CURRENT filterText (live highlighting). */}
-      {grid.activePopupData && createPortal(
+      {grid.activePopupData && createPortal(withPortalTheme(container,
         <PopupComponent maximizable onClose={() => grid.closePopup()} title={grid.activePopupTitle || I18n.t('popup.detailTitle')} subtitle={grid.activePopupSubtitle ?? undefined} subtitleTitle={grid.activePopupSubtitleTitle ?? undefined} data={grid.activePopupData.data}>
           <NestedTableComponent
             data={grid.activePopupData.data}
             filterText={grid.filterText}
             elementGate={makeElementGate(grid.activePopupRow ?? grid.activePopupData.data, grid.filterText)}
           />
-        </PopupComponent>,
+        </PopupComponent>),
         document.body,
       )}
     </div>

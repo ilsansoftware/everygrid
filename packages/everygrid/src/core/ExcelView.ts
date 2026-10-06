@@ -117,7 +117,7 @@ export const ExcelView = {
           const th = document.createElement('th');
           th.innerHTML = label.replace(/\n/g, '<br>');
           th.colSpan = colspan;
-          th.className = 'border-b border-r border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-slate-700';
+          th.className = 'border-b border-r border-line bg-slate-50 p-2 text-xs font-semibold text-slate-700';
           if (isExcel) {
             th.style.whiteSpace = 'pre-wrap';
             th.style.verticalAlign = 'top';
@@ -128,7 +128,7 @@ export const ExcelView = {
         } else {
           const th = document.createElement('th');
           th.innerHTML = label.replace(/\n/g, '<br>');
-          th.className = 'border-b border-r border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-slate-700';
+          th.className = 'border-b border-r border-line bg-slate-50 p-2 text-xs font-semibold text-slate-700';
           if (isExcel) {
             th.style.whiteSpace = 'pre-wrap';
             th.style.verticalAlign = 'top';

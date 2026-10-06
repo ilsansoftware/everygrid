@@ -3,6 +3,7 @@ import type {CSSProperties, KeyboardEvent, ReactElement, RefObject} from 'react'
 import type {KeyTree} from '../core/types';
 import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
+import {syncPortalTheme} from '../core/portalTheme';
 import {ReloadIcon} from '../icons/ReloadIcon';
 import {ColumnWidthIcon} from '../icons/ColumnWidthIcon';
 import {ColumnsIcon} from '../icons/ColumnsIcon';
@@ -131,7 +132,7 @@ const SuggestionDropdown = ({listRef, style, suggestions, suggestIndex, suggestE
   <div
       ref={listRef}
       style={style}
-      className={`everygrid-suggestions flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 ${isMobile ? '' : 'shadow-lg'}`}>
+      className={`everygrid-suggestions flex flex-wrap gap-1 rounded-b border border-t-0 border-line bg-white p-2 ${isMobile ? '' : 'shadow-lg'}`}>
     {suggestions.map((k, i) => {
       const isOp = k === '&&' || k === '||';
       const selected = suggestEntered && i === suggestIndex;
@@ -304,6 +305,8 @@ export const GridToolbarComponent = ({
   // null for ordinary typing, whose caret must not be touched — re-seating it mid-composition
   // breaks Hangul input.
   const pendingCaretRef = useRef<number | null>(null);
+  // The suggestion dropdown portals to <body>; give it the grid's theme (see portalTheme).
+  useLayoutEffect(() => syncPortalTheme(toolbarRef.current, dropRef.current));
   // Box width: a resize re-flows the breaks, so it belongs in the reflow effect's deps.
   const [boxW, setBoxW] = useState(0);
   // IME composition: the reflow holds off until the composition commits (see the effect).
@@ -743,7 +746,7 @@ export const GridToolbarComponent = ({
             is the top of the grid's frame now — an overlay reads as the search box falling into
             the table instead of the frame growing to hold it. */}
         <div ref={boxRef}
-             className={`relative overflow-hidden border border-slate-200 bg-white focus-within:border-indigo-400 ${!statusText && suggestions.length > 0 ? 'rounded-t rounded-b-none' : 'rounded'}`}>
+             className={`relative overflow-hidden border border-line bg-white focus-within:border-indigo-400 ${!statusText && suggestions.length > 0 ? 'rounded-t rounded-b-none' : 'rounded'}`}>
           {statusText ? (
             <div className='relative flex items-center gap-2 px-2 py-1.5 text-xs'>
               {progress >= 0
@@ -836,7 +839,7 @@ export const GridToolbarComponent = ({
   // active; the download/export segment is always shown (disabled while an export is running).
   const iconGroup = (
       <div
-          className='inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 divide-x divide-slate-200'>
+          className='inline-flex items-stretch overflow-hidden rounded-md border border-line divide-x divide-line'>
         {onReloadData && segmentButton(ReloadIcon, 'reload', reloadBtnText, onReloadData, {
           disabled: isReloading || gridActionsDisabled || isExporting,
           spinning: isReloading

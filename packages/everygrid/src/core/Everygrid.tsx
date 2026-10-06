@@ -1,4 +1,5 @@
 import '../styles/Everygrid.css';
+import {iconMarkup, setIconOverrides, type IconName, type IconSource} from '../icons/registry';
 import {GridEngineWasm, isEngineTerminated} from '../wasm/GridEngineWasm';
 import {EverygridComponent} from '../components/EverygridComponent';
 import {isJsonString, parseIfJson} from './utils';
@@ -1113,6 +1114,28 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * update — the one call a host app needs on a language change. (Facade over `I18n.setLocale` +
    * `rerenderAll`; use `I18n.setLocale` directly only if you want to set the locale without redraw.)
    */
+  /**
+   * Switch the colour theme: sets `data-everygrid-theme` on `target` (default <html>), which the
+   * stylesheet's dark tokens key off. `'auto'` follows the OS setting; `'light'` removes the
+   * attribute. Setting it on one grid's container instead themes just that grid (its popups too).
+   */
+  /**
+   * Replace built-in icons, by name (see {@link IconName}). A replacement is SVG markup — e.g. copied
+   * from Lucide or Heroicons; it is inserted as-is, so pass trusted markup only — or a component
+   * that takes `className`. Its size and color come from where the icon sits (it fills that box,
+   * `currentColor` follows the text), so width/height attributes on the markup are dropped. `null`
+   * restores an icon's default. Applies to every grid on the page, which re-render.
+   */
+  public static setIcons(icons: Partial<Record<IconName, IconSource | null>>): void {
+    setIconOverrides(icons);
+    Everygrid.rerenderAll();
+  }
+
+  public static setTheme(theme: 'light' | 'dark' | 'auto', target: Element = document.documentElement): void {
+    if (theme === 'light') target.removeAttribute('data-everygrid-theme');
+    else target.setAttribute('data-everygrid-theme', theme);
+  }
+
   public static setLocale(locale: 'ko' | 'en'): void {
     I18n.setLocale(locale);
     Everygrid.rerenderAll();
@@ -1254,12 +1277,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       select.setAttribute('aria-label', 'Language');
       locales.forEach(l => select.add(new Option(label(l), l.id)));
       // The globe stands in for a flag only when the options carry none.
-      if (display === 'text') root.insertAdjacentHTML('beforeend', svg('everygrid-locale-globe', 14, 2.5,
+      if (display === 'text') root.insertAdjacentHTML('beforeend', iconMarkup('globe', 'everygrid-locale-globe') ?? svg('everygrid-locale-globe', 14, 2.5,
         "<circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/>" +
         "<path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/>"));
       else root.classList.add('everygrid-locale-select-plain');
       root.append(select);
-      root.insertAdjacentHTML('beforeend', svg('everygrid-locale-chevron', 12, 3, "<path d='m6 9 6 6 6-6'/>"));
+      root.insertAdjacentHTML('beforeend', iconMarkup('chevronDown', 'everygrid-locale-chevron')
+        ?? svg('everygrid-locale-chevron', 12, 3, "<path d='m6 9 6 6 6-6'/>"));
       controls = [select];
     } else {
       root = document.createElement('div');

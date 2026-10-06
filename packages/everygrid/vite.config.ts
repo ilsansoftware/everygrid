@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import dts from 'vite-plugin-dts';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import tailwindcss from '@tailwindcss/vite';
+import { scopeUtilities } from './scopeUtilities.js';
 
 const isStandalone = process.env.BUILD_FORMAT === 'standalone';
 
@@ -97,6 +98,8 @@ const inlineCssPlugin = {
 };
 
 export default defineConfig({
+  // Keep the library's Tailwind utilities on Everygrid's own elements (see scopeUtilities.js).
+  css: { postcss: { plugins: [scopeUtilities] } },
   optimizeDeps: {
     include: [
       'react',

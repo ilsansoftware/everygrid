@@ -71,7 +71,7 @@ export const HiddenColumnSelectorComponent = <T extends Record<string, unknown>>
             {I18n.t('grid.showAllColumns')}
           </button>
           <button
-            className='px-4 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded'
+            className='px-4 py-1.5 bg-slate-800 text-slate-50 text-xs font-semibold rounded'
             onClick={onClose}
           >
             {I18n.t('popup.close')}

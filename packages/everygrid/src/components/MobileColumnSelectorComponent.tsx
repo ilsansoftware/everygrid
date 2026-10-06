@@ -60,7 +60,7 @@ export const MobileColumnSelectorComponent = <T extends Record<string, unknown>>
                 dangerouslySetInnerHTML={{__html: Everygrid.POPUP_CLOSE_HTML}}></span>
         </div>
         <div className='everygrid-popup-body flex-1'>
-          <label className='mb-3 flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-base cursor-pointer hover:bg-slate-50'>
+          <label className='mb-3 flex items-center gap-3 rounded-lg border border-line p-3 text-base cursor-pointer hover:bg-slate-50'>
             <input
               ref={selectAllRef}
               type='checkbox'
@@ -76,7 +76,7 @@ export const MobileColumnSelectorComponent = <T extends Record<string, unknown>>
               return (
                 <label key={field}
                        className={`flex items-center gap-3 rounded-lg border p-3 text-base cursor-pointer ${
-                         isOn ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 hover:bg-slate-50'
+                         isOn ? 'border-indigo-300 bg-indigo-50' : 'border-line hover:bg-slate-50'
                        }`}>
                   <input
                     type='checkbox'
@@ -92,7 +92,7 @@ export const MobileColumnSelectorComponent = <T extends Record<string, unknown>>
         </div>
         <div className='flex justify-end border-t border-slate-100 p-3'>
           <button
-            className='rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white'
+            className='rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-slate-50'
             onClick={onClose}
           >
             {I18n.t('popup.close')}

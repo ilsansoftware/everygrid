@@ -677,12 +677,91 @@ re-skin every grid on the page, or on one grid's container to re-skin just that 
 | `--everygrid-radius-{sm,md,lg,xl}` | 0.25 / 0.375 / 0.5 / 0.75rem | Corner radii |
 | `--everygrid-font` | system UI stack | Every Everygrid surface, modals included |
 | `--everygrid-header-color` / `-header-bg` | neutral-600 / neutral-50 | Column header text / background |
+| `--everygrid-header-font-weight` / `-header-font-size` | 600 / inherited | Column header text weight / size |
+| `--everygrid-border` | neutral-200 | Every cell, header and panel border |
 | `--everygrid-body-color` / `-body-bg` | neutral-600 / white | Cell text / background |
 
 Each scale runs from light (`50`) to dark (`900`); a theme usually changes a whole scale, not one
 step. The header and body tokens are what a target's [`colors`](#grid-config-file) config sets,
 per grid. They take their defaults from the neutral scale on `:root`, so when you change neutrals on
 one grid's container only, set that grid's header and body tokens too.
+
+### Dark mode
+
+Dark mode is opt-in, through a `data-everygrid-theme` attribute on any ancestor of the grid:
+
+```js
+Everygrid.setTheme('dark');   // 'light' | 'dark' | 'auto' — sets the attribute on <html>
+Everygrid.setTheme('auto');   // follow the OS (prefers-color-scheme)
+Everygrid.setTheme('dark', document.getElementById('sales-grid'));   // just this grid
+```
+
+or in markup: `<html data-everygrid-theme="dark">`. Popups and the search dropdown, which render
+into `<body>`, follow the theme of the grid that opened them.
+
+In dark mode every token gets a dark value: the neutral scale runs the other way (`neutral-50` is
+the darkest), the color scales swap their light tints for deep shades, and `--everygrid-surface`
+(the background of panels, cells and popups) turns dark. Overriding a scale for light mode does not
+change its dark values, so a custom accent needs both:
+
+```css
+:root { --everygrid-accent-50: …; /* … */ --everygrid-accent-900: …; }
+[data-everygrid-theme="dark"] { --everygrid-accent-50: …; /* … */ }
+```
+
+The demo portal's **Theming** tab builds this CSS for you as you pick an accent, radius, font and mode.
+
+| Token | Light | Dark | Used for |
+|---|---|---|---|
+| `--everygrid-surface` | white | slate-900 | Panels, cells, popups |
+| `--everygrid-on-accent` | white | white | Text on solid accent / success buttons |
+| `--everygrid-scrim` | slate-900 | black | Modal backdrop (shown at 30%) |
+
+### Icons
+
+Every icon is an inline SVG drawn in `currentColor`, so it already follows the text color. Each
+carries `everygrid-icon everygrid-icon-<name>` for CSS (e.g. `.everygrid-icon { stroke-width: 1.5 }`,
+or hide one with `display: none`). To swap the artwork, pass SVG markup — from Lucide, Heroicons or
+your own set — or, in React, a component that takes `className`:
+
+```js
+Everygrid.setIcons({
+  reload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">…</svg>',
+  search: SearchIcon,   // e.g. from lucide-react
+});
+Everygrid.setIcons({reload: null});   // back to the default
+```
+
+An icon fills the box it is placed in, so `width`/`height` on the markup are ignored. The markup is
+inserted as-is: pass trusted SVG only. In the browser's dev tools an icon shows its key in its class:
+`everygrid-icon-row-detail` is `rowDetail`.
+
+| Key | Default | Where |
+|---|:-:|---|
+| `reload` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/reload.svg" width="16" height="16" alt="reload"> | Toolbar — reload data |
+| `columnWidth` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/columnWidth.svg" width="16" height="16" alt="columnWidth"> | Toolbar — reset column widths |
+| `sortReset` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/sortReset.svg" width="16" height="16" alt="sortReset"> | Toolbar — reset sort |
+| `columns` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/columns.svg" width="16" height="16" alt="columns"> | Toolbar — choose columns |
+| `excel` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/excel.svg" width="16" height="16" alt="excel"> | Toolbar — Excel preview |
+| `download` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/download.svg" width="16" height="16" alt="download"> | Toolbar — export |
+| `insertRow` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/insertRow.svg" width="16" height="16" alt="insertRow"> | Toolbar — insert a row |
+| `diff` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/diff.svg" width="16" height="16" alt="diff"> | Toolbar — show changes |
+| `config` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/config.svg" width="16" height="16" alt="config"> | Toolbar — show config |
+| `search` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/search.svg" width="16" height="16" alt="search"> | Search box |
+| `pinEmpty` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/pinEmpty.svg" width="16" height="16" alt="pinEmpty"> | Header — pin a column |
+| `pinFilled` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/pinFilled.svg" width="16" height="16" alt="pinFilled"> | Header — unpin a pinned column |
+| `comma` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/comma.svg" width="16" height="16" alt="comma"> | Header — thousands separator on/off |
+| `edit` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/edit.svg" width="16" height="16" alt="edit"> | Header and cell — editable column / open the editor |
+| `hide` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/hide.svg" width="16" height="16" alt="hide"> | Header — hide a column |
+| `sortUp` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/sortUp.svg" width="16" height="16" alt="sortUp"> | Header — sorted ascending |
+| `sortDown` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/sortDown.svg" width="16" height="16" alt="sortDown"> | Header — sorted descending |
+| `mobileColumns` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/mobileColumns.svg" width="16" height="16" alt="mobileColumns"> | Phone layout — choose the visible columns |
+| `rowDetail` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/rowDetail.svg" width="16" height="16" alt="rowDetail"> | Phone layout — open a row's details |
+| `trash` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/trash.svg" width="16" height="16" alt="trash"> | Row actions — delete a row |
+| `undo` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/undo.svg" width="16" height="16" alt="undo"> | Row actions — restore a deleted row |
+| `info` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/info.svg" width="16" height="16" alt="info"> | Data-limit banner |
+| `globe` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/globe.svg" width="16" height="16" alt="globe"> | Language switch (`mountLocaleSwitch`, select) |
+| `chevronDown` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/chevronDown.svg" width="16" height="16" alt="chevronDown"> | Language switch (`mountLocaleSwitch`, select) |
 
 ### Styling parts
 
@@ -693,6 +772,14 @@ rule sits outside the layers, a plain class selector is enough:
 ```css
 .everygrid-locale-btn { font-weight: 600; }
 ```
+
+```css
+.everygrid-table thead th { text-transform: uppercase; letter-spacing: .04em; }
+```
+
+A few state styles — the row whose popup is open, search-match highlights, the modified-cell
+marker — are marked `!important` inside the library, so a class rule cannot override those
+properties; their colors still follow the tokens.
 
 Class names are kept stable across patch releases; a rename is treated as a breaking change.
 

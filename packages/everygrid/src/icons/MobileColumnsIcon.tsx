@@ -1,4 +1,5 @@
-export const MobileColumnsIcon = ({className}: {className?: string}) => (
+import {icon} from './registry';
+export const MobileColumnsIcon = icon('mobileColumns', ({className}: {className?: string}) => (
   <svg viewBox='0 0 24 24' fill='currentColor' xmlns='http://www.w3.org/2000/svg' className={className}>
     <path fillRule='evenodd' clipRule='evenodd'
           d='M7.75 17.5C7.75 17.0858 7.41421 16.75 7 16.75H2C1.58579 16.75 1.25 17.0858 1.25 17.5C1.25 17.9142 1.58579 18.25 2 18.25H7C7.41421 18.25 7.75 17.9142 7.75 17.5Z'/>
@@ -13,4 +14,4 @@ export const MobileColumnsIcon = ({className}: {className?: string}) => (
     <path fillRule='evenodd' clipRule='evenodd'
           d='M17.75 4.5C17.75 3.5335 16.9665 2.75 16 2.75H12C11.0335 2.75 10.25 3.5335 10.25 4.5V8.5C10.25 9.4665 11.0335 10.25 12 10.25H16C16.9665 10.25 17.75 9.4665 17.75 8.5V4.5ZM16 4.25C16.1381 4.25 16.25 4.36193 16.25 4.5V8.5C16.25 8.63807 16.1381 8.75 16 8.75H12C11.8619 8.75 11.75 8.63807 11.75 8.5V4.5C11.75 4.36193 11.8619 4.25 12 4.25H16Z'/>
   </svg>
-);
+));
