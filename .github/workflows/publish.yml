@@ -1,4 +1,5 @@
-# Publish @everygrid/grid to npm when a version tag (v0.5.1, …) is pushed.
+# Stage @everygrid/grid on npm when a version tag (v0.5.1, …) is pushed. Staged, not published:
+# it goes live only after a human runs `npm stage approve <stage-id>` (2FA) — the id is in the log.
 # Auth is npm trusted publishing (OIDC) — no token is stored anywhere. The trusted publisher on
 # npmjs.com must name this repo and this file (publish.yml); renaming it breaks publishing.
 name: Publish
@@ -28,7 +29,7 @@ jobs:
       - uses: pnpm/action-setup@v4 # version from root package.json "packageManager"
       - uses: actions/setup-node@v4
         with:
-          node-version: 24 # trusted publishing needs npm >= 11.5.1
+          node-version: 24
           registry-url: https://registry.npmjs.org
           cache: pnpm
 
@@ -42,6 +43,10 @@ jobs:
         with:
           tool: wasm-pack
 
+      - run: npm install -g npm@12 # `npm stage publish`
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - run: pnpm publish:npm
+      - run: pnpm run build
+      - run: bash scripts/publish-npm.sh
+        env:
+          STAGE: '1'
