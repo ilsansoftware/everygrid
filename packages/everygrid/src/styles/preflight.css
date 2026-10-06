@@ -1,0 +1,47 @@
+/* Tailwind preflight (tailwindcss 4.3.2), scoped to Everygrid's own elements.
+ *
+ * GENERATED from node_modules/tailwindcss/preflight.css — every selector is narrowed to elements
+ * carrying an `everygrid-*` class and their descendants, so the reset no longer leaks onto the
+ * host page (the stock preflight reset margins, borders, headings and buttons page-wide). What
+ * the stock file put on html/:host goes on the outermost Everygrid elements instead. `:where()`
+ * keeps the scope at zero specificity, same as the original. Raw CSS by necessity — the one
+ * exception to the @apply-only rule in Everygrid.css.
+ */
+:where([class*="everygrid-"], [class*="everygrid-"] *), :where([class*="everygrid-"], [class*="everygrid-"] *)::after, :where([class*="everygrid-"], [class*="everygrid-"] *)::before, :where([class*="everygrid-"], [class*="everygrid-"] *)::backdrop, :where([class*="everygrid-"], [class*="everygrid-"] *)::file-selector-button { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid; }
+:where([class*="everygrid-"]:not([class*="everygrid-"] *)) { line-height: 1.5; -webkit-text-size-adjust: 100%; tab-size: 4; font-family: var(--everygrid-font); font-feature-settings: --theme(--default-font-feature-settings, normal); font-variation-settings: --theme(--default-font-variation-settings, normal); -webkit-tap-highlight-color: transparent; }
+:where([class*="everygrid-"]) hr, hr:where([class*="everygrid-"]) { height: 0; color: inherit; border-top-width: 1px; }
+:where([class*="everygrid-"]) abbr:where([title]), abbr:where([title]):where([class*="everygrid-"]) { -webkit-text-decoration: underline dotted; text-decoration: underline dotted; }
+:where([class*="everygrid-"]) h1, h1:where([class*="everygrid-"]), :where([class*="everygrid-"]) h2, h2:where([class*="everygrid-"]), :where([class*="everygrid-"]) h3, h3:where([class*="everygrid-"]), :where([class*="everygrid-"]) h4, h4:where([class*="everygrid-"]), :where([class*="everygrid-"]) h5, h5:where([class*="everygrid-"]), :where([class*="everygrid-"]) h6, h6:where([class*="everygrid-"]) { font-size: inherit; font-weight: inherit; }
+:where([class*="everygrid-"]) a, a:where([class*="everygrid-"]) { color: inherit; -webkit-text-decoration: inherit; text-decoration: inherit; }
+:where([class*="everygrid-"]) b, b:where([class*="everygrid-"]), :where([class*="everygrid-"]) strong, strong:where([class*="everygrid-"]) { font-weight: bolder; }
+:where([class*="everygrid-"]) code, code:where([class*="everygrid-"]), :where([class*="everygrid-"]) kbd, kbd:where([class*="everygrid-"]), :where([class*="everygrid-"]) samp, samp:where([class*="everygrid-"]), :where([class*="everygrid-"]) pre, pre:where([class*="everygrid-"]) { font-family: --theme( --default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace ); font-feature-settings: --theme(--default-mono-font-feature-settings, normal); font-variation-settings: --theme(--default-mono-font-variation-settings, normal); font-size: 1em; }
+:where([class*="everygrid-"]) small, small:where([class*="everygrid-"]) { font-size: 80%; }
+:where([class*="everygrid-"]) sub, sub:where([class*="everygrid-"]), :where([class*="everygrid-"]) sup, sup:where([class*="everygrid-"]) { font-size: 75%; line-height: 0; position: relative; vertical-align: baseline; }
+:where([class*="everygrid-"]) sub, sub:where([class*="everygrid-"]) { bottom: -0.25em; }
+:where([class*="everygrid-"]) sup, sup:where([class*="everygrid-"]) { top: -0.5em; }
+:where([class*="everygrid-"]) table, table:where([class*="everygrid-"]) { text-indent: 0; border-color: inherit; border-collapse: collapse; }
+:where([class*="everygrid-"], [class*="everygrid-"] *):-moz-focusring { outline: auto; }
+:where([class*="everygrid-"]) progress, progress:where([class*="everygrid-"]) { vertical-align: baseline; }
+:where([class*="everygrid-"]) summary, summary:where([class*="everygrid-"]) { display: list-item; }
+:where([class*="everygrid-"]) ol, ol:where([class*="everygrid-"]), :where([class*="everygrid-"]) ul, ul:where([class*="everygrid-"]), :where([class*="everygrid-"]) menu, menu:where([class*="everygrid-"]) { list-style: none; }
+:where([class*="everygrid-"]) img, img:where([class*="everygrid-"]), :where([class*="everygrid-"]) svg, svg:where([class*="everygrid-"]), :where([class*="everygrid-"]) video, video:where([class*="everygrid-"]), :where([class*="everygrid-"]) canvas, canvas:where([class*="everygrid-"]), :where([class*="everygrid-"]) audio, audio:where([class*="everygrid-"]), :where([class*="everygrid-"]) iframe, iframe:where([class*="everygrid-"]), :where([class*="everygrid-"]) embed, embed:where([class*="everygrid-"]), :where([class*="everygrid-"]) object, object:where([class*="everygrid-"]) { display: block; vertical-align: middle; }
+:where([class*="everygrid-"]) img, img:where([class*="everygrid-"]), :where([class*="everygrid-"]) video, video:where([class*="everygrid-"]) { max-width: 100%; height: auto; }
+:where([class*="everygrid-"]) button, button:where([class*="everygrid-"]), :where([class*="everygrid-"]) input, input:where([class*="everygrid-"]), :where([class*="everygrid-"]) select, select:where([class*="everygrid-"]), :where([class*="everygrid-"]) optgroup, optgroup:where([class*="everygrid-"]), :where([class*="everygrid-"]) textarea, textarea:where([class*="everygrid-"]), :where([class*="everygrid-"], [class*="everygrid-"] *)::file-selector-button { font: inherit; font-feature-settings: inherit; font-variation-settings: inherit; letter-spacing: inherit; color: inherit; border-radius: 0; background-color: transparent; opacity: 1; }
+:where([class*="everygrid-"]) :where(select:is([multiple], [size])) optgroup { font-weight: bolder; }
+:where([class*="everygrid-"]) :where(select:is([multiple], [size])) optgroup option { padding-inline-start: 20px; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)::file-selector-button { margin-inline-end: 4px; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)::placeholder { opacity: 1; }
+@supports (not (-webkit-appearance: -apple-pay-button)) or (contain-intrinsic-size: 1px) {
+  :where([class*="everygrid-"], [class*="everygrid-"] *)::placeholder { color: color-mix(in oklab, currentcolor 50%, transparent); }
+}
+:where([class*="everygrid-"]) textarea, textarea:where([class*="everygrid-"]) { resize: vertical; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-search-decoration { -webkit-appearance: none; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-date-and-time-value { min-height: 1lh; text-align: inherit; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit { display: inline-flex; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit, :where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit-year-field, :where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit-month-field, :where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit-day-field, :where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit-hour-field, :where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit-minute-field, :where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit-second-field, :where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit-millisecond-field, :where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-datetime-edit-meridiem-field { padding-block: 0; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-calendar-picker-indicator { line-height: 1; }
+:where([class*="everygrid-"], [class*="everygrid-"] *):-moz-ui-invalid { box-shadow: none; }
+:where([class*="everygrid-"]) button, button:where([class*="everygrid-"]), :where([class*="everygrid-"]) input:where([type='button'], [type='reset'], [type='submit']), input:where([type='button'], [type='reset'], [type='submit']):where([class*="everygrid-"]), :where([class*="everygrid-"], [class*="everygrid-"] *)::file-selector-button { appearance: button; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-inner-spin-button, :where([class*="everygrid-"], [class*="everygrid-"] *)::-webkit-outer-spin-button { height: auto; }
+:where([class*="everygrid-"], [class*="everygrid-"] *)[hidden]:where(:not([hidden='until-found'])) { display: none !important; }

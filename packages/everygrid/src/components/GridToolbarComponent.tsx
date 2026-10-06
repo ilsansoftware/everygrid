@@ -131,7 +131,7 @@ const SuggestionDropdown = ({listRef, style, suggestions, suggestIndex, suggestE
   <div
       ref={listRef}
       style={style}
-      className={`flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 ${isMobile ? '' : 'shadow-lg'}`}>
+      className={`everygrid-suggestions flex flex-wrap gap-1 rounded-b border border-t-0 border-slate-200 bg-white p-2 ${isMobile ? '' : 'shadow-lg'}`}>
     {suggestions.map((k, i) => {
       const isOp = k === '&&' || k === '||';
       const selected = suggestEntered && i === suggestIndex;
@@ -501,7 +501,8 @@ export const GridToolbarComponent = ({
 
   // Colour each parenthesis by its nesting depth (rainbow brackets) for the overlay behind the
   // transparent textarea. Non-bracket text keeps the normal colour.
-  const BRACKET_COLORS = ['#e11d48', '#d97706', '#059669', '#2563eb', '#7c3aed'];
+  // Theme tokens, so a re-skinned grid recolours its query brackets too.
+  const BRACKET_COLORS = ['danger', 'warning', 'success', 'info', 'accent'].map(r => `var(--everygrid-${r}-600)`);
   const renderHighlighted = (text: string, matchSet: Set<number>): ReactElement[] => {
     const parts: ReactElement[] = [];
     let depth = 0;
@@ -512,7 +513,7 @@ export const GridToolbarComponent = ({
       parts.push(
         <span key={parts.length} style={{
           color: BRACKET_COLORS[d % BRACKET_COLORS.length],
-          ...(matched ? {backgroundColor: '#fde68a', fontWeight: 700, borderRadius: '2px'} : {}),
+          ...(matched ? {backgroundColor: 'var(--everygrid-warning-200)', fontWeight: 700, borderRadius: '2px'} : {}),
         }}>{ch}</span>,
       );
     };

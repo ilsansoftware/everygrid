@@ -1,11 +1,52 @@
-@import "tailwindcss";
+/* --- Layers & theming -------------------------------------------------------------------------
+   Everything this file emits lives in the `everygrid.*` cascade layers. Any host-page rule outside a
+   layer beats every one of them, whatever its specificity — so `.everygrid-wrapper { … }` in the
+   app's own CSS is enough to restyle a part, no !important, no selector arms race. The layer order
+   below keeps the old precedence inside the library: component classes over utilities.
+
+   Nothing leaks out: preflight is scoped to Everygrid's elements (./preflight.css) and the Tailwind
+   theme is inlined into the utilities (theme(inline)), so the host page gets no global reset and no
+   --color-* / --spacing variables. The only globals are the --everygrid-* tokens below, which are
+   also the theming API: redefine them (on :root, or on one grid's container) to re-skin. */
+@layer everygrid.theme, everygrid.base, everygrid.utilities, everygrid.components;
+@import "tailwindcss/theme.css" layer(everygrid.theme) theme(inline);
+@import "./preflight.css" layer(everygrid.base);
+@import "tailwindcss/utilities.css" layer(everygrid.utilities);
 @source "../**/*.{ts,tsx}";
 
-/* 
- * RULE: All styles in this file must be defined using Tailwind CSS utility classes 
- * or the @apply directive. Do not use raw CSS properties. 
- */
+/* Utilities read the tokens, not Tailwind's palette: `bg-slate-200` compiles to
+   `var(--everygrid-gray-200)`. The class names stay Tailwind's; what they resolve to is ours.
+   `--color-*: initial` drops the rest of the stock palette, so an unmapped colour fails the build
+   instead of silently bypassing the theme. */
+@theme inline {
+  --color-*: initial;
+  --color-white: #fff;
+  --color-black: #000;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-slate-50: var(--everygrid-gray-50); --color-slate-100: var(--everygrid-gray-100); --color-slate-200: var(--everygrid-gray-200); --color-slate-300: var(--everygrid-gray-300); --color-slate-400: var(--everygrid-gray-400);
+  --color-slate-500: var(--everygrid-gray-500); --color-slate-600: var(--everygrid-gray-600); --color-slate-700: var(--everygrid-gray-700); --color-slate-800: var(--everygrid-gray-800); --color-slate-900: var(--everygrid-gray-900);
+  --color-indigo-50: var(--everygrid-accent-50); --color-indigo-100: var(--everygrid-accent-100); --color-indigo-200: var(--everygrid-accent-200); --color-indigo-300: var(--everygrid-accent-300); --color-indigo-400: var(--everygrid-accent-400);
+  --color-indigo-500: var(--everygrid-accent-500); --color-indigo-600: var(--everygrid-accent-600); --color-indigo-700: var(--everygrid-accent-700); --color-indigo-800: var(--everygrid-accent-800); --color-indigo-900: var(--everygrid-accent-900);
+  --color-blue-50: var(--everygrid-info-50); --color-blue-100: var(--everygrid-info-100); --color-blue-200: var(--everygrid-info-200); --color-blue-300: var(--everygrid-info-300); --color-blue-400: var(--everygrid-info-400);
+  --color-blue-500: var(--everygrid-info-500); --color-blue-600: var(--everygrid-info-600); --color-blue-700: var(--everygrid-info-700); --color-blue-800: var(--everygrid-info-800); --color-blue-900: var(--everygrid-info-900);
+  --color-red-50: var(--everygrid-danger-50); --color-red-100: var(--everygrid-danger-100); --color-red-200: var(--everygrid-danger-200); --color-red-300: var(--everygrid-danger-300); --color-red-400: var(--everygrid-danger-400);
+  --color-red-500: var(--everygrid-danger-500); --color-red-600: var(--everygrid-danger-600); --color-red-700: var(--everygrid-danger-700); --color-red-800: var(--everygrid-danger-800); --color-red-900: var(--everygrid-danger-900);
+  --color-emerald-50: var(--everygrid-success-50); --color-emerald-100: var(--everygrid-success-100); --color-emerald-200: var(--everygrid-success-200); --color-emerald-300: var(--everygrid-success-300); --color-emerald-400: var(--everygrid-success-400);
+  --color-emerald-500: var(--everygrid-success-500); --color-emerald-600: var(--everygrid-success-600); --color-emerald-700: var(--everygrid-success-700); --color-emerald-800: var(--everygrid-success-800); --color-emerald-900: var(--everygrid-success-900);
+  --color-amber-50: var(--everygrid-warning-50); --color-amber-100: var(--everygrid-warning-100); --color-amber-200: var(--everygrid-warning-200); --color-amber-300: var(--everygrid-warning-300); --color-amber-400: var(--everygrid-warning-400);
+  --color-amber-500: var(--everygrid-warning-500); --color-amber-600: var(--everygrid-warning-600); --color-amber-700: var(--everygrid-warning-700); --color-amber-800: var(--everygrid-warning-800); --color-amber-900: var(--everygrid-warning-900);
+  --color-orange-50: var(--everygrid-notice-50); --color-orange-100: var(--everygrid-notice-100); --color-orange-200: var(--everygrid-notice-200); --color-orange-300: var(--everygrid-notice-300); --color-orange-400: var(--everygrid-notice-400);
+  --color-orange-500: var(--everygrid-notice-500); --color-orange-600: var(--everygrid-notice-600); --color-orange-700: var(--everygrid-notice-700); --color-orange-800: var(--everygrid-notice-800); --color-orange-900: var(--everygrid-notice-900);
+  --color-yellow-50: var(--everygrid-highlight-50); --color-yellow-100: var(--everygrid-highlight-100); --color-yellow-200: var(--everygrid-highlight-200); --color-yellow-300: var(--everygrid-highlight-300); --color-yellow-400: var(--everygrid-highlight-400);
+  --color-yellow-500: var(--everygrid-highlight-500); --color-yellow-600: var(--everygrid-highlight-600); --color-yellow-700: var(--everygrid-highlight-700); --color-yellow-800: var(--everygrid-highlight-800); --color-yellow-900: var(--everygrid-highlight-900);
+  --radius-sm: var(--everygrid-radius-sm); --radius-md: var(--everygrid-radius-md); --radius-lg: var(--everygrid-radius-lg); --radius-xl: var(--everygrid-radius-xl);
+}
 
+/*
+ * RULE: All styles in this file must be defined using Tailwind CSS utility classes
+ * or the @apply directive. Do not use raw CSS properties.
+ */
 
 /* --- Stacking scale --------------------------------------------------------------------------
    Two bands, because the grid body isolates its own stacking context (see EverygridComponent).
@@ -27,910 +68,942 @@
      40  modals: popups, portalled to <body>
    ------------------------------------------------------------------------------------------ */
 
-:root {
-  /* One default font for everything Everygrid renders — the grid AND the modals (which portal to
-     <body>, so they'd otherwise inherit the host page's font and look different). Override this
-     single variable to re-skin the whole component; it's the seam a future theming API can drive. */
-  --everygrid-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
-  --everygrid-header-color: #475569;
-  --everygrid-header-bg: #f8fafc;
-  --everygrid-body-color: #475569;
-  --everygrid-body-bg: #ffffff;
+@layer everygrid.base {
+  :root {
+    /* One default font for everything Everygrid renders — the grid AND the modals (which portal to
+       <body>, so they'd otherwise inherit the host page's font and look different). Override this
+       single variable to re-skin the whole component; it's the seam a future theming API can drive. */
+    --everygrid-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --everygrid-header-color: var(--everygrid-gray-600);
+    --everygrid-header-bg: var(--everygrid-gray-50);
+    --everygrid-body-color: var(--everygrid-gray-600);
+    --everygrid-body-bg: #ffffff;
+
+    /* Palettes. Tailwind's default values, renamed by role. Each scale runs light (50) to dark (900). */
+    /* gray — neutrals: text, borders, header/row backgrounds */
+    --everygrid-gray-50: oklch(98.4% 0.003 247.858); --everygrid-gray-100: oklch(96.8% 0.007 247.896); --everygrid-gray-200: oklch(92.9% 0.013 255.508); --everygrid-gray-300: oklch(86.9% 0.022 252.894); --everygrid-gray-400: oklch(70.4% 0.04 256.788);
+    --everygrid-gray-500: oklch(55.4% 0.046 257.417); --everygrid-gray-600: oklch(44.6% 0.043 257.281); --everygrid-gray-700: oklch(37.2% 0.044 257.287); --everygrid-gray-800: oklch(27.9% 0.041 260.031); --everygrid-gray-900: oklch(20.8% 0.042 265.755);
+    /* accent — primary actions, selection, focus */
+    --everygrid-accent-50: oklch(96.2% 0.018 272.314); --everygrid-accent-100: oklch(93% 0.034 272.788); --everygrid-accent-200: oklch(87% 0.065 274.039); --everygrid-accent-300: oklch(78.5% 0.115 274.713); --everygrid-accent-400: oklch(67.3% 0.182 276.935);
+    --everygrid-accent-500: oklch(58.5% 0.233 277.117); --everygrid-accent-600: oklch(51.1% 0.262 276.966); --everygrid-accent-700: oklch(45.7% 0.24 277.023); --everygrid-accent-800: oklch(39.8% 0.195 277.366); --everygrid-accent-900: oklch(35.9% 0.144 278.697);
+    /* info — cell edit focus, informational badges */
+    --everygrid-info-50: oklch(97% 0.014 254.604); --everygrid-info-100: oklch(93.2% 0.032 255.585); --everygrid-info-200: oklch(88.2% 0.059 254.128); --everygrid-info-300: oklch(80.9% 0.105 251.813); --everygrid-info-400: oklch(70.7% 0.165 254.624);
+    --everygrid-info-500: oklch(62.3% 0.214 259.815); --everygrid-info-600: oklch(54.6% 0.245 262.881); --everygrid-info-700: oklch(48.8% 0.243 264.376); --everygrid-info-800: oklch(42.4% 0.199 265.638); --everygrid-info-900: oklch(37.9% 0.146 265.522);
+    /* danger — errors, delete */
+    --everygrid-danger-50: oklch(97.1% 0.013 17.38); --everygrid-danger-100: oklch(93.6% 0.032 17.717); --everygrid-danger-200: oklch(88.5% 0.062 18.334); --everygrid-danger-300: oklch(80.8% 0.114 19.571); --everygrid-danger-400: oklch(70.4% 0.191 22.216);
+    --everygrid-danger-500: oklch(63.7% 0.237 25.331); --everygrid-danger-600: oklch(57.7% 0.245 27.325); --everygrid-danger-700: oklch(50.5% 0.213 27.518); --everygrid-danger-800: oklch(44.4% 0.177 26.899); --everygrid-danger-900: oklch(39.6% 0.141 25.723);
+    /* success — confirm, saved */
+    --everygrid-success-50: oklch(97.9% 0.021 166.113); --everygrid-success-100: oklch(95% 0.052 163.051); --everygrid-success-200: oklch(90.5% 0.093 164.15); --everygrid-success-300: oklch(84.5% 0.143 164.978); --everygrid-success-400: oklch(76.5% 0.177 163.223);
+    --everygrid-success-500: oklch(69.6% 0.17 162.48); --everygrid-success-600: oklch(59.6% 0.145 163.225); --everygrid-success-700: oklch(50.8% 0.118 165.612); --everygrid-success-800: oklch(43.2% 0.095 166.913); --everygrid-success-900: oklch(37.8% 0.077 168.94);
+    /* warning — caution notes */
+    --everygrid-warning-50: oklch(98.7% 0.022 95.277); --everygrid-warning-100: oklch(96.2% 0.059 95.617); --everygrid-warning-200: oklch(92.4% 0.12 95.746); --everygrid-warning-300: oklch(87.9% 0.169 91.605); --everygrid-warning-400: oklch(82.8% 0.189 84.429);
+    --everygrid-warning-500: oklch(76.9% 0.188 70.08); --everygrid-warning-600: oklch(66.6% 0.179 58.318); --everygrid-warning-700: oklch(55.5% 0.163 48.998); --everygrid-warning-800: oklch(47.3% 0.137 46.201); --everygrid-warning-900: oklch(41.4% 0.112 45.904);
+    /* notice — modified-row markers */
+    --everygrid-notice-50: oklch(98% 0.016 73.684); --everygrid-notice-100: oklch(95.4% 0.038 75.164); --everygrid-notice-200: oklch(90.1% 0.076 70.697); --everygrid-notice-300: oklch(83.7% 0.128 66.29); --everygrid-notice-400: oklch(75% 0.183 55.934);
+    --everygrid-notice-500: oklch(70.5% 0.213 47.604); --everygrid-notice-600: oklch(64.6% 0.222 41.116); --everygrid-notice-700: oklch(55.3% 0.195 38.402); --everygrid-notice-800: oklch(47% 0.157 37.304); --everygrid-notice-900: oklch(40.8% 0.123 38.172);
+    /* highlight — search-match highlight */
+    --everygrid-highlight-50: oklch(98.7% 0.026 102.212); --everygrid-highlight-100: oklch(97.3% 0.071 103.193); --everygrid-highlight-200: oklch(94.5% 0.129 101.54); --everygrid-highlight-300: oklch(90.5% 0.182 98.111); --everygrid-highlight-400: oklch(85.2% 0.199 91.936);
+    --everygrid-highlight-500: oklch(79.5% 0.184 86.047); --everygrid-highlight-600: oklch(68.1% 0.162 75.834); --everygrid-highlight-700: oklch(55.4% 0.135 66.442); --everygrid-highlight-800: oklch(47.6% 0.114 61.907); --everygrid-highlight-900: oklch(42.1% 0.095 57.708);
+    /* corner radii — set all four to 0 for a square look */
+    --everygrid-radius-sm: 0.25rem; --everygrid-radius-md: 0.375rem; --everygrid-radius-lg: 0.5rem; --everygrid-radius-xl: 0.75rem;
+  }
 }
 
-/* Base Grid Styles */
-.everygrid-wrapper {
-  @apply w-full;
-  font-family: var(--everygrid-font);
-}
+@layer everygrid.components {
+  /* Base Grid Styles */
+  .everygrid-wrapper {
+    @apply w-full;
+    font-family: var(--everygrid-font);
+  }
 
-.everygrid-table {
-  @apply w-auto min-w-full text-left text-sm bg-white border border-slate-200 border-collapse;
-}
+  .everygrid-table {
+    @apply w-auto min-w-full text-left text-sm bg-white border border-slate-200 border-collapse;
+  }
 
-.everygrid-table.is-resizing {
-  @apply min-w-0;
-}
+  .everygrid-table.is-resizing {
+    @apply min-w-0;
+  }
 
-.everygrid-table thead th {
-  @apply px-1 py-1 font-semibold whitespace-nowrap sticky top-0
-  text-left z-30 overflow-hidden border-l border-b border-slate-200;
-  color: var(--everygrid-header-color, inherit) !important;
-  background-color: var(--everygrid-header-bg, #f8fafc) !important;
-  box-sizing: border-box;
-  /* border-box, NOT padding-box: the table is `border-collapse: collapse`, so the header's
-     borders belong to the table — which is not sticky and scrolls away underneath. With the
-     background clipped to the padding box, the 1px border band the borders vacated was left
-     transparent and the rows sliding under the header showed through it as a moving sliver.
-     Painting the background across the border box closes that band for good. */
-  background-clip: border-box;
-  border-top: 1px solid #e2e8f0;
-  min-width: 50px;
-}
+  .everygrid-table thead th {
+    @apply px-1 py-1 font-semibold whitespace-nowrap sticky top-0
+    text-left z-30 overflow-hidden border-l border-b border-slate-200;
+    color: var(--everygrid-header-color, inherit) !important;
+    background-color: var(--everygrid-header-bg, var(--everygrid-gray-50)) !important;
+    box-sizing: border-box;
+    /* border-box, NOT padding-box: the table is `border-collapse: collapse`, so the header's
+       borders belong to the table — which is not sticky and scrolls away underneath. With the
+       background clipped to the padding box, the 1px border band the borders vacated was left
+       transparent and the rows sliding under the header showed through it as a moving sliver.
+       Painting the background across the border box closes that band for good. */
+    background-clip: border-box;
+    border-top: 1px solid var(--everygrid-gray-200);
+    min-width: 50px;
+  }
 
-.everygrid-table tbody tr.is-popup-active td {
-  @apply bg-blue-100/80! border-blue-200!;
-  border-bottom-width: 1px;
-  border-left-width: 1px;
-}
+  .everygrid-table tbody tr.is-popup-active td {
+    @apply bg-blue-100/80! border-blue-200!;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+  }
 
-.everygrid-table tbody tr.is-popup-active td .everygrid-popup-btn {
-  @apply bg-blue-200 border-blue-400 hover:bg-blue-300! text-blue-900;
-}
+  .everygrid-table tbody tr.is-popup-active td .everygrid-popup-btn {
+    @apply bg-blue-200 border-blue-400 hover:bg-blue-300! text-blue-900;
+  }
 
-.everygrid-table tbody td {
-  @apply px-1 py-1 relative align-middle bg-white border-l border-b border-slate-200
-  transition-all;
-  color: var(--everygrid-body-color, #475569) !important;
-  min-height: 41px;
-  box-sizing: border-box;
-  border-top: 0;
-  white-space: normal;
-  overflow: visible;
-  word-break: break-word;
-}
+  .everygrid-table tbody td {
+    @apply px-1 py-1 relative align-middle bg-white border-l border-b border-slate-200
+    transition-all;
+    color: var(--everygrid-body-color, var(--everygrid-gray-600)) !important;
+    min-height: 41px;
+    box-sizing: border-box;
+    border-top: 0;
+    white-space: normal;
+    overflow: visible;
+    word-break: break-word;
+  }
 
-/* Mobile layout: fixed ≤3 columns + a detail button, sized for touch — taller rows, larger text,
-   roomier headers — and no per-column overflow (widths come from table-fixed w-full in the TSX). */
-/* Hard-fix the mobile table to the container width. Higher specificity than the base
-   `.everygrid-table { width:auto; min-width:100% }` and the th `min-width:50px`, so utility-class
-   ordering can't lose and no min-width can push the table past the viewport. The columns then take
-   the exact 1:1:1 (+ detail) widths set inline via table-layout:fixed. */
-.everygrid-table.everygrid-mobile {
-  table-layout: fixed;
-  /* Width is set inline (3 × 1/3-viewport data columns + the pinned detail column), so the row can
-     be wider than the viewport and scroll horizontally. min-width keeps it filling a narrow one. */
-  min-width: 100%;
-}
+  /* Mobile layout: fixed ≤3 columns + a detail button, sized for touch — taller rows, larger text,
+     roomier headers — and no per-column overflow (widths come from table-fixed w-full in the TSX). */
+  /* Hard-fix the mobile table to the container width. Higher specificity than the base
+     `.everygrid-table { width:auto; min-width:100% }` and the th `min-width:50px`, so utility-class
+     ordering can't lose and no min-width can push the table past the viewport. The columns then take
+     the exact 1:1:1 (+ detail) widths set inline via table-layout:fixed. */
+  .everygrid-table.everygrid-mobile {
+    table-layout: fixed;
+    /* Width is set inline (3 × 1/3-viewport data columns + the pinned detail column), so the row can
+       be wider than the viewport and scroll horizontally. min-width keeps it filling a narrow one. */
+    min-width: 100%;
+  }
 
-.everygrid-table.everygrid-mobile thead th {
-  min-width: 0;
-}
+  .everygrid-table.everygrid-mobile thead th {
+    min-width: 0;
+  }
 
-.everygrid-table.everygrid-mobile tbody td {
-  @apply px-3 text-sm;
-  min-height: 52px;
-}
+  .everygrid-table.everygrid-mobile tbody td {
+    @apply px-3 text-sm;
+    min-height: 52px;
+  }
 
-/* Clip every mobile cell (and its inner wrapper) to one line. Columns are fixed 1:1:1, so a long
-   value must be truncated rather than wrap-growing the row or spilling past the screen — the full
-   value is always available in the row detail. The detail-button cell is exempt. */
-.everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell),
-.everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell) > * {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: normal;
-  max-width: 100%;
-}
+  /* Clip every mobile cell (and its inner wrapper) to one line. Columns are fixed 1:1:1, so a long
+     value must be truncated rather than wrap-growing the row or spilling past the screen — the full
+     value is always available in the row detail. The detail-button cell is exempt. */
+  .everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell),
+  .everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell) > * {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: normal;
+    max-width: 100%;
+  }
 
-.everygrid-table.everygrid-mobile thead th {
-  @apply text-sm;
-}
+  .everygrid-table.everygrid-mobile thead th {
+    @apply text-sm;
+  }
 
-.everygrid-table.everygrid-mobile .everygrid-header-content {
-  @apply px-3 py-3;
-  overflow: hidden;
-}
+  .everygrid-table.everygrid-mobile .everygrid-header-content {
+    @apply px-3 py-3;
+    overflow: hidden;
+  }
 
-/* The mobile row is wider than the viewport (fixed 1/3-width columns + pinned detail), so allow
-   horizontal scrolling within it. */
-.everygrid-table-container.everygrid-mobile-x,
-.everygrid-virtual-scroller.everygrid-mobile-x {
-  overflow-x: auto;
-}
+  /* The mobile row is wider than the viewport (fixed 1/3-width columns + pinned detail), so allow
+     horizontal scrolling within it. */
+  .everygrid-table-container.everygrid-mobile-x,
+  .everygrid-virtual-scroller.everygrid-mobile-x {
+    overflow-x: auto;
+  }
 
-.everygrid-detail-cell {
-  @apply text-center bg-slate-50/30 align-middle;
-}
+  .everygrid-detail-cell {
+    @apply text-center bg-slate-50/30 align-middle;
+  }
 
-/* Row actions column: delete / restore per row (rowActions.deleteRow); insert is a toolbar button.
-   Narrow, centred, and it never gets a pointer-events lock — a deleted row's restore button must
-   stay clickable. */
-.everygrid-actions-cell {
-  @apply text-center align-middle w-10;
-}
-.everygrid-action-btn {
-  @apply inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 transition-colors;
-}
-.everygrid-action-btn:hover {
-  @apply text-slate-800 bg-slate-100;
-}
-.everygrid-action-btn:disabled {
-  @apply opacity-40 pointer-events-none;
-}
-/* A deleted row stays where it was, struck through and inert, until commit or restore. */
-/* Deleted and inserted rows share one tint scale — the 50 shade as fill, the 100 shade as the row
-   border — red for what goes, green for what comes. */
-.everygrid-table tbody tr.everygrid-row-deleted td {
-  @apply bg-red-50 border-b border-red-100;
-}
-.everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) {
-  @apply line-through text-slate-400;
-  pointer-events: none;
-}
-.everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) * {
-  @apply text-slate-400;
-}
-/* An inserted row sits above the data, tinted, until commit moves it in. */
-.everygrid-table tbody tr.everygrid-row-inserted td {
-  @apply bg-emerald-50 border-b border-emerald-100;
-}
+  /* Row actions column: delete / restore per row (rowActions.deleteRow); insert is a toolbar button.
+     Narrow, centred, and it never gets a pointer-events lock — a deleted row's restore button must
+     stay clickable. */
+  .everygrid-actions-cell {
+    @apply text-center align-middle w-10;
+  }
+  .everygrid-action-btn {
+    @apply inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 transition-colors;
+  }
+  .everygrid-action-btn:hover {
+    @apply text-slate-800 bg-slate-100;
+  }
+  .everygrid-action-btn:disabled {
+    @apply opacity-40 pointer-events-none;
+  }
+  /* A deleted row stays where it was, struck through and inert, until commit or restore. */
+  /* Deleted and inserted rows share one tint scale — the 50 shade as fill, the 100 shade as the row
+     border — red for what goes, green for what comes. */
+  .everygrid-table tbody tr.everygrid-row-deleted td {
+    @apply bg-red-50 border-b border-red-100;
+  }
+  .everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) {
+    @apply line-through text-slate-400;
+    pointer-events: none;
+  }
+  .everygrid-table tbody tr.everygrid-row-deleted td:not(.everygrid-actions-cell) * {
+    @apply text-slate-400;
+  }
+  /* An inserted row sits above the data, tinted, until commit moves it in. */
+  .everygrid-table tbody tr.everygrid-row-inserted td {
+    @apply bg-emerald-50 border-b border-emerald-100;
+  }
 
-/* The detail column is narrow (52px) and holds a 40px button, so it can't afford the mobile cells'
-   px-3. Higher specificity than `.everygrid-table.everygrid-mobile tbody td`, so it wins.
-   It is also pinned to the right (sticky) so it stays reachable while the data columns scroll; an
-   opaque background + left border keep the scrolled cells from showing through it. */
-.everygrid-table.everygrid-mobile tbody td.everygrid-detail-cell {
-  padding-left: 2px;
-  padding-right: 2px;
-  position: sticky;
-  right: 0;
-  z-index: 2;
-  background-color: #fff;
-  border-left: 1px solid #e2e8f0;
-}
+  /* The detail column is narrow (52px) and holds a 40px button, so it can't afford the mobile cells'
+     px-3. Higher specificity than `.everygrid-table.everygrid-mobile tbody td`, so it wins.
+     It is also pinned to the right (sticky) so it stays reachable while the data columns scroll; an
+     opaque background + left border keep the scrolled cells from showing through it. */
+  .everygrid-table.everygrid-mobile tbody td.everygrid-detail-cell {
+    padding-left: 2px;
+    padding-right: 2px;
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background-color: #fff;
+    border-left: 1px solid var(--everygrid-gray-200);
+  }
 
-/* The detail column header, pinned both to the top (like every header) and the right. */
-.everygrid-table.everygrid-mobile thead th.everygrid-detail-cell {
-  position: sticky;
-  right: 0;
-  z-index: 31; /* above the sibling headers (z-30) as they scroll under it */
-  border-left: 1px solid #e2e8f0;
-  background-color: var(--everygrid-header-bg, #f8fafc) !important;
-}
+  /* The detail column header, pinned both to the top (like every header) and the right. */
+  .everygrid-table.everygrid-mobile thead th.everygrid-detail-cell {
+    position: sticky;
+    right: 0;
+    z-index: 31; /* above the sibling headers (z-30) as they scroll under it */
+    border-left: 1px solid var(--everygrid-gray-200);
+    background-color: var(--everygrid-header-bg, var(--everygrid-gray-50)) !important;
+  }
 
-/* Mobile: a value rendered as a button/link (e.g. the "N items" popup tag) must keep its full box.
-   The base popup button is inline-flex + nowrap and content-sized, so in a narrow fixed-width cell
-   its wrapper's overflow:hidden sliced the button — border and all — down the middle. Cap it to the
-   cell and ellipsis the label inside instead; inline-block (not inline-flex) lets text-overflow work. */
-.everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell) .everygrid-popup-btn,
-.everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell) .everygrid-link {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  /* Mobile: a value rendered as a button/link (e.g. the "N items" popup tag) must keep its full box.
+     The base popup button is inline-flex + nowrap and content-sized, so in a narrow fixed-width cell
+     its wrapper's overflow:hidden sliced the button — border and all — down the middle. Cap it to the
+     cell and ellipsis the label inside instead; inline-block (not inline-flex) lets text-overflow work. */
+  .everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell) .everygrid-popup-btn,
+  .everygrid-table.everygrid-mobile tbody td:not(.everygrid-detail-cell) .everygrid-link {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-.everygrid-detail-btn {
-  @apply inline-flex items-center justify-center rounded-lg text-slate-500
-  bg-slate-100 hover:bg-slate-200 active:bg-slate-300 transition-colors;
-  width: 40px;
-  height: 40px;
-}
+  .everygrid-detail-btn {
+    @apply inline-flex items-center justify-center rounded-lg text-slate-500
+    bg-slate-100 hover:bg-slate-200 active:bg-slate-300 transition-colors;
+    width: 40px;
+    height: 40px;
+  }
 
-/* Native <select> chrome, made predictable. The moment a select gets a border/padding/radius,
-   Chrome drops the platform control and draws its own arrow glued to the right edge, ignoring
-   padding-right — so the text is inset and the arrow is not, and the box looks off. Every
-   hand-written select hits this. Fix it once: hide the native arrow and draw our own chevron as a
-   background at a fixed inset, with matching right padding. Box styling (border, height, colors)
-   stays with the caller. */
-.everygrid-select {
-  @apply appearance-none bg-no-repeat pr-8;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394a3b8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M6 8l4 4 4-4'/></svg>");
-  background-position: right 0.5rem center;
-  background-size: 1rem 1rem;
-}
+  /* Native <select> chrome, made predictable. The moment a select gets a border/padding/radius,
+     Chrome drops the platform control and draws its own arrow glued to the right edge, ignoring
+     padding-right — so the text is inset and the arrow is not, and the box looks off. Every
+     hand-written select hits this. Fix it once: hide the native arrow and draw our own chevron as a
+     background at a fixed inset, with matching right padding. Box styling (border, height, colors)
+     stays with the caller. */
+  .everygrid-select {
+    @apply appearance-none bg-no-repeat pr-8;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394a3b8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M6 8l4 4 4-4'/></svg>");
+    background-position: right 0.5rem center;
+    background-size: 1rem 1rem;
+  }
 
-/* Toolbar */
-.everygrid-toolbar {
-  @apply flex items-center gap-2 bg-white py-1;
-}
+  /* Toolbar */
+  .everygrid-toolbar {
+    @apply flex items-center gap-2 bg-white py-1;
+  }
 
-.everygrid-toolbar-container {
-  @apply shrink-0;
-}
+  .everygrid-toolbar-container {
+    @apply shrink-0;
+  }
 
-/* Above the other panels: the mobile menu opens downward across the strip and the table, and a
-   later sibling at the same z-index would paint over it. */
-.everygrid-toolbar-container.everygrid-panel {
-  @apply z-20;
-}
+  /* Above the other panels: the mobile menu opens downward across the strip and the table, and a
+     later sibling at the same z-index would paint over it. */
+  .everygrid-toolbar-container.everygrid-panel {
+    @apply z-20;
+  }
 
-.everygrid-mobile-menu {
-  @apply absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-30 min-w-[180px] py-1 flex flex-col;
-}
+  .everygrid-mobile-menu {
+    @apply absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-30 min-w-[180px] py-1 flex flex-col;
+  }
 
-.everygrid-link {
-  @apply text-blue-600 hover:text-blue-800 underline transition-colors cursor-pointer;
-}
+  .everygrid-link {
+    @apply text-blue-600 hover:text-blue-800 underline transition-colors cursor-pointer;
+  }
 
-.everygrid-highlight {
-  @apply bg-yellow-200 text-yellow-900 rounded-sm px-0;
-  font-style: inherit;
-}
+  .everygrid-highlight {
+    @apply bg-yellow-200 text-yellow-900 rounded-sm px-0;
+    font-style: inherit;
+  }
 
-.everygrid-highlight-btn {
-  @apply bg-yellow-200! border-yellow-400! text-yellow-900!;
-}
+  .everygrid-highlight-btn {
+    @apply bg-yellow-200! border-yellow-400! text-yellow-900!;
+  }
 
-/* Loading skeleton. Its row metrics mirror the real table — page size × row height, plus the
-   header — so the body holds its final height and nothing below the grid jumps when the rows
-   land. Before this it drew a fixed 10 short bars, and a 30-row page arriving pushed the page
-   down by ~700px. */
-.everygrid-skeleton {
-  @apply w-full h-full overflow-hidden;
-}
+  /* Loading skeleton. Its row metrics mirror the real table — page size × row height, plus the
+     header — so the body holds its final height and nothing below the grid jumps when the rows
+     land. Before this it drew a fixed 10 short bars, and a 30-row page arriving pushed the page
+     down by ~700px. */
+  .everygrid-skeleton {
+    @apply w-full h-full overflow-hidden;
+  }
 
-.everygrid-skeleton-head,
-.everygrid-skeleton-row {
-  @apply flex items-center gap-6 px-3 border-b border-slate-100;
-}
-
-.everygrid-skeleton-head {
-  @apply bg-slate-50 border-slate-200;
-}
-
-.everygrid-skeleton-head span {
-  @apply h-2.5 rounded-full bg-slate-200;
-}
-
-.everygrid-skeleton-row {
-  animation: everygrid-skeleton-wave 1.6s ease-in-out infinite;
-}
-
-.everygrid-skeleton-row span {
-  @apply h-2.5 rounded-full bg-slate-100;
-}
-
-@keyframes everygrid-skeleton-wave {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
+  .everygrid-skeleton-head,
   .everygrid-skeleton-row {
-    animation: none;
+    @apply flex items-center gap-6 px-3 border-b border-slate-100;
   }
-}
 
-/* Modification Indicators */
-.modified-marker {
-  @apply absolute! top-0! right-0! w-3! h-3! bg-orange-500! z-20! block! [clip-path:polygon(100%_0,0_0,100%_100%)]! cursor-pointer;
-}
+  .everygrid-skeleton-head {
+    @apply bg-slate-50 border-slate-200;
+  }
 
-.everygrid-cell-reset-btn {
-  @apply absolute top-1 right-3 bg-white border border-orange-200 px-1.5 py-0.5 shadow-sm text-orange-600 hover:text-orange-800 cursor-pointer text-[10px] font-bold transition-colors duration-150 z-20 leading-none;
-}
+  .everygrid-skeleton-head span {
+    @apply h-2.5 rounded-full bg-slate-200;
+  }
 
-.everygrid-cell-edit-btn {
-  @apply flex items-center justify-center p-1 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer;
-}
+  .everygrid-skeleton-row {
+    animation: everygrid-skeleton-wave 1.6s ease-in-out infinite;
+  }
 
-.everygrid-cell-edit-btn svg {
-  @apply w-full h-full;
-}
+  .everygrid-skeleton-row span {
+    @apply h-2.5 rounded-full bg-slate-100;
+  }
 
-.everygrid-cell-edit-btn svg path {
-  @apply fill-current;
-}
+  @keyframes everygrid-skeleton-wave {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
 
-.everygrid-pinned-table-container .everygrid-table tbody td {
-  @apply overflow-visible! relative!;
-}
+  @media (prefers-reduced-motion: reduce) {
+    .everygrid-skeleton-row {
+      animation: none;
+    }
+  }
 
-.everygrid-nested-table {
-  @apply min-w-full w-auto border border-slate-200 text-[11px] border-collapse;
-  --everygrid-header-color: #475569;
-  --everygrid-header-bg: #f8fafc;
-  --everygrid-body-color: #475569;
-  --everygrid-body-bg: #ffffff;
-  color: var(--everygrid-body-color);
-  background-color: var(--everygrid-body-bg);
-}
+  /* Modification Indicators */
+  .modified-marker {
+    @apply absolute! top-0! right-0! w-3! h-3! bg-orange-500! z-20! block! [clip-path:polygon(100%_0,0_0,100%_100%)]! cursor-pointer;
+  }
 
-.everygrid-nested-table th {
-  @apply p-2 border border-slate-200 text-slate-500! bg-[#f8fafc]! whitespace-nowrap font-semibold text-xs text-left;
-}
+  .everygrid-cell-reset-btn {
+    @apply absolute top-1 right-3 bg-white border border-orange-200 px-1.5 py-0.5 shadow-sm text-orange-600 hover:text-orange-800 cursor-pointer text-[10px] font-bold transition-colors duration-150 z-20 leading-none;
+  }
 
-.everygrid-nested-table td {
-  @apply p-2 border border-slate-200 bg-white! font-normal text-slate-600! text-xs;
-}
+  .everygrid-cell-edit-btn {
+    @apply flex items-center justify-center p-1 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer;
+  }
+
+  .everygrid-cell-edit-btn svg {
+    @apply w-full h-full;
+  }
+
+  .everygrid-cell-edit-btn svg path {
+    @apply fill-current;
+  }
+
+  .everygrid-pinned-table-container .everygrid-table tbody td {
+    @apply overflow-visible! relative!;
+  }
+
+  .everygrid-nested-table {
+    @apply min-w-full w-auto border border-slate-200 text-[11px] border-collapse;
+    --everygrid-header-color: var(--everygrid-gray-600);
+    --everygrid-header-bg: var(--everygrid-gray-50);
+    --everygrid-body-color: var(--everygrid-gray-600);
+    --everygrid-body-bg: #ffffff;
+    color: var(--everygrid-body-color);
+    background-color: var(--everygrid-body-bg);
+  }
+
+  .everygrid-nested-table th {
+    @apply p-2 border border-slate-200 text-slate-500! bg-slate-50! whitespace-nowrap font-semibold text-xs text-left;
+  }
+
+  .everygrid-nested-table td {
+    @apply p-2 border border-slate-200 bg-white! font-normal text-slate-600! text-xs;
+  }
 
 
-/* Modals */
-.everygrid-popup-overlay {
-  @apply fixed inset-0 bg-slate-900/30 flex items-center justify-center z-40 p-4;
-  /* Portalled to <body>, so set the font here too — otherwise the modal inherits the host page's
-     font instead of the grid's and the two look mismatched. */
-  font-family: var(--everygrid-font);
-}
+  /* Modals */
+  .everygrid-popup-overlay {
+    @apply fixed inset-0 bg-slate-900/30 flex items-center justify-center z-40 p-4;
+    /* Portalled to <body>, so set the font here too — otherwise the modal inherits the host page's
+       font instead of the grid's and the two look mismatched. */
+    font-family: var(--everygrid-font);
+  }
 
-.everygrid-popup-content {
-  /* Shared chrome; the size class sets the box. */
-  @apply max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col bg-white rounded-lg shadow-xl;
-}
+  .everygrid-popup-content {
+    /* Shared chrome; the size class sets the box. */
+    @apply max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col bg-white rounded-lg shadow-xl;
+  }
 
-/* Fixed squares, so detail and long-text popups open at one consistent shape regardless of what
-   they hold; wider/taller content scrolls inside. Squares are capped by the shared max-w/max-h
-   above, so they shrink (and stop being square) only on a screen too small to fit them. */
-.everygrid-popup-s { @apply w-[440px] h-[440px]; }
-.everygrid-popup-m { @apply w-[600px] h-[600px]; }
-.everygrid-popup-l { @apply w-[760px] h-[760px]; }
+  /* Fixed squares, so detail and long-text popups open at one consistent shape regardless of what
+     they hold; wider/taller content scrolls inside. Squares are capped by the shared max-w/max-h
+     above, so they shrink (and stop being square) only on a screen too small to fit them. */
+  .everygrid-popup-s { @apply w-[440px] h-[440px]; }
+  .everygrid-popup-m { @apply w-[600px] h-[600px]; }
+  .everygrid-popup-l { @apply w-[760px] h-[760px]; }
 
-/* Content-height rectangle for popups with an action footer (the editor) — a square would leave a
-   gap above the buttons and force the textarea into an odd shape. */
-.everygrid-popup-auto { @apply w-[720px]; }
-/* Maximized (header ⤢ toggle): widen to the viewport only. The size class stays on the element, so
-   the height is whatever that size already asked for — growing it too made the same popup a
-   different shape depending on whether it sat in the page or in a (shorter) demo iframe. */
-.everygrid-popup-max { @apply w-[95vw]; }
+  /* Content-height rectangle for popups with an action footer (the editor) — a square would leave a
+     gap above the buttons and force the textarea into an odd shape. */
+  .everygrid-popup-auto { @apply w-[720px]; }
+  /* Maximized (header ⤢ toggle): widen to the viewport only. The size class stays on the element, so
+     the height is whatever that size already asked for — growing it too made the same popup a
+     different shape depending on whether it sat in the page or in a (shorter) demo iframe. */
+  .everygrid-popup-max { @apply w-[95vw]; }
 
-.everygrid-popup-content .everygrid-wrapper {
-  @apply w-full h-full min-w-full;
-}
+  .everygrid-popup-content .everygrid-wrapper {
+    @apply w-full h-full min-w-full;
+  }
 
-.everygrid-popup-content .everygrid-table {
-  @apply min-w-full;
-}
+  .everygrid-popup-content .everygrid-table {
+    @apply min-w-full;
+  }
 
-/* A nested object renders a table per level, and each level's auto layout asks for the width its
-   content wants — four levels in, the outermost table's min-content was 2281px inside a 600px modal,
-   so the whole modal scrolled sideways. Only the OUTERMOST table is pinned to the popup width; the
-   levels below keep their natural width and scroll inside their own cell, so a wide section stays a
-   wide section instead of dragging the entire view (or being squashed flat) with it. */
-.everygrid-popup-body > .everygrid-nested-table {
-  @apply table-fixed w-full max-w-full min-w-0;
-}
+  /* A nested object renders a table per level, and each level's auto layout asks for the width its
+     content wants — four levels in, the outermost table's min-content was 2281px inside a 600px modal,
+     so the whole modal scrolled sideways. Only the OUTERMOST table is pinned to the popup width; the
+     levels below keep their natural width and scroll inside their own cell, so a wide section stays a
+     wide section instead of dragging the entire view (or being squashed flat) with it. */
+  .everygrid-popup-body > .everygrid-nested-table {
+    @apply table-fixed w-full max-w-full min-w-0;
+  }
 
-/* The scroll box each level below the top is wrapped in (NestedTableComponent). The table inside
-   keeps `min-width: 100%`, so it fills a wide cell and scrolls in a narrow one. */
-.everygrid-nested-scroll {
-  @apply overflow-x-auto max-w-full;
-}
+  /* The scroll box each level below the top is wrapped in (NestedTableComponent). The table inside
+     keeps `min-width: 100%`, so it fills a wide cell and scrolls in a narrow one. */
+  .everygrid-nested-scroll {
+    @apply overflow-x-auto max-w-full;
+  }
 
-/* No frame of its own: the cell around it already draws one, and two lines a padding-width apart is
-   what made the nesting look heavy. */
-.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table {
-  @apply border-0;
-  table-layout: auto;
-}
+  /* No frame of its own: the cell around it already draws one, and two lines a padding-width apart is
+     what made the nesting look heavy. */
+  .everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table {
+    @apply border-0;
+    table-layout: auto;
+  }
 
-/* A cell holding a nested TABLE gives up its padding, so the child's grid lines continue the
-   parent's rather than floating in an inset box. Only a table — a nested level can also render as
-   plain text (a list of strings) or a summary button, and those still need their padding. */
-.everygrid-popup-content .everygrid-nested-table td:has(> .everygrid-nested-scroll > .everygrid-nested-table) {
-  @apply p-0;
-}
+  /* A cell holding a nested TABLE gives up its padding, so the child's grid lines continue the
+     parent's rather than floating in an inset box. Only a table — a nested level can also render as
+     plain text (a list of strings) or a summary button, and those still need their padding. */
+  .everygrid-popup-content .everygrid-nested-table td:has(> .everygrid-nested-scroll > .everygrid-nested-table) {
+    @apply p-0;
+  }
 
-/* One hairline between levels instead of two: every outer edge of the child would otherwise sit
-   right on top of the parent cell's own border, and the doubling compounded with each level. The
-   frame is the parent's job, so the child drops all four of its outer edges. */
-.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > * > tr > :first-child {
-  @apply border-l-0;
-}
+  /* One hairline between levels instead of two: every outer edge of the child would otherwise sit
+     right on top of the parent cell's own border, and the doubling compounded with each level. The
+     frame is the parent's job, so the child drops all four of its outer edges. */
+  .everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > * > tr > :first-child {
+    @apply border-l-0;
+  }
 
-.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > * > tr > :last-child {
-  @apply border-r-0;
-}
+  .everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > * > tr > :last-child {
+    @apply border-r-0;
+  }
 
-.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > :first-child > tr:first-child > * {
-  @apply border-t-0;
-}
+  .everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > :first-child > tr:first-child > * {
+    @apply border-t-0;
+  }
 
-.everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > :last-child > tr:last-child > * {
-  @apply border-b-0;
-}
+  .everygrid-popup-content .everygrid-nested-scroll > .everygrid-nested-table > :last-child > tr:last-child > * {
+    @apply border-b-0;
+  }
 
-.everygrid-popup-content .everygrid-nested-table th,
-.everygrid-popup-content .everygrid-nested-table td {
-  @apply break-words whitespace-normal;
-}
+  .everygrid-popup-content .everygrid-nested-table th,
+  .everygrid-popup-content .everygrid-nested-table td {
+    @apply break-words whitespace-normal;
+  }
 
-/* Key/value rows (a `th` leading each row) keep a narrow key column — fixed layout would otherwise
-   split them evenly and give a short key half the table. */
-.everygrid-popup-content .everygrid-nested-table > tbody > tr > th:first-child {
-  width: 30%;
-}
+  /* Key/value rows (a `th` leading each row) keep a narrow key column — fixed layout would otherwise
+     split them evenly and give a short key half the table. */
+  .everygrid-popup-content .everygrid-nested-table > tbody > tr > th:first-child {
+    width: 30%;
+  }
 
-/* A popup's <pre> keeps the popup's width and scrolls its long lines itself. It used to grow to
-   its content (min-width: max-content), which pushed the whole popup body sideways — the copy
-   row landed mid-scroll and the text's left edge was off-screen. */
-.everygrid-popup-content pre:not(.whitespace-pre-wrap) {
-  @apply min-w-0 w-full bg-slate-50 border-slate-200;
-}
+  /* A popup's <pre> keeps the popup's width and scrolls its long lines itself. It used to grow to
+     its content (min-width: max-content), which pushed the whole popup body sideways — the copy
+     row landed mid-scroll and the text's left edge was off-screen. */
+  .everygrid-popup-content pre:not(.whitespace-pre-wrap) {
+    @apply min-w-0 w-full bg-slate-50 border-slate-200;
+  }
 
-.everygrid-popup-header {
-  @apply flex items-center justify-between p-4 border-b border-slate-200 bg-white rounded-t-lg;
-}
+  .everygrid-popup-header {
+    @apply flex items-center justify-between p-4 border-b border-slate-200 bg-white rounded-t-lg;
+  }
 
-.everygrid-popup-header h3 {
-  @apply text-lg font-bold text-slate-800;
-}
+  .everygrid-popup-header h3 {
+    @apply text-lg font-bold text-slate-800;
+  }
 
-/* Source strip under the popup header (e.g. the config file a grid came from). Its own full-width
-   row, so a long URL truncates instead of pushing the view toggle and close button around. */
-.everygrid-popup-subtitle {
-  @apply px-4 py-1.5 text-[11px] font-mono text-slate-500 bg-slate-50 border-b border-slate-200 truncate;
-}
+  /* Source strip under the popup header (e.g. the config file a grid came from). Its own full-width
+     row, so a long URL truncates instead of pushing the view toggle and close button around. */
+  .everygrid-popup-subtitle {
+    @apply px-4 py-1.5 text-[11px] font-mono text-slate-500 bg-slate-50 border-b border-slate-200 truncate;
+  }
 
-.everygrid-popup-close {
-  @apply text-slate-400 text-2xl leading-none cursor-pointer hover:text-slate-600 transition-colors px-1;
-}
+  .everygrid-popup-close {
+    @apply text-slate-400 text-2xl leading-none cursor-pointer hover:text-slate-600 transition-colors px-1;
+  }
 
-.everygrid-popup-btn {
-  @apply px-2 py-1 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-50 transition-colors whitespace-nowrap inline-flex items-center justify-center;
-  min-height: 24px;
-}
+  .everygrid-popup-btn {
+    @apply px-2 py-1 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-50 transition-colors whitespace-nowrap inline-flex items-center justify-center;
+    min-height: 24px;
+  }
 
-.everygrid-popup-body {
-  @apply p-4 overflow-auto overscroll-x-contain bg-slate-50/30;
-}
+  .everygrid-popup-body {
+    @apply p-4 overflow-auto overscroll-x-contain bg-slate-50/30;
+  }
 
-/* Excel View Mode Styles */
-/* Cap on the preview's own growth. A grid with a fixed height already bounds it (flex-1 wins,
-   well under this), but one sized by its content would otherwise stretch to whatever the nested
-   Excel columns need — a three-row grid ballooned past 1300px. Scrolls inside the cap. */
-.everygrid-excel-body {
-  @apply max-h-[60vh];
-}
+  /* Excel View Mode Styles */
+  /* Cap on the preview's own growth. A grid with a fixed height already bounds it (flex-1 wins,
+     well under this), but one sized by its content would otherwise stretch to whatever the nested
+     Excel columns need — a three-row grid ballooned past 1300px. Scrolls inside the cap. */
+  .everygrid-excel-body {
+    @apply max-h-[60vh];
+  }
 
-/* The preview table also carries .everygrid-table, whose rules give the table a border on all
-   four sides and every cell a left + bottom border. With border-separate that stacked: cell right
-   + next cell left, table right + last cell right, table bottom + last row bottom — double lines.
-   Here the table draws only the top and left edge and every cell only its right and bottom, so
-   each grid line is drawn exactly once. */
-.excel-format-table {
-  @apply border-separate border-spacing-0 border-t border-l border-r-0 border-b-0 border-slate-200 w-full;
-}
+  /* The preview table also carries .everygrid-table, whose rules give the table a border on all
+     four sides and every cell a left + bottom border. With border-separate that stacked: cell right
+     + next cell left, table right + last cell right, table bottom + last row bottom — double lines.
+     Here the table draws only the top and left edge and every cell only its right and bottom, so
+     each grid line is drawn exactly once. */
+  .excel-format-table {
+    @apply border-separate border-spacing-0 border-t border-l border-r-0 border-b-0 border-slate-200 w-full;
+  }
 
-.excel-format-table thead th {
-  @apply border-l-0 border-t-0 border-b border-r border-slate-200;
-}
+  .excel-format-table thead th {
+    @apply border-l-0 border-t-0 border-b border-r border-slate-200;
+  }
 
-.excel-format-table tbody td {
-  @apply border-l-0 border-t-0 border-b border-r border-slate-200;
-}
+  .excel-format-table tbody td {
+    @apply border-l-0 border-t-0 border-b border-r border-slate-200;
+  }
 
-.everygrid-text-editor {
-  /* Fill the unified popup width instead of forcing a min-width that would widen the box. */
-  @apply border border-slate-200 p-4 text-xs outline-none w-full h-[60vh] font-mono resize-none;
-}
-/* Editor popup: the body is a flex column so the editor area can shrink on a short viewport
-   (no body scroll — the editor scrolls internally). Maximizing only widens, so the editor keeps
-   its own height in both states. */
-.everygrid-popup-auto .everygrid-popup-body {
-  @apply flex flex-col min-h-0;
-}
-.everygrid-popup-auto .everygrid-text-editor,
-.everygrid-popup-auto .everygrid-json-table-wrap {
-  @apply min-h-0 shrink;
-}
+  .everygrid-text-editor {
+    /* Fill the unified popup width instead of forcing a min-width that would widen the box. */
+    @apply border border-slate-200 p-4 text-xs outline-none w-full h-[60vh] font-mono resize-none;
+  }
+  /* Editor popup: the body is a flex column so the editor area can shrink on a short viewport
+     (no body scroll — the editor scrolls internally). Maximizing only widens, so the editor keeps
+     its own height in both states. */
+  .everygrid-popup-auto .everygrid-popup-body {
+    @apply flex flex-col min-h-0;
+  }
+  .everygrid-popup-auto .everygrid-text-editor,
+  .everygrid-popup-auto .everygrid-json-table-wrap {
+    @apply min-h-0 shrink;
+  }
 
-/* TABLE mode of the text editor popup: a nested key/value table over the JSON tree. */
-.everygrid-json-table-wrap {
-  @apply border border-slate-200 p-2 text-xs w-full h-[60vh] overflow-auto font-mono;
-}
-.everygrid-json-table {
-  @apply border-collapse w-full;
-}
-/* Each cell draws only its right/bottom edge and the root table the top/left one, so a nested
-   table's cells never stack a second line on top of the cell that holds it. */
-.everygrid-json-table-wrap > .everygrid-json-table {
-  @apply border-t border-l border-slate-200;
-}
-.everygrid-json-table td {
-  @apply align-top border-r border-b border-slate-200 p-0;
-}
-.everygrid-json-table .everygrid-json-table td:last-child {
-  @apply border-r-0;
-}
-.everygrid-json-table .everygrid-json-table tr:last-child > td {
-  @apply border-b-0;
-}
-.everygrid-json-table-key {
-  @apply bg-slate-50 w-[120px];
-}
-.everygrid-json-table input {
-  @apply w-full px-2 py-1 bg-transparent outline-none focus:bg-indigo-50 placeholder:text-slate-300;
-}
-.everygrid-json-table-del, .everygrid-json-table-add {
-  @apply w-6 text-center;
-}
-.everygrid-json-table-del button, .everygrid-json-table-add button {
-  @apply px-2 py-1 transition-colors;
-}
-/* Add = blue, remove = a muted red; both step up on hover. */
-.everygrid-json-table-add button {
-  @apply w-full text-blue-500 hover:text-blue-700 hover:bg-blue-50;
-}
-.everygrid-json-table-del button {
-  @apply text-red-300 hover:text-red-600 hover:bg-red-50;
-}
+  /* TABLE mode of the text editor popup: a nested key/value table over the JSON tree. */
+  .everygrid-json-table-wrap {
+    @apply border border-slate-200 p-2 text-xs w-full h-[60vh] overflow-auto font-mono;
+  }
+  .everygrid-json-table {
+    @apply border-collapse w-full;
+  }
+  /* Each cell draws only its right/bottom edge and the root table the top/left one, so a nested
+     table's cells never stack a second line on top of the cell that holds it. */
+  .everygrid-json-table-wrap > .everygrid-json-table {
+    @apply border-t border-l border-slate-200;
+  }
+  .everygrid-json-table td {
+    @apply align-top border-r border-b border-slate-200 p-0;
+  }
+  .everygrid-json-table .everygrid-json-table td:last-child {
+    @apply border-r-0;
+  }
+  .everygrid-json-table .everygrid-json-table tr:last-child > td {
+    @apply border-b-0;
+  }
+  .everygrid-json-table-key {
+    @apply bg-slate-50 w-[120px];
+  }
+  .everygrid-json-table input {
+    @apply w-full px-2 py-1 bg-transparent outline-none focus:bg-indigo-50 placeholder:text-slate-300;
+  }
+  .everygrid-json-table-del, .everygrid-json-table-add {
+    @apply w-6 text-center;
+  }
+  .everygrid-json-table-del button, .everygrid-json-table-add button {
+    @apply px-2 py-1 transition-colors;
+  }
+  /* Add = blue, remove = a muted red; both step up on hover. */
+  .everygrid-json-table-add button {
+    @apply w-full text-blue-500 hover:text-blue-700 hover:bg-blue-50;
+  }
+  .everygrid-json-table-del button {
+    @apply text-red-300 hover:text-red-600 hover:bg-red-50;
+  }
 
-.everygrid-popup-footer {
-  @apply mt-0 p-4 border-t border-slate-200 bg-slate-50/50 flex justify-end gap-2;
-}
+  .everygrid-popup-footer {
+    @apply mt-0 p-4 border-t border-slate-200 bg-slate-50/50 flex justify-end gap-2;
+  }
 
-/* Base elements */
-button {
-  @apply cursor-pointer;
-}
+  /* Base elements */
+  button {
+    @apply cursor-pointer;
+  }
 
-/* Resizer and Header Controls */
-.everygrid-header-content {
-  @apply flex items-center justify-between gap-1 w-full h-full;
-}
+  /* Resizer and Header Controls */
+  .everygrid-header-content {
+    @apply flex items-center justify-between gap-1 w-full h-full;
+  }
 
-.everygrid-header-content span {
-  @apply truncate;
-}
+  .everygrid-header-content span {
+    @apply truncate;
+  }
 
-.everygrid-icon-btn {
-  @apply w-3 h-3 items-center justify-center rounded-sm text-current transition-colors cursor-pointer ml-1 leading-none;
-}
+  .everygrid-icon-btn {
+    @apply w-3 h-3 items-center justify-center rounded-sm text-current transition-colors cursor-pointer ml-1 leading-none;
+  }
 
-.everygrid-icon-btn:disabled {
-  @apply opacity-30 cursor-not-allowed pointer-events-none;
-}
+  .everygrid-icon-btn:disabled {
+    @apply opacity-30 cursor-not-allowed pointer-events-none;
+  }
 
-/* Pagination */
-.everygrid-pagination {
-  /* flex-1 so the bar keeps its full width: it measures itself to decide between the wide and the
-     compact control layout, and shrunk to its own contents it always read as narrow and dropped
-     the numbered pages. justify-end keeps the controls at the right regardless. */
-  @apply flex flex-1 flex-wrap items-center justify-end p-3 bg-white text-xs text-slate-500;
-}
+  /* Pagination */
+  .everygrid-pagination {
+    /* flex-1 so the bar keeps its full width: it measures itself to decide between the wide and the
+       compact control layout, and shrunk to its own contents it always read as narrow and dropped
+       the numbered pages. justify-end keeps the controls at the right regardless. */
+    @apply flex flex-1 flex-wrap items-center justify-end p-3 bg-white text-xs text-slate-500;
+  }
 
-/* With an inline row count the bar holds two things and pushes them to opposite ends; with only
-   controls it hugs the right. */
-.everygrid-pagination.has-row-count {
-  @apply justify-between w-full;
-}
+  /* With an inline row count the bar holds two things and pushes them to opposite ends; with only
+     controls it hugs the right. */
+  .everygrid-pagination.has-row-count {
+    @apply justify-between w-full;
+  }
 
-/* The inline copy already sits inside the bar's own padding. */
-.everygrid-pagination .everygrid-row-count {
-  @apply p-0;
-}
+  /* The inline copy already sits inside the bar's own padding. */
+  .everygrid-pagination .everygrid-row-count {
+    @apply p-0;
+  }
 
-.everygrid-pagination-controls {
-  @apply flex items-center gap-1;
-}
-
-.everygrid-pagination-btn {
-  @apply px-2 py-1 border border-slate-200 bg-white text-slate-600 rounded hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[32px] flex items-center justify-center;
-}
-
-.everygrid-pagination-btn.active {
-  @apply bg-indigo-600 text-white border-indigo-600 font-bold;
-}
-
-/* Bigger, easier touch targets for the pager on small screens. */
-@media (max-width: 640px) {
   .everygrid-pagination-controls {
-    @apply gap-1.5;
+    @apply flex items-center gap-1;
   }
+
   .everygrid-pagination-btn {
-    @apply px-3 py-2 text-sm min-w-[40px];
+    @apply px-2 py-1 border border-slate-200 bg-white text-slate-600 rounded hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[32px] flex items-center justify-center;
   }
-}
 
-.everygrid-resizer {
-  @apply absolute top-0 right-0 w-1.5 h-full cursor-col-resize select-none z-10 hover:bg-slate-300/50 hover:w-1.5 transition-all duration-150;
-  touch-action: none;
-}
+  .everygrid-pagination-btn.active {
+    @apply bg-indigo-600 text-white border-indigo-600 font-bold;
+  }
 
-.everygrid-resizer::after {
-  @apply content-[''] absolute top-0 right-[-3px] w-2 h-full cursor-col-resize;
-}
+  /* Bigger, easier touch targets for the pager on small screens. */
+  @media (max-width: 640px) {
+    .everygrid-pagination-controls {
+      @apply gap-1.5;
+    }
+    .everygrid-pagination-btn {
+      @apply px-3 py-2 text-sm min-w-[40px];
+    }
+  }
 
-.everygrid-resizer.is-resizing {
-  @apply bg-slate-400/50 w-1.5;
-}
+  .everygrid-resizer {
+    @apply absolute top-0 right-0 w-1.5 h-full cursor-col-resize select-none z-10 hover:bg-slate-300/50 hover:w-1.5 transition-all duration-150;
+    touch-action: none;
+  }
 
-.everygrid-table-container {
-  @apply w-full overflow-auto bg-white;
-}
+  .everygrid-resizer::after {
+    @apply content-[''] absolute top-0 right-[-3px] w-2 h-full cursor-col-resize;
+  }
 
-.everygrid-table thead tr {
-  height: 41px;
-}
+  .everygrid-resizer.is-resizing {
+    @apply bg-slate-400/50 w-1.5;
+  }
 
-/* --- Virtual scrolling ---------------------------------------------------------------------
-   One scroller for the whole body so the pinned and main tables move together. The inner table
-   containers give up their own y overflow here — two independent y scrollbars would let the two
-   halves of a row drift apart. */
-/* Grid chrome — toolbar and pagination — drawn as part of the table's frame rather than as
-   strips floating around it. Composed: every panel gets .everygrid-panel, plus whichever of the
-   position modifiers below apply. z-index because the body is a later sibling and would
-   otherwise paint over a panel that overlaps it. */
-.everygrid-panel {
-  @apply relative z-10 bg-white border-x border-slate-200;
-}
+  .everygrid-table-container {
+    @apply w-full overflow-auto bg-white;
+  }
 
-.everygrid-panel-top {
-  @apply border-t rounded-t-md;
-}
+  .everygrid-table thead tr {
+    height: 41px;
+  }
 
-.everygrid-panel-bottom {
-  @apply border-b rounded-b-md;
-}
+  /* --- Virtual scrolling ---------------------------------------------------------------------
+     One scroller for the whole body so the pinned and main tables move together. The inner table
+     containers give up their own y overflow here — two independent y scrollbars would let the two
+     halves of a row drift apart. */
+  /* Grid chrome — toolbar and pagination — drawn as part of the table's frame rather than as
+     strips floating around it. Composed: every panel gets .everygrid-panel, plus whichever of the
+     position modifiers below apply. z-index because the body is a later sibling and would
+     otherwise paint over a panel that overlaps it. */
+  .everygrid-panel {
+    @apply relative z-10 bg-white border-x border-slate-200;
+  }
 
-/* The strip between the toolbar and the table. Holds the top pagination when it is configured
-   and stands empty when it is not, at the same height either way — 53px is the pagination's own
-   50px of content plus this panel's overlap padding and bottom border. */
-.everygrid-panel-strip {
-  @apply min-h-[53px] flex items-center justify-between gap-2;
-}
+  .everygrid-panel-top {
+    @apply border-t rounded-t-md;
+  }
 
-/* Standing notice that the load was capped for this device (see dataLimit). Sits between the strip
-   and the table, styled like the Excel preview's limit banner so the two read as the same kind of
-   message. */
-.everygrid-data-limit-banner {
-  @apply flex items-center gap-2 mx-2 mb-1 px-3 py-2 text-xs rounded-md
-  bg-amber-50 border border-amber-200 text-amber-700;
-}
+  .everygrid-panel-bottom {
+    @apply border-b rounded-b-md;
+  }
 
-.everygrid-data-limit-banner svg {
-  @apply w-4 h-4 shrink-0;
-}
+  /* The strip between the toolbar and the table. Holds the top pagination when it is configured
+     and stands empty when it is not, at the same height either way — 53px is the pagination's own
+     50px of content plus this panel's overlap padding and bottom border. */
+  .everygrid-panel-strip {
+    @apply min-h-[53px] flex items-center justify-between gap-2;
+  }
 
-/* The footer keeps its height even when PaginationComponent renders nothing (a single page has
-   no controls worth showing), so the frame keeps a footer and its rounded bottom corners instead
-   of collapsing onto the table's edge. 54px = the pagination's own 50px of content plus this
-   panel's 2px overlap padding and its two borders. */
-.everygrid-pagination-bottom {
-  @apply min-h-[54px] flex items-center justify-between gap-2;
-}
+  /* Standing notice that the load was capped for this device (see dataLimit). Sits between the strip
+     and the table, styled like the Excel preview's limit banner so the two read as the same kind of
+     message. */
+  .everygrid-data-limit-banner {
+    @apply flex items-center gap-2 mx-2 mb-1 px-3 py-2 text-xs rounded-md
+    bg-amber-50 border border-amber-200 text-amber-700;
+  }
 
-/* The row count. Carries the same padding as the pagination beside it so the two sit on one
-   baseline whether or not pagination is there. */
-.everygrid-row-count {
-  @apply p-3 text-xs text-slate-500 font-medium;
-}
+  .everygrid-data-limit-banner svg {
+    @apply w-4 h-4 shrink-0;
+  }
 
-/* Sits directly on the table. The negative margin pulls the scroll container up underneath and
-   the matching padding keeps the panel's own contents where they were, so its opaque box covers
-   the scroller's first two pixels — the band a row surfaces in as it slides under the sticky
-   header. Its bottom border then lands on the header's own top border and the two read as the
-   single dividing line instead of stacking into a thick one. */
-.everygrid-panel-above-body {
-  @apply border-b;
-  margin-bottom: -2px;
-  padding-bottom: 2px;
-}
+  /* The footer keeps its height even when PaginationComponent renders nothing (a single page has
+     no controls worth showing), so the frame keeps a footer and its rounded bottom corners instead
+     of collapsing onto the table's edge. 54px = the pagination's own 50px of content plus this
+     panel's 2px overlap padding and its two borders. */
+  .everygrid-pagination-bottom {
+    @apply min-h-[54px] flex items-center justify-between gap-2;
+  }
 
-/* Sits directly under the table: overlaps its last two pixels so the table's bottom border and
-   this panel's top border likewise read as one line. */
-.everygrid-panel-below-body {
-  @apply border-t;
-  margin-top: -2px;
-  padding-top: 2px;
-}
+  /* The row count. Carries the same padding as the pagination beside it so the two sit on one
+     baseline whether or not pagination is there. */
+  .everygrid-row-count {
+    @apply p-3 text-xs text-slate-500 font-medium;
+  }
 
-.everygrid-virtual-scroller {
-  @apply overflow-auto overscroll-x-none;
-  /* The top spacer changes height on every window update. Chrome reads that as content shifting
-     above the viewport and, to keep what you were looking at still, compensates by moving
-     scrollTop — which fires another scroll, which recomputes the window, which resizes the spacer
-     again. The list ends up fighting the browser: the offset creeps backwards and the rows drift
-     out from under the viewport, leaving a blank band. A virtual list has to opt out of anchoring;
-     it is doing that job itself. */
-  overflow-anchor: none;
-}
+  /* Sits directly on the table. The negative margin pulls the scroll container up underneath and
+     the matching padding keeps the panel's own contents where they were, so its opaque box covers
+     the scroller's first two pixels — the band a row surfaces in as it slides under the sticky
+     header. Its bottom border then lands on the header's own top border and the two read as the
+     single dividing line instead of stacking into a thick one. */
+  .everygrid-panel-above-body {
+    @apply border-b;
+    margin-bottom: -2px;
+    padding-bottom: 2px;
+  }
 
-/* Both axes move to the scroller. `overflow-y: visible` alongside `overflow-x: auto` is not a
-   thing CSS honours — the visible axis is computed back to `auto` — so leaving x here would
-   quietly give each container its own vertical scrollbar again. The pinned container's
-   `sticky left-0` keeps it parked during horizontal scrolling either way. */
-.everygrid-virtual-scroller .everygrid-table-container,
-.everygrid-virtual-scroller .everygrid-pinned-table-container {
-  @apply overflow-visible!;
-}
+  /* Sits directly under the table: overlaps its last two pixels so the table's bottom border and
+     this panel's top border likewise read as one line. */
+  .everygrid-panel-below-body {
+    @apply border-t;
+    margin-top: -2px;
+    padding-top: 2px;
+  }
 
-/* Rows are a fixed height in this mode — that is what makes the spacer arithmetic exact.
-   Cells must not be able to grow past it, so overflow is clipped rather than wrapped. */
-.everygrid-virtual-scroller .everygrid-table tbody tr {
-  height: var(--everygrid-row-height, 36px);
-}
+  .everygrid-virtual-scroller {
+    @apply overflow-auto overscroll-x-none;
+    /* The top spacer changes height on every window update. Chrome reads that as content shifting
+       above the viewport and, to keep what you were looking at still, compensates by moving
+       scrollTop — which fires another scroll, which recomputes the window, which resizes the spacer
+       again. The list ends up fighting the browser: the offset creeps backwards and the rows drift
+       out from under the viewport, leaving a blank band. A virtual list has to opt out of anchoring;
+       it is doing that job itself. */
+    overflow-anchor: none;
+  }
 
-.everygrid-virtual-scroller .everygrid-table tbody tr:not(.everygrid-spacer-row) td {
-  height: var(--everygrid-row-height, 36px);
-  @apply overflow-hidden whitespace-nowrap;
-}
+  /* Both axes move to the scroller. `overflow-y: visible` alongside `overflow-x: auto` is not a
+     thing CSS honours — the visible axis is computed back to `auto` — so leaving x here would
+     quietly give each container its own vertical scrollbar again. The pinned container's
+     `sticky left-0` keeps it parked during horizontal scrolling either way. */
+  .everygrid-virtual-scroller .everygrid-table-container,
+  .everygrid-virtual-scroller .everygrid-pinned-table-container {
+    @apply overflow-visible!;
+  }
 
-/* Pure spacers: they only carry height, so every bit of cell chrome is stripped or they would
-   draw borders and padding across the empty region. */
-.everygrid-table tbody tr.everygrid-spacer-row,
-.everygrid-table tbody tr.everygrid-spacer-row td {
-  @apply p-0 border-0 bg-transparent;
-  /* Never an anchor: the spacers are the parts that resize, so anchoring to one guarantees the
-     compensation loop described on .everygrid-virtual-scroller. */
-  overflow-anchor: none;
-}
+  /* Rows are a fixed height in this mode — that is what makes the spacer arithmetic exact.
+     Cells must not be able to grow past it, so overflow is clipped rather than wrapped. */
+  .everygrid-virtual-scroller .everygrid-table tbody tr {
+    height: var(--everygrid-row-height, 36px);
+  }
 
-/* A spacer is what shows through when a fast scroll outruns the render, and a blank slab reads as
-   the grid breaking. Painting the row grid onto it turns that moment into rows that have not
-   arrived yet — the same thing the placeholder rows say, for the region no element covers.
-   Every spacer's height is a whole number of rows, so lines drawn from its top land exactly where
-   the real row borders would. Static, not pulsing: this element can be millions of pixels tall. */
-.everygrid-virtual-scroller .everygrid-table tbody tr.everygrid-spacer-row td {
-  background-image: repeating-linear-gradient(
-      to bottom,
-      #fcfdfe 0,
-      #fcfdfe calc(var(--everygrid-row-height, 36px) - 1px),
-      #eef2f7 calc(var(--everygrid-row-height, 36px) - 1px),
-      #eef2f7 var(--everygrid-row-height, 36px)
-  );
-}
+  .everygrid-virtual-scroller .everygrid-table tbody tr:not(.everygrid-spacer-row) td {
+    height: var(--everygrid-row-height, 36px);
+    @apply overflow-hidden whitespace-nowrap;
+  }
 
+  /* Pure spacers: they only carry height, so every bit of cell chrome is stripped or they would
+     draw borders and padding across the empty region. */
+  .everygrid-table tbody tr.everygrid-spacer-row,
+  .everygrid-table tbody tr.everygrid-spacer-row td {
+    @apply p-0 border-0 bg-transparent;
+    /* Never an anchor: the spacers are the parts that resize, so anchoring to one guarantees the
+       compensation loop described on .everygrid-virtual-scroller. */
+    overflow-anchor: none;
+  }
 
-/* A row whose block is still in flight. Holds its space and reads as "loading" rather than
-   flashing an empty row that looks like missing data. */
-.everygrid-table tbody tr.everygrid-row-placeholder td {
-  @apply p-0 border-b border-slate-100;
-}
-
-.everygrid-table tbody tr.everygrid-row-placeholder td span {
-  @apply block h-3 mx-2 rounded bg-slate-100;
-  animation: everygrid-placeholder-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes everygrid-placeholder-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
-}
-
-.everygrid-pinned-table-container {
-  @apply w-auto! min-w-auto! flex-none! max-w-[50%] sticky left-0 z-40 bg-white;
-  /* When pinned columns are wider than the cap, scroll them here instead of spilling over
-     (and covering) the main grid, which would otherwise make the right columns unreachable.
-     overscroll-x-none stops a hard horizontal swipe here from triggering browser back/forward. */
-  @apply overflow-x-auto overscroll-x-none;
-}
-
-.everygrid-pinned-table-container thead th {
-  @apply sticky top-0 z-50 border-t border-l border-b border-slate-200;
-  background-color: var(--everygrid-header-bg, #f8fafc) !important;
-  box-sizing: border-box;
-  min-width: 50px;
-  transform: none !important;
-  @apply h-[41px];
-  /* Same reasoning as the main header: draw the separator on the sticky cell, not via a
-     collapsed border that scrolls away. (This one never clipped its background to the padding
-     box, so it had no sliver to begin with.) */
-  box-shadow: inset 0 -1px 0 0 #e2e8f0;
-}
-
-.everygrid-pinned-table-container thead th:last-child {
-  @apply border-r;
-}
-
-.everygrid-pinned-table-container td:last-child {
-  @apply border-r border-slate-200;
-}
-
-/* JSON / long-text popup body (PopupComponent) — monospace, code-like. Scoped to its OWN class so
-   it no longer hijacks the shared `.everygrid-popup-body`, which was making every chrome modal (row
-   detail, column selectors) render in monospace and look unlike the grid. */
-/* Tighter inset on a phone-sized popup: 24px each side is most of what a narrow modal has, and it
-   pushed content that would otherwise fit into a horizontal scroll. */
-.everygrid-popup-code-body {
-  @apply p-3 sm:p-6 overflow-auto overscroll-x-none bg-slate-50 font-mono text-sm leading-relaxed;
-}
-
-.json-object {
-  @apply inline-flex flex-wrap gap-x-4 gap-y-1 my-0 py-0;
-}
-
-.json-array {
-  @apply inline-flex flex-wrap gap-x-2 list-none p-0 m-0 my-0 py-0;
-}
-
-.json-array li {
-  @apply relative py-0;
-}
-
-.json-array li::after {
-  @apply content-[','] text-slate-300 ml-0.5;
-}
-
-.json-array li:last-child::after {
-  @apply content-[''];
-}
-
-.json-array li::before {
-  @apply hidden;
-}
-
-.json-item {
-  @apply py-0 flex flex-wrap gap-x-2;
-}
-
-.json-key {
-  @apply font-bold text-slate-700 select-none;
-}
-
-.json-value {
-  @apply text-slate-600 break-all;
-}
-
-.json-null {
-  @apply text-slate-400 italic;
-}
+  /* A spacer is what shows through when a fast scroll outruns the render, and a blank slab reads as
+     the grid breaking. Painting the row grid onto it turns that moment into rows that have not
+     arrived yet — the same thing the placeholder rows say, for the region no element covers.
+     Every spacer's height is a whole number of rows, so lines drawn from its top land exactly where
+     the real row borders would. Static, not pulsing: this element can be millions of pixels tall. */
+  .everygrid-virtual-scroller .everygrid-table tbody tr.everygrid-spacer-row td {
+    background-image: repeating-linear-gradient(
+        to bottom,
+        var(--everygrid-gray-50) 0,
+        var(--everygrid-gray-50) calc(var(--everygrid-row-height, 36px) - 1px),
+        var(--everygrid-gray-100) calc(var(--everygrid-row-height, 36px) - 1px),
+        var(--everygrid-gray-100) var(--everygrid-row-height, 36px)
+    );
+  }
 
 
-/* Diff popup (toolbar "diff"): a second grid, mounted inside the popup, shows the changes. The
-   popup supplies the frame, so the grid drops its own outer border, rounding and bottom padding
-   and fills the body edge to edge. */
-.everygrid-diff-popup .everygrid-popup-body {
-  @apply p-0;
-}
-.everygrid-diff-summary {
-  @apply ml-3 text-sm font-normal text-slate-500;
-}
-.everygrid-diff-grid .everygrid-wrapper {
-  @apply h-full pb-0;
-}
-.everygrid-diff-grid .everygrid-panel {
-  @apply border-x-0;
-}
-.everygrid-diff-grid .everygrid-panel-top {
-  @apply border-t-0 rounded-none;
-}
-.everygrid-diff-grid .everygrid-panel-bottom {
-  @apply border-b-0 rounded-none;
-}
+  /* A row whose block is still in flight. Holds its space and reads as "loading" rather than
+     flashing an empty row that looks like missing data. */
+  .everygrid-table tbody tr.everygrid-row-placeholder td {
+    @apply p-0 border-b border-slate-100;
+  }
 
-/* Copy button on its own row above the popup's JSON view. */
-.everygrid-copy-btn {
-  @apply rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 shadow-sm transition-colors;
-}
-.everygrid-copy-btn:hover {
-  @apply bg-slate-50 text-slate-900;
-}
-.everygrid-copy-btn.is-copied {
-  @apply border-emerald-600 bg-emerald-600 text-white;
-}
+  .everygrid-table tbody tr.everygrid-row-placeholder td span {
+    @apply block h-3 mx-2 rounded bg-slate-100;
+    animation: everygrid-placeholder-pulse 1.2s ease-in-out infinite;
+  }
 
-/* --- Language switch (Everygrid.mountLocaleSwitch) -------------------------------------------- */
-.everygrid-locale-switch {
-  @apply inline-flex box-border h-[34px] p-[3px] rounded-lg border border-slate-200 bg-slate-100;
-}
-.everygrid-locale-btn {
-  @apply flex items-center justify-center w-[34px] h-[26px] rounded-md border-0 bg-transparent cursor-pointer
-    text-[1.05rem] leading-none opacity-45 hover:opacity-80;
-}
-.everygrid-locale-btn-text {
-  @apply w-auto px-2.5 text-xs font-medium text-slate-700;
-}
-.everygrid-locale-btn.everygrid-locale-active {
-  @apply bg-white opacity-100 shadow-[0_1px_2px_rgba(15,23,42,0.15)];
-}
-.everygrid-locale-select {
-  @apply relative inline-flex items-center box-border h-[34px] rounded-lg border border-slate-200 bg-white
-    text-sm text-slate-700;
-}
-.everygrid-locale-select select {
-  @apply h-full appearance-none border-0 bg-transparent pl-8 pr-7 text-inherit cursor-pointer outline-none;
-}
-.everygrid-locale-select-plain select {
-  @apply pl-3;
-}
-.everygrid-locale-globe {
-  @apply absolute left-2.5 pointer-events-none;
-}
-.everygrid-locale-chevron {
-  @apply absolute right-2.5 pointer-events-none;
+  @keyframes everygrid-placeholder-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  .everygrid-pinned-table-container {
+    @apply w-auto! min-w-auto! flex-none! max-w-[50%] sticky left-0 z-40 bg-white;
+    /* When pinned columns are wider than the cap, scroll them here instead of spilling over
+       (and covering) the main grid, which would otherwise make the right columns unreachable.
+       overscroll-x-none stops a hard horizontal swipe here from triggering browser back/forward. */
+    @apply overflow-x-auto overscroll-x-none;
+  }
+
+  .everygrid-pinned-table-container thead th {
+    @apply sticky top-0 z-50 border-t border-l border-b border-slate-200;
+    background-color: var(--everygrid-header-bg, var(--everygrid-gray-50)) !important;
+    box-sizing: border-box;
+    min-width: 50px;
+    transform: none !important;
+    @apply h-[41px];
+    /* Same reasoning as the main header: draw the separator on the sticky cell, not via a
+       collapsed border that scrolls away. (This one never clipped its background to the padding
+       box, so it had no sliver to begin with.) */
+    box-shadow: inset 0 -1px 0 0 var(--everygrid-gray-200);
+  }
+
+  .everygrid-pinned-table-container thead th:last-child {
+    @apply border-r;
+  }
+
+  .everygrid-pinned-table-container td:last-child {
+    @apply border-r border-slate-200;
+  }
+
+  /* JSON / long-text popup body (PopupComponent) — monospace, code-like. Scoped to its OWN class so
+     it no longer hijacks the shared `.everygrid-popup-body`, which was making every chrome modal (row
+     detail, column selectors) render in monospace and look unlike the grid. */
+  /* Tighter inset on a phone-sized popup: 24px each side is most of what a narrow modal has, and it
+     pushed content that would otherwise fit into a horizontal scroll. */
+  .everygrid-popup-code-body {
+    @apply p-3 sm:p-6 overflow-auto overscroll-x-none bg-slate-50 font-mono text-sm leading-relaxed;
+  }
+
+  .json-object {
+    @apply inline-flex flex-wrap gap-x-4 gap-y-1 my-0 py-0;
+  }
+
+  .json-array {
+    @apply inline-flex flex-wrap gap-x-2 list-none p-0 m-0 my-0 py-0;
+  }
+
+  .json-array li {
+    @apply relative py-0;
+  }
+
+  .json-array li::after {
+    @apply content-[','] text-slate-300 ml-0.5;
+  }
+
+  .json-array li:last-child::after {
+    @apply content-[''];
+  }
+
+  .json-array li::before {
+    @apply hidden;
+  }
+
+  .json-item {
+    @apply py-0 flex flex-wrap gap-x-2;
+  }
+
+  .json-key {
+    @apply font-bold text-slate-700 select-none;
+  }
+
+  .json-value {
+    @apply text-slate-600 break-all;
+  }
+
+  .json-null {
+    @apply text-slate-400 italic;
+  }
+
+
+  /* Diff popup (toolbar "diff"): a second grid, mounted inside the popup, shows the changes. The
+     popup supplies the frame, so the grid drops its own outer border, rounding and bottom padding
+     and fills the body edge to edge. */
+  .everygrid-diff-popup .everygrid-popup-body {
+    @apply p-0;
+  }
+  .everygrid-diff-summary {
+    @apply ml-3 text-sm font-normal text-slate-500;
+  }
+  .everygrid-diff-grid .everygrid-wrapper {
+    @apply h-full pb-0;
+  }
+  .everygrid-diff-grid .everygrid-panel {
+    @apply border-x-0;
+  }
+  .everygrid-diff-grid .everygrid-panel-top {
+    @apply border-t-0 rounded-none;
+  }
+  .everygrid-diff-grid .everygrid-panel-bottom {
+    @apply border-b-0 rounded-none;
+  }
+
+  /* Copy button on its own row above the popup's JSON view. */
+  .everygrid-copy-btn {
+    @apply rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 shadow-sm transition-colors;
+  }
+  .everygrid-copy-btn:hover {
+    @apply bg-slate-50 text-slate-900;
+  }
+  .everygrid-copy-btn.is-copied {
+    @apply border-emerald-600 bg-emerald-600 text-white;
+  }
+
+  /* --- Language switch (Everygrid.mountLocaleSwitch) -------------------------------------------- */
+  .everygrid-locale-switch {
+    @apply inline-flex box-border h-[34px] p-[3px] rounded-lg border border-slate-200 bg-slate-100;
+  }
+  .everygrid-locale-btn {
+    @apply flex items-center justify-center w-[34px] h-[26px] rounded-md border-0 bg-transparent cursor-pointer
+      text-[1.05rem] leading-none opacity-45 hover:opacity-80;
+  }
+  .everygrid-locale-btn-text {
+    @apply w-auto px-2.5 text-xs font-medium text-slate-700;
+  }
+  .everygrid-locale-btn.everygrid-locale-active {
+    @apply bg-white opacity-100 shadow-sm;
+  }
+  .everygrid-locale-select {
+    @apply relative inline-flex items-center box-border h-[34px] rounded-lg border border-slate-200 bg-white
+      text-sm text-slate-700;
+  }
+  .everygrid-locale-select select {
+    @apply h-full appearance-none border-0 bg-transparent pl-8 pr-7 text-inherit cursor-pointer outline-none;
+  }
+  .everygrid-locale-select-plain select {
+    @apply pl-3;
+  }
+  .everygrid-locale-globe {
+    @apply absolute left-2.5 pointer-events-none;
+  }
+  .everygrid-locale-chevron {
+    @apply absolute right-2.5 pointer-events-none;
+  }
 }
