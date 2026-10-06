@@ -634,6 +634,68 @@ after — with the usual search, sort, column choice and export.
 Change tracking costs only what was edited: a row's original is snapshotted on its first edit, so
 `changes()` and `patch()` walk the edited rows, not the dataset.
 
+## Theming
+
+Everygrid's stylesheet is a set of defaults you can override from your own CSS — no build step,
+no `!important`.
+
+- **It stays inside the grid.** The CSS reset it ships with applies only to Everygrid's own
+  elements (anything with an `everygrid-*` class, and their contents), so adding the library does
+  not change your page's margins, headings or buttons.
+- **Your CSS wins.** Every Everygrid rule lives in the `everygrid.*` [cascade layers](https://developer.mozilla.org/docs/Web/CSS/@layer).
+  A rule of yours that is not in a layer beats all of them, whatever its specificity.
+
+### Design tokens
+
+Colors, corner radii and the font are CSS custom properties, defined on `:root`. Redefine them to
+re-skin every grid on the page, or on one grid's container to re-skin just that grid:
+
+```css
+:root {
+  --everygrid-accent-600: #e11d48;   /* primary buttons, selection, focus */
+  --everygrid-radius-lg: 0;          /* square corners… */
+  --everygrid-radius-md: 0;
+  --everygrid-radius-sm: 0;
+  --everygrid-font: 'Inter', sans-serif;
+}
+
+#sales-grid {
+  --everygrid-neutral-200: #cbd5e1;     /* this grid only: stronger borders */
+}
+```
+
+| Token | Default (Tailwind palette) | Used for |
+|---|---|---|
+| `--everygrid-neutral-{50…900}` | slate | Text, borders, header and row backgrounds |
+| `--everygrid-accent-{50…900}` | indigo | Primary actions, selection, focus |
+| `--everygrid-info-{50…900}` | blue | Cell-edit focus, informational badges |
+| `--everygrid-danger-{50…900}` | red | Errors, delete |
+| `--everygrid-success-{50…900}` | emerald | Confirm, saved |
+| `--everygrid-warning-{50…900}` | amber | Caution notes, search-match marks in the query |
+| `--everygrid-notice-{50…900}` | orange | Modified-row markers |
+| `--everygrid-highlight-{50…900}` | yellow | Search-match highlight in cells |
+| `--everygrid-radius-{sm,md,lg,xl}` | 0.25 / 0.375 / 0.5 / 0.75rem | Corner radii |
+| `--everygrid-font` | system UI stack | Every Everygrid surface, modals included |
+| `--everygrid-header-color` / `-header-bg` | neutral-600 / neutral-50 | Column header text / background |
+| `--everygrid-body-color` / `-body-bg` | neutral-600 / white | Cell text / background |
+
+Each scale runs from light (`50`) to dark (`900`); a theme usually changes a whole scale, not one
+step. The header and body tokens are what a target's [`colors`](#grid-config-file) config sets,
+per grid. They take their defaults from the neutral scale on `:root`, so when you change neutrals on
+one grid's container only, set that grid's header and body tokens too.
+
+### Styling parts
+
+For anything the tokens don't cover — spacing, shadows, a single element — target the
+`everygrid-*` classes directly (e.g. `.everygrid-wrapper`, `.everygrid-locale-btn`). Because your
+rule sits outside the layers, a plain class selector is enough:
+
+```css
+.everygrid-locale-btn { font-weight: 600; }
+```
+
+Class names are kept stable across patch releases; a rename is treated as a breaking change.
+
 ## Other APIs
 
 ```ts

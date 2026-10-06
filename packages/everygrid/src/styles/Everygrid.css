@@ -15,7 +15,7 @@
 @source "../**/*.{ts,tsx}";
 
 /* Utilities read the tokens, not Tailwind's palette: `bg-slate-200` compiles to
-   `var(--everygrid-gray-200)`. The class names stay Tailwind's; what they resolve to is ours.
+   `var(--everygrid-neutral-200)`. The class names stay Tailwind's; what they resolve to is ours.
    `--color-*: initial` drops the rest of the stock palette, so an unmapped colour fails the build
    instead of silently bypassing the theme. */
 @theme inline {
@@ -24,8 +24,8 @@
   --color-black: #000;
   --color-transparent: transparent;
   --color-current: currentColor;
-  --color-slate-50: var(--everygrid-gray-50); --color-slate-100: var(--everygrid-gray-100); --color-slate-200: var(--everygrid-gray-200); --color-slate-300: var(--everygrid-gray-300); --color-slate-400: var(--everygrid-gray-400);
-  --color-slate-500: var(--everygrid-gray-500); --color-slate-600: var(--everygrid-gray-600); --color-slate-700: var(--everygrid-gray-700); --color-slate-800: var(--everygrid-gray-800); --color-slate-900: var(--everygrid-gray-900);
+  --color-slate-50: var(--everygrid-neutral-50); --color-slate-100: var(--everygrid-neutral-100); --color-slate-200: var(--everygrid-neutral-200); --color-slate-300: var(--everygrid-neutral-300); --color-slate-400: var(--everygrid-neutral-400);
+  --color-slate-500: var(--everygrid-neutral-500); --color-slate-600: var(--everygrid-neutral-600); --color-slate-700: var(--everygrid-neutral-700); --color-slate-800: var(--everygrid-neutral-800); --color-slate-900: var(--everygrid-neutral-900);
   --color-indigo-50: var(--everygrid-accent-50); --color-indigo-100: var(--everygrid-accent-100); --color-indigo-200: var(--everygrid-accent-200); --color-indigo-300: var(--everygrid-accent-300); --color-indigo-400: var(--everygrid-accent-400);
   --color-indigo-500: var(--everygrid-accent-500); --color-indigo-600: var(--everygrid-accent-600); --color-indigo-700: var(--everygrid-accent-700); --color-indigo-800: var(--everygrid-accent-800); --color-indigo-900: var(--everygrid-accent-900);
   --color-blue-50: var(--everygrid-info-50); --color-blue-100: var(--everygrid-info-100); --color-blue-200: var(--everygrid-info-200); --color-blue-300: var(--everygrid-info-300); --color-blue-400: var(--everygrid-info-400);
@@ -74,15 +74,15 @@
        <body>, so they'd otherwise inherit the host page's font and look different). Override this
        single variable to re-skin the whole component; it's the seam a future theming API can drive. */
     --everygrid-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
-    --everygrid-header-color: var(--everygrid-gray-600);
-    --everygrid-header-bg: var(--everygrid-gray-50);
-    --everygrid-body-color: var(--everygrid-gray-600);
+    --everygrid-header-color: var(--everygrid-neutral-600);
+    --everygrid-header-bg: var(--everygrid-neutral-50);
+    --everygrid-body-color: var(--everygrid-neutral-600);
     --everygrid-body-bg: #ffffff;
 
     /* Palettes. Tailwind's default values, renamed by role. Each scale runs light (50) to dark (900). */
-    /* gray — neutrals: text, borders, header/row backgrounds */
-    --everygrid-gray-50: oklch(98.4% 0.003 247.858); --everygrid-gray-100: oklch(96.8% 0.007 247.896); --everygrid-gray-200: oklch(92.9% 0.013 255.508); --everygrid-gray-300: oklch(86.9% 0.022 252.894); --everygrid-gray-400: oklch(70.4% 0.04 256.788);
-    --everygrid-gray-500: oklch(55.4% 0.046 257.417); --everygrid-gray-600: oklch(44.6% 0.043 257.281); --everygrid-gray-700: oklch(37.2% 0.044 257.287); --everygrid-gray-800: oklch(27.9% 0.041 260.031); --everygrid-gray-900: oklch(20.8% 0.042 265.755);
+    /* neutral — text, borders, header/row backgrounds (no hue implied: any scale fits) */
+    --everygrid-neutral-50: oklch(98.4% 0.003 247.858); --everygrid-neutral-100: oklch(96.8% 0.007 247.896); --everygrid-neutral-200: oklch(92.9% 0.013 255.508); --everygrid-neutral-300: oklch(86.9% 0.022 252.894); --everygrid-neutral-400: oklch(70.4% 0.04 256.788);
+    --everygrid-neutral-500: oklch(55.4% 0.046 257.417); --everygrid-neutral-600: oklch(44.6% 0.043 257.281); --everygrid-neutral-700: oklch(37.2% 0.044 257.287); --everygrid-neutral-800: oklch(27.9% 0.041 260.031); --everygrid-neutral-900: oklch(20.8% 0.042 265.755);
     /* accent — primary actions, selection, focus */
     --everygrid-accent-50: oklch(96.2% 0.018 272.314); --everygrid-accent-100: oklch(93% 0.034 272.788); --everygrid-accent-200: oklch(87% 0.065 274.039); --everygrid-accent-300: oklch(78.5% 0.115 274.713); --everygrid-accent-400: oklch(67.3% 0.182 276.935);
     --everygrid-accent-500: oklch(58.5% 0.233 277.117); --everygrid-accent-600: oklch(51.1% 0.262 276.966); --everygrid-accent-700: oklch(45.7% 0.24 277.023); --everygrid-accent-800: oklch(39.8% 0.195 277.366); --everygrid-accent-900: oklch(35.9% 0.144 278.697);
@@ -128,7 +128,7 @@
     @apply px-1 py-1 font-semibold whitespace-nowrap sticky top-0
     text-left z-30 overflow-hidden border-l border-b border-slate-200;
     color: var(--everygrid-header-color, inherit) !important;
-    background-color: var(--everygrid-header-bg, var(--everygrid-gray-50)) !important;
+    background-color: var(--everygrid-header-bg, var(--everygrid-neutral-50)) !important;
     box-sizing: border-box;
     /* border-box, NOT padding-box: the table is `border-collapse: collapse`, so the header's
        borders belong to the table — which is not sticky and scrolls away underneath. With the
@@ -136,7 +136,7 @@
        transparent and the rows sliding under the header showed through it as a moving sliver.
        Painting the background across the border box closes that band for good. */
     background-clip: border-box;
-    border-top: 1px solid var(--everygrid-gray-200);
+    border-top: 1px solid var(--everygrid-neutral-200);
     min-width: 50px;
   }
 
@@ -153,7 +153,7 @@
   .everygrid-table tbody td {
     @apply px-1 py-1 relative align-middle bg-white border-l border-b border-slate-200
     transition-all;
-    color: var(--everygrid-body-color, var(--everygrid-gray-600)) !important;
+    color: var(--everygrid-body-color, var(--everygrid-neutral-600)) !important;
     min-height: 41px;
     box-sizing: border-box;
     border-top: 0;
@@ -260,7 +260,7 @@
     right: 0;
     z-index: 2;
     background-color: #fff;
-    border-left: 1px solid var(--everygrid-gray-200);
+    border-left: 1px solid var(--everygrid-neutral-200);
   }
 
   /* The detail column header, pinned both to the top (like every header) and the right. */
@@ -268,8 +268,8 @@
     position: sticky;
     right: 0;
     z-index: 31; /* above the sibling headers (z-30) as they scroll under it */
-    border-left: 1px solid var(--everygrid-gray-200);
-    background-color: var(--everygrid-header-bg, var(--everygrid-gray-50)) !important;
+    border-left: 1px solid var(--everygrid-neutral-200);
+    background-color: var(--everygrid-header-bg, var(--everygrid-neutral-50)) !important;
   }
 
   /* Mobile: a value rendered as a button/link (e.g. the "N items" popup tag) must keep its full box.
@@ -404,9 +404,9 @@
 
   .everygrid-nested-table {
     @apply min-w-full w-auto border border-slate-200 text-[11px] border-collapse;
-    --everygrid-header-color: var(--everygrid-gray-600);
-    --everygrid-header-bg: var(--everygrid-gray-50);
-    --everygrid-body-color: var(--everygrid-gray-600);
+    --everygrid-header-color: var(--everygrid-neutral-600);
+    --everygrid-header-bg: var(--everygrid-neutral-50);
+    --everygrid-body-color: var(--everygrid-neutral-600);
     --everygrid-body-bg: #ffffff;
     color: var(--everygrid-body-color);
     background-color: var(--everygrid-body-bg);
@@ -840,10 +840,10 @@
   .everygrid-virtual-scroller .everygrid-table tbody tr.everygrid-spacer-row td {
     background-image: repeating-linear-gradient(
         to bottom,
-        var(--everygrid-gray-50) 0,
-        var(--everygrid-gray-50) calc(var(--everygrid-row-height, 36px) - 1px),
-        var(--everygrid-gray-100) calc(var(--everygrid-row-height, 36px) - 1px),
-        var(--everygrid-gray-100) var(--everygrid-row-height, 36px)
+        var(--everygrid-neutral-50) 0,
+        var(--everygrid-neutral-50) calc(var(--everygrid-row-height, 36px) - 1px),
+        var(--everygrid-neutral-100) calc(var(--everygrid-row-height, 36px) - 1px),
+        var(--everygrid-neutral-100) var(--everygrid-row-height, 36px)
     );
   }
 
@@ -874,7 +874,7 @@
 
   .everygrid-pinned-table-container thead th {
     @apply sticky top-0 z-50 border-t border-l border-b border-slate-200;
-    background-color: var(--everygrid-header-bg, var(--everygrid-gray-50)) !important;
+    background-color: var(--everygrid-header-bg, var(--everygrid-neutral-50)) !important;
     box-sizing: border-box;
     min-width: 50px;
     transform: none !important;
@@ -882,7 +882,7 @@
     /* Same reasoning as the main header: draw the separator on the sticky cell, not via a
        collapsed border that scrolls away. (This one never clipped its background to the padding
        box, so it had no sliver to begin with.) */
-    box-shadow: inset 0 -1px 0 0 var(--everygrid-gray-200);
+    box-shadow: inset 0 -1px 0 0 var(--everygrid-neutral-200);
   }
 
   .everygrid-pinned-table-container thead th:last-child {
