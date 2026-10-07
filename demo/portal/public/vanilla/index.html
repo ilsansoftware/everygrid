@@ -26,14 +26,14 @@
   // Language switch: mountLocaleSwitch draws the toggle into #locale-switch and wires it to
   // setLocale (every grid on the page switches); persist remembers the choice across reloads.
   everygrid.mountLocaleSwitch('#locale-switch', {type: 'button', defaultLocale: 'en', persist: true});
-  // createGrid autoloads everygrid.config.json from this page's own directory (relative), so no
+  // mountGrid autoloads everygrid.config.json from this page's own directory (relative), so no
   // explicit config load is needed.
-  everygrid.createGrid('demo-grid', function () {
+  everygrid.mountGrid('demo-grid', function () {
     return fetch('./data.json').then(function (r) {
       return r.json();
     });
   });
-  everygrid.createGrid('users', function () {
+  everygrid.mountGrid('users', function () {
     return fetch('https://jsonplaceholder.typicode.com/users').then(function (r) {
       return r.json();
     });

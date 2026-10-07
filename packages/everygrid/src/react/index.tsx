@@ -49,12 +49,12 @@ export function useGrid(id: string, fetcher?: Fetcher): void {
           return typeof latest === 'function' ? latest() : initial();
         }
       : initial;
-    void Everygrid.createGrid(id, source);
+    void Everygrid.mountGrid(id, source);
 
     return () => {
       pendingUnmount.set(id, setTimeout(() => {
         pendingUnmount.delete(id);
-        Everygrid.unmount(id);
+        Everygrid.unmountGrid(id);
       }, 0));
     };
     // Remount only when the id changes; a new fetcher identity shouldn't rebuild the grid.

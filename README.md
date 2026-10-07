@@ -79,24 +79,23 @@ Create `everygrid.config.json` in the same `public/` directory, so it is served 
 ### 5. Mount grids in your app
 
 Mount each grid after its container element exists — and unmount it when the screen goes away.
-`mount` reads the root config on demand (cached — one fetch app-wide), so there's no separate
+`mountGrid` reads the root config on demand (cached — one fetch app-wide), so there's no separate
 bootstrap: a matching config target customizes the grid, otherwise it renders with defaults. Grid
 lifetime is yours to control; nothing is allocated for a target this screen doesn't render.
 
 ```tsx
-import { Everygrid, createGrid } from '@everygrid/grid';
+import { mountGrid, unmountGrid } from '@everygrid/grid';
 import '@everygrid/grid/css';
 
-// No bootstrap — createGrid loads `everygrid.config.json` from the app root itself (cached; resolved
+// No bootstrap — mountGrid loads `everygrid.config.json` from the app root itself (cached; resolved
 // relative to the document, so a sub-app at /vanilla/ auto-loads /vanilla/everygrid.config.json) and
 // renders with defaults if the id isn't in the config. The fetcher is a `() => Promise<rows>` or a
 // URL string, which is streamed straight into the engine.
-await createGrid('user-grid', () => fetch('/api/users').then(r => r.json()));
-// same thing, long form:
-await Everygrid.mount('user-grid', {fetcher: '/api/users'});
+await mountGrid('user-grid', () => fetch('/api/users').then(r => r.json()));
+// or a URL, streamed:  await mountGrid('user-grid', '/api/users');
 
 // …when the screen unmounts
-Everygrid.unmount('user-grid');
+unmountGrid('user-grid');
 ```
 
 Add a container element with the matching `id` in your HTML:
@@ -145,14 +144,14 @@ are all inlined — exposed as `window.Everygrid`. No stylesheet, no React scrip
 
 ```html
 <!-- newest compatible 0.5.x — pin an exact version (e.g. @0.5.0) for production -->
-<script src="https://cdn.jsdelivr.net/npm/@everygrid/grid@0.5"></script>
+<script src="https://cdn.jsdelivr.net/npm/@everygrid/grid@0.6"></script>
 <!-- or the same file via unpkg:
-<script src="https://unpkg.com/@everygrid/grid@0.5"></script> -->
+<script src="https://unpkg.com/@everygrid/grid@0.6"></script> -->
 
 <div id="user-grid"></div>
 
 <script>
-  Everygrid.createGrid('user-grid', () => fetch('/api/users').then(r => r.json()));
+  Everygrid.mountGrid('user-grid', () => fetch('/api/users').then(r => r.json()));
 </script>
 ```
 
@@ -209,26 +208,33 @@ apply to every grid in the file.
 | Method | Description |
 |--------|-------------|
 | `loadConfig(entryConfigUrl?, opts?)` | Fetches the entry config and every file it lists, registering their targets. No DOM work, no engines, no data. Cached per URL (concurrent calls share one request); pass `{reload: true}` to bypass. Returns the registered target ids. |
-| `createGrid(id, fetcher?)` | Ergonomic form of `mount` — also a standalone named export (`import { createGrid }`). Loads the root config on demand, applies a matching target or renders with defaults. |
-| `loadEverygridConfig(urls?)` | Preload one or more entry configs (default `/everygrid.config.json`; pass an array for sub-apps / several entries). Standalone export too. Usually unnecessary — `createGrid` loads on demand. |
-| `mount(targetId, opts?)` | Mounts a grid into the element with the same id. Self-sufficient — loads the root config (`/everygrid.config.json`, cached) on demand, so no `loadConfig()` bootstrap is needed; a matching config target customizes the grid, otherwise it renders with defaults. `opts.fetcher` is a URL or a function returning rows. Requires the element to be in the DOM — returns `null` with a warning otherwise. Idempotent. |
-| `unmount(targetId)` | Tears the grid down completely — React root, WASM engine, worker thread, timers — and makes the target mountable again. Returns whether a grid was there. |
+| `loadEverygridConfig(urls?)` | Preload one or more entry configs (default `/everygrid.config.json`; pass an array for sub-apps / several entries). Standalone export too. Usually unnecessary — `mountGrid` loads on demand. |
+| `mountGrid(targetId, source?)` | Mounts a grid into the element with the same id. Self-sufficient — loads the root config (`/everygrid.config.json`, cached) on demand, so no `loadConfig()` bootstrap is needed; a matching config target customizes the grid, otherwise it renders with defaults. `source` is a URL (streamed) or a function returning rows — or `{fetcher}` holding one. Also a standalone export (`import { mountGrid }`). Requires the element to be in the DOM — returns `null` with a warning otherwise. Idempotent. |
+| `unmountGrid(targetId)` | Tears the grid down completely — React root, WASM engine, worker thread, timers — and makes the target mountable again. Returns whether a grid was there. |
 | `invalidateConfig(entryConfigUrl?)` | Drops cached config so the next `loadConfig` re-fetches. Mounted grids keep the config they were built with. |
 | `refreshAll()` | Re-renders mounted grids that are in the DOM (viewport-lazy). Use after a container changes size or visibility. |
 | `resetAutoInit()` | Unmounts every grid and forgets all loaded config. |
 
+`mount`, `unmount` and `createGrid` are the earlier names of `mountGrid` / `unmountGrid`. They are
+deprecated but still work, with the same arguments.
+
+**Naming.** `mount…` / `unmount…` attach UI to the page and take it off again (`mountGrid`,
+`mountLocaleSwitch`); `set…` changes a page-wide setting (`setLocale`, `setTheme`, `setIcons`);
+`bind…` / `listen…` wire up elements or messages you already have and return a function that
+undoes it; `use…` is a React hook (`useGrid`).
+
 A target whose fetcher is a URL is loaded straight into the WASM engine; payloads of 50MB or
 more are streamed in chunks so the main thread never holds the whole dataset.
 
-Each mounted grid owns a Web Worker and its own WASM heap, released on `unmount`. Because cost
+Each mounted grid owns a Web Worker and its own WASM heap, released on `unmountGrid`. Because cost
 tracks grids actually mounted — not targets that exist in config — a site with hundreds of
 screens pays only for what the current screen renders.
 
 ### `autoInit(apiFetchers?, entryConfigUrl?)` *(deprecated)*
 
-Convenience wrapper: `loadConfig()`, then `mount()` for every target whose element is already in
+Convenience wrapper: `loadConfig()`, then `mountGrid()` for every target whose element is already in
 the DOM. Targets whose container doesn't exist yet are skipped rather than waited for, so a
-screen that renders its container later must mount it itself. Prefer `loadConfig` + `mount`.
+screen that renders its container later must mount it itself. Prefer `loadConfig` + `mountGrid`.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|

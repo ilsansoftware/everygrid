@@ -7,9 +7,13 @@ export {GridHandle, RowHandle, CellHandle, ColumnHandle} from './core/GridHandle
 export type {RowKey, RowStatus, CellChange, RowChange, ColumnChange, RowPatch, RowDeletion, Patch, CellChangeEvent, CheckEvent, GridEvents} from './core/GridHandle';
 
 // Ergonomic functional API (thin wrappers over the static methods above). Import these directly, or
-// reach them as statics on the global (`Everygrid.createGrid`) in the standalone build.
+// reach them as statics on the global (`Everygrid.mountGrid`) in the standalone build.
 export const loadEverygridConfig = Everygrid.loadEverygridConfig;
+export const mountGrid = Everygrid.mountGrid;
+export const unmountGrid = Everygrid.unmountGrid;
+/** @deprecated Use {@link mountGrid} — same arguments. Still works. */
 export const createGrid = Everygrid.createGrid;
+export type {GridSource} from './core/Everygrid';
 
 // React bindings (React is a peerDependency). Also re-exported from the `./react` subpath.
 export {useGrid, EverygridGrid} from './react';

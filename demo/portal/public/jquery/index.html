@@ -43,10 +43,10 @@
       .then(res => res.json());
     }
 
-    // createGrid autoloads everygrid.config.json from this page's own directory (relative), so
+    // mountGrid autoloads everygrid.config.json from this page's own directory (relative), so
     // no explicit config load is needed.
-    everygrid.createGrid('demo-grid', () => getData());
-    everygrid.createGrid('demo-grid2', () => getData2().then(json => json.results));
+    everygrid.mountGrid('demo-grid', () => getData());
+    everygrid.mountGrid('demo-grid2', () => getData2().then(json => json.results));
   }(window.jQuery, window.Everygrid));
 </script>
 </body>

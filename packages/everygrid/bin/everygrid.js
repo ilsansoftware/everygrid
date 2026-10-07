@@ -126,9 +126,9 @@ function createConfig(argv) {
   console.log(`
 Next: put <div id="${id}"></div> on the page, then
 
-  import {createGrid} from '@everygrid/grid';
+  import {mountGrid} from '@everygrid/grid';
   import '@everygrid/grid/css';
-  createGrid('${id}', () => fetch('/your-data.json').then(r => r.json()));
+  mountGrid('${id}', () => fetch('/your-data.json').then(r => r.json()));
 
 ${dir === resolve('.') ? '' : `everygrid.config.json is fetched from the page's own path, so ${shown(dir)}/ must be served at the site root.\n`}`);
 }

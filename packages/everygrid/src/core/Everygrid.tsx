@@ -47,6 +47,9 @@ const logEngineError = (e: unknown): void => {
   if (!isEngineTerminated(e)) console.error(e);
 };
 
+
+/** Where a grid's rows come from: a URL (streamed into the engine) or an async function returning them. */
+export type GridSource = string | (() => Promise<Record<string, unknown>[]>);
 export class Everygrid<T extends Record<string, unknown> = Record<string, unknown>> implements IEverygrid<T> {
   public static readonly POPUP_OVERLAY_CLASS = 'everygrid-popup-overlay';
   public static readonly POPUP_CONTENT_CLASS = 'everygrid-popup-content';
@@ -352,7 +355,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /**
    * Loads config files and registers their targets — no DOM work, no engines, no data fetching.
-   * Mount the ones this screen actually shows with `mount()`.
+   * Mount the ones this screen actually shows with `mountGrid()`.
    *
    * Cached per entry URL, so calling it from every screen costs one network round trip for the
    * lifetime of the page. Config edits are picked up on reload, or explicitly via
@@ -439,7 +442,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   /**
    * Mounts a grid into the element with the same id. Self-sufficient: it loads the root config
    * (`/everygrid.config.json`, cached — one fetch app-wide) on demand, so a screen can just call
-   * `mount('a-grid', { fetcher })` with no separate `loadConfig()` bootstrap. If the config carries
+   * `mountGrid('a-grid', fetcher)` with no separate `loadConfig()` bootstrap. If the config carries
    * a target for this id, its settings apply; if not, the grid renders with defaults — config is
    * for customization, not a requirement. The element must be in the DOM (nothing is allocated for a
    * target this screen doesn't show).
@@ -447,13 +450,14 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * Idempotent: mounting an already-mounted target returns the live instance.
    *
    * @param targetId Element id; any id renders (a matching config target just customizes it)
-   * @param opts Mount options.
-   * @param opts.fetcher Data source for this target — a URL (streamed) or an async function
+   * @param source The data source — a URL (streamed) or an async function returning rows — or an
+   *   options object `{fetcher}` holding it.
    */
-  public static async mount<D extends Record<string, unknown> = Record<string, unknown>>(
+  public static async mountGrid<D extends Record<string, unknown> = Record<string, unknown>>(
     targetId: string,
-    opts: {fetcher?: string | (() => Promise<Record<string, unknown>[]>)} = {},
+    source: GridSource | {fetcher?: GridSource} = {},
   ): Promise<Everygrid<D> | null> {
+    const opts = typeof source === 'string' || typeof source === 'function' ? {fetcher: source} : source;
     const existing = Everygrid.instances.get(targetId);
     if (existing) return existing as Everygrid<D>;
     // Coalesce concurrent mounts of the same id (e.g. React StrictMode's mount→unmount→mount) so the
@@ -474,7 +478,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     opts: {fetcher?: string | (() => Promise<Record<string, unknown>[]>)},
   ): Promise<Everygrid<D> | null> {
     if (!document.getElementById(targetId)) {
-      console.warn(`Everygrid.mount: no element with id "${targetId}" — render it before mounting.`);
+      console.warn(`Everygrid.mountGrid: no element with id "${targetId}" — render it before mounting.`);
       return null;
     }
 
@@ -542,17 +546,20 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     return lists.flat();
   }
 
-  /**
-   * Create a grid in the element with `id` — the ergonomic form of `mount`. Loads the root config on
-   * demand, applies a matching config target or renders with defaults, and returns the instance
-   * (null if the element isn't in the DOM). `fetcher` is a URL (streamed) or a `() => Promise<rows>`.
-   * Also exported as a standalone `createGrid`.
-   */
+  /** @deprecated Renamed {@link mountGrid} (mount / unmount pair with mountLocaleSwitch). Still works. */
+  public static mount<D extends Record<string, unknown> = Record<string, unknown>>(
+    targetId: string,
+    opts: {fetcher?: GridSource} = {},
+  ): Promise<Everygrid<D> | null> {
+    return Everygrid.mountGrid<D>(targetId, opts);
+  }
+
+  /** @deprecated Use {@link mountGrid} — `mountGrid(id, fetcher)` takes the same arguments. Still works. */
   public static createGrid<D extends Record<string, unknown> = Record<string, unknown>>(
     id: string,
-    fetcher?: string | (() => Promise<Record<string, unknown>[]>),
+    fetcher?: GridSource,
   ): Promise<Everygrid<D> | null> {
-    return Everygrid.mount<D>(id, {fetcher});
+    return Everygrid.mountGrid<D>(id, {fetcher});
   }
 
   /**
@@ -561,17 +568,22 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    *
    * @returns true if a grid was mounted and is now gone
    */
-  public static unmount(targetId: string): boolean {
+  public static unmountGrid(targetId: string): boolean {
     const instance = Everygrid.instances.get(targetId) as Everygrid | undefined;
     if (!instance) return false;
     instance.destroy();
     return true;
   }
 
+  /** @deprecated Renamed {@link unmountGrid}. Still works. */
+  public static unmount(targetId: string): boolean {
+    return Everygrid.unmountGrid(targetId);
+  }
+
   /**
    * Loads config and mounts every target already present in the DOM.
    *
-   * @deprecated Prefer `loadConfig()` + `mount()`. Targets whose element doesn't exist yet are
+   * @deprecated Prefer `loadConfig()` + `mountGrid()`. Targets whose element doesn't exist yet are
    * skipped rather than waited for, so a screen that renders its container later must mount it
    * itself.
    * @param apiFetchers Map of data fetch functions or absolute URL strings keyed by target id
@@ -585,7 +597,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Mount sequentially: function-fetchers are awaited, and grids should appear in config order.
     for (const id of ids) {
       if (!document.getElementById(id)) continue;
-      await Everygrid.mount(id, {fetcher: apiFetchers[id]});
+      await Everygrid.mountGrid(id, {fetcher: apiFetchers[id]});
     }
   }
 
