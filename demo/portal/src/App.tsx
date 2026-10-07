@@ -53,8 +53,9 @@ const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: 
   {id: 'docs', title: 'API Docs', label: 'api docs', group: 'docs'},
 ];
 
-// Tabs that are tools rather than demos: nothing to show under 'Show Code'.
-const NO_CODE_TABS: TabId[] = ['sandbox', 'docs'];
+// Tabs with nothing to show under 'Show Code': tools rather than demos, and Theming, which prints
+// the code it amounts to under its own grid.
+const NO_CODE_TABS: TabId[] = ['sandbox', 'theme', 'docs'];
 
 // Prism language + label used by the 'Show Code' modal per demo. ('markup' is Prism's name for HTML.)
 const CODE_META: Record<TabId, { lang: string; label: string }> = {
