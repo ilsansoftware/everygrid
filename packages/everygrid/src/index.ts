@@ -16,8 +16,8 @@ export const createGrid = Everygrid.createGrid;
 export type {GridSource} from './core/Everygrid';
 
 // React bindings (React is a peerDependency). Also re-exported from the `./react` subpath.
-export {useGrid, EverygridGrid} from './react';
-export type {EverygridGridProps} from './react';
+export {useGrid, EverygridGrid, useEverygridLocale, EverygridLocaleSwitch} from './react';
+export type {EverygridGridProps, EverygridLocaleOptions, EverygridLocaleSwitchProps} from './react';
 export {GridEngineWasm} from './wasm/GridEngineWasm';
 export {I18n} from './i18n/I18n';
 export {GlobeIcon} from './icons/GlobeIcon';

@@ -395,13 +395,13 @@ export default function App() {
                 REACT_TABS.includes(t.id) ? (
                     <div key={t.id} hidden={t.id !== tab}>
                       {t.id === 'react' ? (
-                          <ReactDemo active={t.id === tab}/>
+                          <ReactDemo/>
                       ) : t.id === 'large' ? (
-                          <LargeDataDemo active={t.id === tab}/>
+                          <LargeDataDemo/>
                       ) : t.id === 'virtual' ? (
-                          <VirtualScrollDemo active={t.id === tab}/>
+                          <VirtualScrollDemo/>
                       ) : t.id === 'sandbox' ? (
-                          <SandboxDemo active={t.id === tab}/>
+                          <SandboxDemo/>
                       ) : t.id === 'theme' ? (
                           <ThemeDemo active={t.id === tab}/>
                       ) : (

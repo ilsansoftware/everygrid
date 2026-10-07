@@ -1,7 +1,5 @@
 import {useEffect, useState, type MouseEvent} from 'react';
-import {Everygrid, useGrid} from '@everygrid/grid';
-import LocaleSwitch from './LocaleSwitch';
-import {usePersistedLocale} from './useLocale';
+import {Everygrid, EverygridLocaleSwitch, useGrid} from '@everygrid/grid';
 import {LUCIDE_ICONS} from './lucideIcons';
 
 // Theming demo — the grid restyled through its CSS tokens alone: an accent scale, corner radius,
@@ -153,12 +151,6 @@ function openThemingDocs(e: MouseEvent) {
 }
 
 export default function ThemeDemo({active}: { active: boolean }) {
-  // Language is per tab: applied through the API whenever this tab is the one on screen.
-  const [locale, setLocale] = usePersistedLocale();
-  useEffect(() => {
-    if (active) Everygrid.setLocale(locale);
-  }, [active, locale]);
-
   // The React demo's first dataset: nested objects and arrays too, to see JSON cells and their
   // popup under each theme.
   useGrid('theme-grid', '/react/data.json');
@@ -205,7 +197,7 @@ export default function ThemeDemo({active}: { active: boolean }) {
       <div className='max-w-7xl mx-auto'>
         <main className='min-h-150 flex flex-col gap-6 py-8 bg-white'>
           <div className='demo-tools'>
-            <LocaleSwitch value={locale} onChange={setLocale}/>
+            <EverygridLocaleSwitch persist defaultLocale='en'/>
             <a className='theme-docs-link' href='#docs' onClick={openThemingDocs}>Theming docs →</a>
           </div>
 

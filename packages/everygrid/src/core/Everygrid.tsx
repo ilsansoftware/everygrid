@@ -1148,6 +1148,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     else target.setAttribute('data-everygrid-theme', theme);
   }
 
+  /** The UI locale: the one last set, or — until one is — the browser's language. */
+  public static getLocale(): 'ko' | 'en' {
+    I18n.initFromBrowser(); // no-op once a locale has been set explicitly
+    return I18n.getLocale();
+  }
+
   public static setLocale(locale: 'ko' | 'en'): void {
     I18n.setLocale(locale);
     Everygrid.rerenderAll();
@@ -1157,9 +1163,25 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   /** localStorage key {@link bindLocaleControls} uses for `persist: true`. */
   public static readonly LOCALE_STORAGE_KEY = 'everygrid:locale';
 
+  /** The localStorage key a `persist` option names: `true` → the built-in key, a string → itself. */
+  public static localeStorageKey(persist: boolean | string | undefined): string | null {
+    return persist === true ? Everygrid.LOCALE_STORAGE_KEY : persist || null;
+  }
+
   // Bound locale controls, told about every switch so a select and a button group bound
   // separately (or a switch from setLocale/listenForLocale) all stay in step.
   private static readonly localeListeners = new Set<(locale: 'ko' | 'en') => void>();
+
+  /**
+   * Be told whenever the UI locale changes — through {@link setLocale}, a bound or mounted control,
+   * or {@link listenForLocale}. Returns a function that stops listening.
+   */
+  public static onLocaleChange(listener: (locale: 'ko' | 'en') => void): () => void {
+    Everygrid.localeListeners.add(listener);
+    return () => {
+      Everygrid.localeListeners.delete(listener);
+    };
+  }
 
   /**
    * Wire language controls to {@link setLocale}: a `<select>` (option values `'ko'`/`'en'`) and/or
@@ -1188,7 +1210,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       : target instanceof Element ? [target] : Array.from(target);
     const activeClass = opts.activeClass ?? 'active';
     const valid = (v: unknown): v is 'ko' | 'en' => v === 'ko' || v === 'en';
-    const storageKey = opts.persist === true ? Everygrid.LOCALE_STORAGE_KEY : opts.persist || null;
+    const storageKey = Everygrid.localeStorageKey(opts.persist);
 
     // Runs on every switch, wherever it came from, so what is saved is always what is on screen.
     const sync = (locale: 'ko' | 'en', save = true) => {

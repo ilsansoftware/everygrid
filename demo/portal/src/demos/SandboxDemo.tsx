@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useRef, useState, type DragEvent, type ChangeEvent, type ClipboardEvent} from 'react';
+import {useCallback, useRef, useState, type DragEvent, type ChangeEvent, type ClipboardEvent} from 'react';
 import {Everygrid, useGrid} from '@everygrid/grid';
 
 type Row = Record<string, unknown>;
@@ -45,12 +45,7 @@ type FileInfo = { name: string; bytes: number; rows: number; columns: number };
 
 // JSON to grid — drop a JSON file or paste JSON text and the grid renders it, columns inferred
 // from the rows.
-export default function SandboxDemo({active}: { active: boolean }) {
-  // Language is per tab; this one has no switch, so it pins English whenever it is on screen.
-  useEffect(() => {
-    if (active) Everygrid.setLocale('en');
-  }, [active]);
-
+export default function SandboxDemo() {
   // The grid re-runs this same fetcher on every reload, so the rows it should show live in a ref.
   const rowsRef = useRef<Row[]>([]);
   const fetcher = useCallback(() => Promise.resolve(rowsRef.current), []);

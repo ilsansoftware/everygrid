@@ -843,6 +843,19 @@ Everygrid.bindLocaleControls('.locale-btn', {
 });
 ```
 
+In React, the same two as a component and a hook:
+
+```tsx
+import {EverygridLocaleSwitch, useEverygridLocale} from '@everygrid/grid';
+
+<EverygridLocaleSwitch persist defaultLocale='en'/>          // mountLocaleSwitch as a component
+
+const [locale, setLocale] = useEverygridLocale({persist: true}); // for a control of your own
+```
+
+`Everygrid.getLocale()` returns the current locale, and `Everygrid.onLocaleChange(fn)` calls `fn`
+on every switch, from any control (it returns a function that stops listening).
+
 ---
 
 ## Versioning
