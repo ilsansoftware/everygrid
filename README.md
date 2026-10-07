@@ -3,7 +3,7 @@
 A config-driven React data grid. Filtering, sorting and paging over millions of rows run in a
 **Rust - WASM engine** inside a Web Worker, so the UI never blocks.
 
-![Everygrid: sorting and searching 1.6M rows, then virtual-scrolling 1M rows — each grid driven by a JSON config](https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/demo.gif)
+![Everygrid: sorting and searching 1.6M rows, virtual-scrolling 1M rows, then re-theming the grid — dark mode, accent colors, header styles and icons](https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/demo.gif)
 
 <p><a href="https://d3886c7yrxubj8.cloudfront.net/" target="_blank" rel="noopener"><strong>Live demo &amp; API docs</strong></a>:
 React, vanilla JS and jQuery demos, a 1.6M-row virtual-scroll grid, and JSON-to-grid.</p>
