@@ -1152,3 +1152,15 @@ nav button.active .tab-name {
 .theme-docs-link:hover {
   text-decoration: underline;
 }
+
+/* A <select> in a demo's control row (the virtual-scroll row count): the native arrow swapped for
+   one at a fixed inset, as the grid's own selects do. Portal-only — it does not borrow the library's
+   everygrid-select class, whose scoped reset would win over this page's utilities. */
+.demo-select {
+  appearance: none;
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394a3b8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M6 8l4 4 4-4'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1rem 1rem;
+}

@@ -802,6 +802,11 @@ properties; their colors still follow the tokens.
 
 Class names are kept stable across patch releases; a rename is treated as a breaking change.
 
+CSS that itself sits in a cascade layer — Tailwind v4's utilities, for one — is compared layer by
+layer, so the library's layers can win over it. Override from outside a layer, or mark the utility
+important (`p-3!`). The `everygrid-*` classes belong to the library: don't put them on your own
+elements, or Everygrid's scoped reset will apply to those too.
+
 ## Other APIs
 
 ```ts
