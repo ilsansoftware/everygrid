@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {lazy, Suspense, useEffect, useRef, useState} from 'react';
 import {Highlight, themes} from 'prism-react-renderer';
 import {Everygrid, type GridLoadProgress} from '@everygrid/grid';
 import ReactDemo from './demos/ReactDemo';
@@ -6,8 +6,9 @@ import LargeDataDemo from './demos/LargeDataDemo';
 import VirtualScrollDemo from './demos/VirtualScrollDemo';
 import SandboxDemo from './demos/SandboxDemo';
 import ThemeDemo from './demos/ThemeDemo';
-import BenchmarkDemo from './demos/BenchmarkDemo';
 import DocsPage from './demos/DocsPage';
+// Loaded only when its tab is opened: it bundles AG Grid and TanStack Table, which no other tab needs.
+const BenchmarkDemo = lazy(() => import('./demos/BenchmarkDemo'));
 import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
 import virtualSrc from './demos/VirtualScrollDemo.tsx?raw';
@@ -406,7 +407,7 @@ export default function App() {
                       ) : t.id === 'virtual' ? (
                           <VirtualScrollDemo/>
                       ) : t.id === 'bench' ? (
-                          <BenchmarkDemo/>
+                          <Suspense fallback={null}><BenchmarkDemo/></Suspense>
                       ) : t.id === 'sandbox' ? (
                           <SandboxDemo/>
                       ) : t.id === 'theme' ? (

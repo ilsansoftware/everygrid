@@ -275,10 +275,12 @@ export default function BenchmarkDemo() {
             are warm. The match counts should agree.
           </p>
 
-          <div className='demo-tools'>
+          {/* Wraps instead of squeezing: on a narrow window the button text would otherwise break
+              onto two lines and the status would push the row out of shape. */}
+          <div className='demo-tools flex-wrap'>
             <select
                 aria-label='Rows'
-                className='demo-select h-[34px] rounded-lg border border-slate-300 bg-white pl-3 text-sm text-slate-700 shadow-sm'
+                className='demo-select h-[34px] shrink-0 rounded-lg border border-slate-300 bg-white pl-3 text-sm text-slate-700 shadow-sm'
                 value={size}
                 disabled={running}
                 onChange={e => setSize(Number(e.target.value))}
@@ -287,16 +289,16 @@ export default function BenchmarkDemo() {
             </select>
             <button
                 type='button'
-                className='h-[34px] rounded-lg bg-slate-900 px-4 font-medium text-white disabled:opacity-50'
+                className='h-[34px] min-w-[136px] shrink-0 whitespace-nowrap rounded-lg bg-slate-900 px-4 font-medium text-white disabled:opacity-50'
                 disabled={running}
                 onClick={run}
             >
               {running ? 'Running…' : 'Run benchmark'}
             </button>
-            <div className='relative h-3 w-[252px] rounded-full bg-slate-100' title='Moves only while the main thread is free'>
+            <div className='relative h-3 w-[252px] shrink-0 rounded-full bg-slate-100' title='Moves only while the main thread is free'>
               <div ref={dot} className='absolute top-0 h-3 w-3 rounded-full bg-emerald-500'/>
             </div>
-            <span className='text-slate-500'>{status}</span>
+            <span className='min-w-0 text-slate-500'>{status}</span>
           </div>
 
           {names.length > 0 && (
