@@ -8,6 +8,33 @@ A config-driven React data grid. Filtering, sorting and paging over millions of 
 <p><a href="https://d3886c7yrxubj8.cloudfront.net/" target="_blank" rel="noopener"><strong>Live demo &amp; API docs</strong></a>:
 React, vanilla JS and jQuery demos, a 1.6M-row virtual-scroll grid, and JSON-to-grid.</p>
 
+## Benchmark
+
+Sorting 1,000,000 rows: Everygrid takes 0.29 s and the page never drops a frame. AG Grid takes
+2.7 s and TanStack Table 4.9 s, and the page is frozen throughout.
+
+| 1,000,000 rows | Everygrid | AG Grid Community | TanStack Table |
+|---|---|---|---|
+| Sort: score desc | **292 ms** (freeze 9 ms) | 2.73 s (freeze 2.71 s) | 4.86 s (freeze 4.85 s) |
+| Filter: text "busan" | **275 ms** (freeze 9 ms) | 596 ms (freeze 585 ms) | 1.33 s (freeze 1.32 s) |
+| Filter "daegu" + sort joined desc | **799 ms** (freeze 9 ms) | 1.04 s (freeze 1.03 s) | 2.29 s (freeze 2.28 s) |
+| Load rows | 2.82 s (freeze 9 ms) | **1.99 s** (freeze 1.93 s) | 928 ms¹ (freeze 921 ms) |
+
+- **Time** runs until the first page of the result is ready. **Freeze** is the longest stretch the page
+  went without a frame: how long it could not repaint or answer a click. 9 ms is a single frame on the
+  120 Hz display these numbers were measured on.
+- Each figure is a **first run**, with caches cold. Repeats are faster for everyone, and Everygrid's
+  drop to ~8 ms because it keeps a per-column sort index.
+- Everygrid is timed at the engine (no DOM). AG Grid includes rendering its visible rows. TanStack
+  Table is headless, so ¹ is the row model alone, before any rendering.
+- Sort at smaller sizes: 100k rows, 41 ms / 210 ms / 274 ms; 500k rows, 216 ms / 1.34 s / 2.28 s
+  (Everygrid / AG Grid / TanStack).
+- Measured with Chrome 155 on a 10-core Mac, using `@everygrid/grid` 0.6.3, `ag-grid-community` 36.2
+  and `@tanstack/table-core` 9.2, all on the same seeded rows.
+
+**[Run it yourself →](https://d3886c7yrxubj8.cloudfront.net/#bench)** The tab shows its source under
+**Code**.
+
 ## Installation
 
 ```bash

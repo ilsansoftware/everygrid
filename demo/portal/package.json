@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@everygrid/grid": "0.6.3",
+    "@tanstack/table-core": "^9.2.6",
+    "ag-grid-community": "^36.2.0",
     "marked": "^18.0.12",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.5",

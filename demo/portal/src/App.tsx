@@ -6,16 +6,18 @@ import LargeDataDemo from './demos/LargeDataDemo';
 import VirtualScrollDemo from './demos/VirtualScrollDemo';
 import SandboxDemo from './demos/SandboxDemo';
 import ThemeDemo from './demos/ThemeDemo';
+import BenchmarkDemo from './demos/BenchmarkDemo';
 import DocsPage from './demos/DocsPage';
 import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
 import virtualSrc from './demos/VirtualScrollDemo.tsx?raw';
 import themeSrc from './demos/ThemeDemo.tsx?raw';
+import benchSrc from './demos/BenchmarkDemo.tsx?raw';
 
-type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual' | 'sandbox' | 'theme' | 'docs';
+type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual' | 'bench' | 'sandbox' | 'theme' | 'docs';
 
 // React-based tabs (rendered inline) vs. iframe demos.
-const REACT_TABS: TabId[] = ['react', 'large', 'virtual', 'sandbox', 'theme', 'docs'];
+const REACT_TABS: TabId[] = ['react', 'large', 'virtual', 'bench', 'sandbox', 'theme', 'docs'];
 
 // Tabs whose grid streams/indexes long enough to be worth a progress indicator on the nav button —
 // keyed to the grid's container id so App can poll Everygrid.getLoadProgress while the tab is hidden.
@@ -48,6 +50,7 @@ const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: 
   {id: 'jquery', title: 'Demo - jQuery', icon: '/jquery/logo.svg', name: 'jQuery'},
   {id: 'large', title: 'Large Data', caption: 'streaming 1.6M rows', label: 'large\ndata', group: 'scale'},
   {id: 'virtual', title: 'Virtual Scroll', label: 'virtual\nscroll', group: 'scale'},
+  {id: 'bench', title: 'Benchmark', caption: 'vs AG Grid, TanStack Table', label: 'bench\nmark', group: 'scale'},
   {id: 'sandbox', title: 'JSON to Grid', caption: 'drop a file, get a grid', label: 'json to grid', group: 'tool'},
   {id: 'theme', title: 'Theming', caption: 'CSS tokens, dark mode', label: 'theming', group: 'style'},
   {id: 'docs', title: 'API Docs', label: 'api docs', group: 'docs'},
@@ -64,17 +67,18 @@ const CODE_META: Record<TabId, { lang: string; label: string }> = {
   jquery: {lang: 'markup', label: 'html'},
   large: {lang: 'tsx', label: 'tsx'},
   virtual: {lang: 'tsx', label: 'tsx'},
+  bench: {lang: 'tsx', label: 'tsx'},
   sandbox: {lang: 'tsx', label: 'tsx'},
   theme: {lang: 'tsx', label: 'tsx'},
   docs: {lang: 'tsx', label: 'tsx'},
 };
 
 function isTabId(v: string | null): v is TabId {
-  return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual' || v === 'sandbox' || v === 'theme' || v === 'docs';
+  return v === 'react' || v === 'vanilla' || v === 'jquery' || v === 'large' || v === 'virtual' || v === 'bench' || v === 'sandbox' || v === 'theme' || v === 'docs';
 }
 
-// Tabs dropped on a phone: the large-data demo streams 1.6M rows, too heavy to feature on mobile.
-const MOBILE_HIDDEN_TABS: TabId[] = ['large'];
+// Tabs dropped on a phone: the large-data demo streams 1.6M rows and the benchmark holds three copies of up to 1M — too heavy for mobile.
+const MOBILE_HIDDEN_TABS: TabId[] = ['large', 'bench'];
 const NARROW_QUERY = '(max-width: 640px)';
 function isNarrowViewport(): boolean {
   return typeof window !== 'undefined' && window.matchMedia(NARROW_QUERY).matches;
@@ -193,6 +197,7 @@ export default function App() {
       : tab === 'large' ? largeSrc
           : tab === 'virtual' ? virtualSrc
               : tab === 'theme' ? themeSrc
+              : tab === 'bench' ? benchSrc
               : (codeByTab[tab] ?? 'Loading...');
 
   // Fetch a html demo's source the first time its modal is opened (React tabs are bundled).
@@ -400,6 +405,8 @@ export default function App() {
                           <LargeDataDemo/>
                       ) : t.id === 'virtual' ? (
                           <VirtualScrollDemo/>
+                      ) : t.id === 'bench' ? (
+                          <BenchmarkDemo/>
                       ) : t.id === 'sandbox' ? (
                           <SandboxDemo/>
                       ) : t.id === 'theme' ? (
