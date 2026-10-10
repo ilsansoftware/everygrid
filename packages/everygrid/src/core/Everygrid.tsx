@@ -7,7 +7,6 @@ import {GridHandle, type GridEvents, type RowKey, type CellChange, type RowChang
 
 type ColumnKinds = {numeric: boolean; boolean: boolean; date: boolean; object: boolean};
 import {ExcelView} from './ExcelView';
-import {runExcelExport} from '../wasm/ExcelExportClient';
 import {ColumnSelectorComponent} from '../components/ColumnSelectorComponent';
 import {MobileColumnSelectorComponent} from '../components/MobileColumnSelectorComponent';
 import {DiffPopupComponent} from '../components/DiffPopupComponent';
@@ -2445,7 +2444,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           // Relational export: top-level object arrays go to normalized child sheets (single sheet
           // when there are none). The on-screen preview is unaffected.
           const keyField = configKey ?? ExcelView.detectKeyField(inMemory[0]);
-          ExcelView.downloadRelationalExcel(inMemory, gridId, keyField);
+          const {ExcelWorkbook} = await import('./ExcelWorkbook');
+          ExcelWorkbook.downloadRelationalExcel(inMemory, gridId, keyField);
           return;
         }
         total = inMemory.length;
@@ -2453,7 +2453,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       } else {
         const engine = this._wasmEngines.get(containerId);
         if (!engine || !this._wasmEngineReady.get(containerId)) {
-          ExcelView.downloadExcel([], gridId);
+          const {ExcelWorkbook} = await import('./ExcelWorkbook');
+          ExcelWorkbook.downloadExcel([], gridId);
           return;
         }
         // High ceiling: the worker streams + zip-splits so memory stays bounded regardless of size.
@@ -2478,6 +2479,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const relational = ExcelView.arrayPaths(firstPage as Record<string, unknown>[]).length > 0;
       const keyField = configKey ?? ExcelView.detectKeyField(firstPage[0]);
       onProgress(0, relational ? Math.max(1, Math.ceil(total / CHUNK)) : Math.max(1, Math.ceil(total / 200000)));
+      // Loaded on demand, like ExcelWorkbook: the inlined export worker carries its own SheetJS.
+      const {runExcelExport} = await import('../wasm/ExcelExportClient');
       const {bytes, isZip} = await runExcelExport({baseName, total, chunkSize: CHUNK, fetchChunk, onProgress, signal: controller.signal, relational, keyField});
       ExcelView.triggerDownload(
         bytes,

@@ -11,6 +11,7 @@
  *    rows per sheet at a time) so even very large inputs don't materialise the whole workbook.
  */
 import {ExcelView} from '../core/ExcelView';
+import {ExcelWorkbook} from '../core/ExcelWorkbook';
 import {zipSync} from 'fflate';
 import {ROWS_PER_FILE} from './exportConstants';
 
@@ -36,7 +37,7 @@ const files: {name: string; bytes: Uint8Array}[] = [];
 
 function flush() {
   if (acc.length === 0) return;
-  files.push({name: `${baseName}_part${files.length + 1}.xlsx`, bytes: ExcelView.buildXlsxBuffer(acc, header || [])});
+  files.push({name: `${baseName}_part${files.length + 1}.xlsx`, bytes: ExcelWorkbook.buildXlsxBuffer(acc, header || [])});
   acc = [];
   ctx.postMessage({type: 'progress', done: files.length, total: expectedFiles});
 }
@@ -64,7 +65,7 @@ function emitWindow() {
     sheets.push({name: field, rows, front: ['_mainSheetRowNum', '_idx']});
   }
   fileIndex++;
-  relEntries[`${baseName}_${fileIndex}.xlsx`] = ExcelView.buildMultiSheetXlsx(sheets);
+  relEntries[`${baseName}_${fileIndex}.xlsx`] = ExcelWorkbook.buildMultiSheetXlsx(sheets);
   winParent = [];
   winChildren = new Map();
 }
@@ -101,7 +102,7 @@ function finishRelational() {
   emitWindow();
   const names = Object.keys(relEntries);
   if (names.length === 0) {
-    const bytes = ExcelView.buildMultiSheetXlsx([{name: 'main', rows: []}]);
+    const bytes = ExcelWorkbook.buildMultiSheetXlsx([{name: 'main', rows: []}]);
     ctx.postMessage({type: 'done', isZip: false, bytes}, [bytes.buffer as ArrayBuffer]);
   } else if (names.length === 1) {
     const bytes = relEntries[names[0]];
@@ -141,7 +142,7 @@ ctx.onmessage = (e: MessageEvent<InMsg>) => {
       }
       flush();
       if (files.length === 0) {
-        files.push({name: `${baseName}.xlsx`, bytes: ExcelView.buildXlsxBuffer([], header || [])});
+        files.push({name: `${baseName}.xlsx`, bytes: ExcelWorkbook.buildXlsxBuffer([], header || [])});
       }
       if (files.length === 1) {
         const bytes = files[0].bytes;
