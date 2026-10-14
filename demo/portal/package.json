@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@everygrid/grid": "0.6.3",
+    "@everygrid/grid": "0.6.4",
     "@tanstack/table-core": "^9.2.6",
     "ag-grid-community": "^36.2.0",
     "marked": "^18.0.12",
