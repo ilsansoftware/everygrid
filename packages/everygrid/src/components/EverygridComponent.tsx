@@ -56,7 +56,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
         // width 0 = hidden (display:none). Ignore it entirely: reacting would flip the grid to the
         // mobile layout while off-screen and flash back on show. Keeping the last state means a
         // hidden→shown tab at the same width doesn't re-render at all — no flicker.
-        if (w === 0) continue;
+        if (w === 0) { continue; }
         setIsMobile(w < 720);
         if (lastWidth === -1) {
           lastWidth = w; // baseline only
@@ -201,16 +201,16 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
   useLayoutEffect(() => {
     // Virtual rows are a fixed height by definition, and both tables emit identical spacers, so
     // they are already aligned — measuring them would only cost a layout pass per frame.
-    if (!virtualConf) grid.syncRowHeights(container);
-    if (virtualConf) container.style.setProperty('--everygrid-row-height', `${rowHeight}px`);
+    if (!virtualConf) { grid.syncRowHeights(container); }
+    if (virtualConf) {container.style.setProperty('--everygrid-row-height', `${rowHeight}px`);}
   });
 
   useEffect(() => {
     if (colorConfig) {
-      if (colorConfig.font?.header) container.style.setProperty('--everygrid-header-color', colorConfig.font.header);
-      if (colorConfig.bg?.header) container.style.setProperty('--everygrid-header-bg', colorConfig.bg.header);
-      if (colorConfig.font?.body) container.style.setProperty('--everygrid-body-color', colorConfig.font.body);
-      if (colorConfig.bg?.body) container.style.setProperty('--everygrid-body-bg', colorConfig.bg.body);
+      if (colorConfig.font?.header) { container.style.setProperty('--everygrid-header-color', colorConfig.font.header); }
+      if (colorConfig.bg?.header) { container.style.setProperty('--everygrid-header-bg', colorConfig.bg.header); }
+      if (colorConfig.font?.body) { container.style.setProperty('--everygrid-body-color', colorConfig.font.body); }
+      if (colorConfig.bg?.body) { container.style.setProperty('--everygrid-body-bg', colorConfig.bg.body); }
     }
   }, [colorConfig, container, grid]);
 
@@ -307,7 +307,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
     // Pull in the next chunk as the body nears its end. The margin is a screenful, so the rows are
     // already there by the time the reader arrives.
     const onExcelScroll: React.UIEventHandler<HTMLDivElement> = (e) => {
-      if (!excelScrolls || to >= streamTotal) return;
+      if (!excelScrolls || to >= streamTotal) { return; }
       const el = e.currentTarget;
       if (el.scrollTop + el.clientHeight >= el.scrollHeight - el.clientHeight) {
         setExcelLoadedState({key: excelKey, count: Math.min(streamTotal, to + excelPageSize)});

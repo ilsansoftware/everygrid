@@ -262,7 +262,7 @@ export const ExcelView = {
     const paths: string[][] = [];
     const seen = new Set<string>();
     const walk = (obj: unknown, prefix: string[]) => {
-      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) { return; }
       for (const [key, v] of Object.entries(obj as Record<string, unknown>)) {
         const path = [...prefix, key];
         if (Array.isArray(v)) {
@@ -275,7 +275,7 @@ export const ExcelView = {
         }
       }
     };
-    for (const row of rows) walk(row, []);
+    for (const row of rows) { walk(row, []); }
     return paths;
   },
 
@@ -318,7 +318,7 @@ export const ExcelView = {
 
   // Best-effort parent key when no checkbox mapping is configured: an id-like top-level field.
   detectKeyField: (record: unknown): string | undefined => {
-    if (!record || typeof record !== 'object' || Array.isArray(record)) return undefined;
+    if (!record || typeof record !== 'object' || Array.isArray(record)) { return undefined; }
     const keys = Object.keys(record as Record<string, unknown>);
     return keys.find(k => /^(id|_id|uuid|guid|key|code|no)$/i.test(k)) ?? keys.find(k => /id$/i.test(k));
   },
@@ -339,7 +339,7 @@ export const ExcelView = {
       return flattened;
     }
     if (typeof obj !== 'object') {
-      if (prefix) flattened[prefix] = obj;
+      if (prefix) { flattened[prefix] = obj; }
       return flattened;
     }
     const typedObj = obj as Record<string, unknown>;

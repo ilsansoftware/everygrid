@@ -17,10 +17,10 @@ import {MobileColumnsIcon} from '../icons/MobileColumnsIcon.tsx';
 // measureText is allocation-free and needs no layout, so it's cheap to call per column per render.
 let _measureCanvas: HTMLCanvasElement | null = null;
 const measureTextWidth = (text: string, font: string): number => {
-  if (typeof document === 'undefined') return 0;
-  if (!_measureCanvas) _measureCanvas = document.createElement('canvas');
+  if (typeof document === 'undefined') { return 0; }
+  if (!_measureCanvas) { _measureCanvas = document.createElement('canvas'); }
   const ctx = _measureCanvas.getContext('2d');
-  if (!ctx) return 0;
+  if (!ctx) { return 0; }
   ctx.font = font;
   return ctx.measureText(text).width;
 };
@@ -73,18 +73,18 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
   );
 
   const isAllChecked = useMemo(() => {
-    if (!grid.checkedValues) return false;
+    if (!grid.checkedValues) { return false; }
     const checkedSet = grid.checkedValues.get(containerId);
-    if (!checkedSet || checkedSet.size === 0 || loadedItems.length === 0) return false;
+    if (!checkedSet || checkedSet.size === 0 || loadedItems.length === 0) { return false; }
     const checkboxCol = columns.find(c => c.type === 'data_checkbox');
-    if (!checkboxCol) return false;
+    if (!checkboxCol) { return false; }
     const mappingField = checkboxCol.mapping ?? checkboxCol.field;
     return loadedItems.every(item => checkedSet.has(item[mappingField]));
   }, [loadedItems, grid, containerId, columns]);
 
   const handleCheckAll = (checked: boolean) => {
     const checkboxCol = columns.find(c => c.type === 'data_checkbox');
-    if (!checkboxCol) return;
+    if (!checkboxCol) { return; }
     const mappingField = checkboxCol.mapping ?? checkboxCol.field;
     grid.setChecked(containerId, loadedItems.map(item => item[mappingField]), checked);
   };
@@ -109,7 +109,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
       const widths = grid.getCurrentWidths(containerId);
       if (widths.size > 0 && !widths.get(field)) {
         const th = container.querySelector(`th[data-field="${CSS.escape(field)}"]`) as HTMLElement | null;
-        if (th) grid.updateColumnWidth(containerId, field, th.offsetWidth);
+        if (th) { grid.updateColumnWidth(containerId, field, th.offsetWidth); }
       }
       grid.pinnedColumns.add(field);
     }
@@ -117,12 +117,12 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
   };
 
   const handleSort = (field: string) => {
-    if (isIndexing || isExporting) return;
+    if (isIndexing || isExporting) { return; }
     const sortInfo = grid.sortConfig.get(containerId);
     let direction: 'asc' | 'desc' | null = 'asc';
     if (sortInfo?.field === field) {
-      if (sortInfo.direction === 'asc') direction = 'desc';
-      else if (sortInfo.direction === 'desc') direction = 'asc';
+      if (sortInfo.direction === 'asc') { direction = 'desc'; }
+      else if (sortInfo.direction === 'desc') { direction = 'asc'; }
     }
     grid.sortConfig.set(containerId, {field, direction});
     const paginationConfig = grid.getPagination(containerId);
@@ -199,7 +199,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
 
   const getColumnStyle = (col: GridColumn) => {
     if (isMobile) {
-      if (col.type === 'row_detail' || col.type === 'row_actions') return {width: `${MOBILE_DETAIL_W}px`, minWidth: `${MOBILE_DETAIL_W}px`};
+      if (col.type === 'row_detail' || col.type === 'row_actions') {return {width: `${MOBILE_DETAIL_W}px`, minWidth: `${MOBILE_DETAIL_W}px`};}
       const w = `${mobileWidthByField.get(col.field) ?? mobileBaseColW}px`;
       return {width: w, minWidth: w, maxWidth: w};
     }
@@ -324,7 +324,7 @@ export const GridTableComponent = React.memo(<T extends Record<string, unknown>>
                             className={`everygrid-icon-btn ${grid.sortConfig.get(containerId)?.field === col.field ? 'is-active' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (isExporting) return;
+                              if (isExporting) { return; }
                               handleSort(col.field);
                             }}
                             title={grid.sortConfig.get(containerId)?.field === col.field && grid.sortConfig.get(containerId)?.direction === 'asc' ? I18n.t('grid.sortAsc') : I18n.t('grid.sortDesc')}

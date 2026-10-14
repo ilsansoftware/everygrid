@@ -30,7 +30,7 @@ function mount(extra: Partial<ConstructorParameters<typeof Everygrid>[0]> = {}) 
     ...extra,
   });
   const g = Everygrid.get<Row>(ID);
-  if (!g) throw new Error('grid not mounted');
+  if (!g) { throw new Error('grid not mounted'); }
   return g;
 }
 
@@ -258,7 +258,7 @@ describe('column kinds', () => {
     const g = mount();
     const grid = Everygrid.instances_get(ID);
     expect(grid.isColumnNumeric('name')).toBe(false);
-    for (const r of g.rows()) r.cell('name').set(String(r.index));
+    for (const r of g.rows()) { r.cell('name').set(String(r.index)); }
     expect(grid.isColumnNumeric('name')).toBe(true);
   });
 });

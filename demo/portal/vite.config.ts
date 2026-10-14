@@ -57,7 +57,7 @@ function everygridStandaloneSrc() {
 
       server.middlewares.use((req, res, next) => {
         const match = HTML_DEMOS.find((d) => req.url?.split('?')[0] === `/${d}/index.html`);
-        if (!match) return next();
+        if (!match) { return next(); }
         const file = path.resolve(__dirname, 'public', match, 'index.html');
         res.setHeader('Content-Type', 'text/html');
         res.end(readFileSync(file, 'utf-8').replaceAll(SRC_PLACEHOLDER, DEV_STANDALONE_URL));

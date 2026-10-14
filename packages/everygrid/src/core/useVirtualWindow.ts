@@ -48,7 +48,7 @@ export const SEGMENT_ROWS = 200_000;
  * rather than one that overflows what the browser will lay out.
  */
 export function segmentRows(rowHeight: number): number {
-  if (rowHeight <= 0) return 0;
+  if (rowHeight <= 0) { return 0; }
   return Math.max(1, Math.min(SEGMENT_ROWS, Math.floor(MAX_SEGMENT_PX / rowHeight)));
 }
 
@@ -83,7 +83,7 @@ export function leadRows(
   overscan: number,
   totalRows: number,
 ): number {
-  if (scrollTop === prevScrollTop) return 0;
+  if (scrollTop === prevScrollTop) { return 0; }
   const now = computeWindow(scrollTop, viewportHeight, rowHeight, overscan, totalRows);
   const before = computeWindow(prevScrollTop, viewportHeight, rowHeight, overscan, totalRows);
   const moved = now.start - before.start;
@@ -192,7 +192,7 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
 
   const measure = useCallback(() => {
     const el = scrollerEl.current;
-    if (!el) return;
+    if (!el) { return; }
     setMetrics(prev => (
       prev.scrollTop === el.scrollTop && prev.viewportHeight === el.clientHeight
         ? prev
@@ -211,7 +211,7 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
     observerRef.current?.disconnect();
     observerRef.current = null;
     scrollerEl.current = el;
-    if (!el) return;
+    if (!el) { return; }
     setMetrics({scrollTop: el.scrollTop, prevScrollTop: el.scrollTop, viewportHeight: el.clientHeight});
     // The grid lives in a flex layout, so the viewport height changes without a window resize
     // (toolbar wrapping, container animation, pane drag).
@@ -233,7 +233,7 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
    */
   const onScroll = useCallback(() => {
     const el = scrollerEl.current;
-    if (el) reanchor(el, anchorRef, totalRows, windowRows, rowHeight);
+    if (el) { reanchor(el, anchorRef, totalRows, windowRows, rowHeight); }
     flushSync(() => {
       setAnchor(anchorRef.current);
       measure();
@@ -254,7 +254,7 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
     const el = scrollerEl.current;
     anchorRef.current = 0;
     setAnchor(0);
-    if (el) el.scrollTop = 0;
+    if (el) { el.scrollTop = 0; }
     measure();
   }, [measure]);
 
@@ -274,7 +274,7 @@ export function useVirtualWindow(totalRows: number, rowHeight: number, overscan:
       // out of range. Clamping to the end rather than snapping to 0 keeps the reader where they
       // were — this used to throw them back to the top whenever the row count changed.
       const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
-      if (el.scrollTop > maxScroll) el.scrollTop = maxScroll;
+      if (el.scrollTop > maxScroll) { el.scrollTop = maxScroll; }
     }
     measure();
   }, [totalRows, windowRows, rowHeight, measure]);

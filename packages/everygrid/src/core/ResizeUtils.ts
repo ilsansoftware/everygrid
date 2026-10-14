@@ -10,14 +10,14 @@ export const createResizeHandler = <T extends Record<string, unknown>>(
   const startResize = (startX: number, th: HTMLElement, field: string) => {
     const startWidth = th.offsetWidth;
     const table = th.closest('table');
-    if (!table) return;
+    if (!table) { return; }
 
     // For the main table, keep it from shrinking below its scroll container so narrowing a column
     // never makes the whole grid smaller (the freed space is absorbed within the table instead).
     let tableContainer: HTMLElement | null = null;
     if (requireTableContainer) {
       tableContainer = th.closest('.everygrid-table-container') as HTMLElement | null;
-      if (!tableContainer) return;
+      if (!tableContainer) { return; }
     }
 
     const allThs = Array.from(table.querySelectorAll('thead th')) as HTMLElement[];
@@ -69,7 +69,7 @@ export const createResizeHandler = <T extends Record<string, unknown>>(
       grid.renderGrid(container);
     };
     const onTouchMove = (moveEvent: TouchEvent) => {
-      if (moveEvent.touches.length > 0) onMove(moveEvent.touches[0].pageX);
+      if (moveEvent.touches.length > 0) { onMove(moveEvent.touches[0].pageX); }
     };
     const onTouchEnd = () => {
       cleanup();
@@ -92,7 +92,7 @@ export const createResizeHandler = <T extends Record<string, unknown>>(
       ? e.touches[0].pageX : (e as unknown as MouseEvent).pageX;
 
     const th = (e.target as HTMLElement).closest('th');
-    if (!th) return;
+    if (!th) { return; }
     startResize(startX, th, field);
   };
 };

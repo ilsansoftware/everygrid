@@ -15,24 +15,24 @@ type Path = (string | number)[];
 
 /** Immutable set/delete at a path inside a JSON tree. */
 const setAt = (root: unknown, path: Path, val: unknown, del = false): unknown => {
-  if (path.length === 0) return val;
+  if (path.length === 0) { return val; }
   const [k, ...rest] = path;
   if (Array.isArray(root)) {
     const a = [...root];
-    if (rest.length === 0 && del) a.splice(k as number, 1);
-    else a[k as number] = setAt(a[k as number], rest, val, del);
+    if (rest.length === 0 && del) { a.splice(k as number, 1); }
+    else { a[k as number] = setAt(a[k as number], rest, val, del); }
     return a;
   }
   const o = {...(root as Record<string, unknown>)};
-  if (rest.length === 0 && del) delete o[k as string];
-  else o[k as string] = setAt(o[k as string], rest, val, del);
+  if (rest.length === 0 && del) { delete o[k as string]; }
+  else { o[k as string] = setAt(o[k as string], rest, val, del); }
   return o;
 };
 
 /** Renames a key inside the object at `path`, keeping entry order. */
 const renameAt = (root: unknown, path: Path, from: string, to: string): unknown => {
   const obj = path.reduce<unknown>((n, k) => (n as Record<string, unknown>)[k as string], root) as Record<string, unknown>;
-  if (to === from || to in obj) return root;
+  if (to === from || to in obj) { return root; }
   const next = Object.fromEntries(Object.entries(obj).map(([k, v]) => [k === from ? to : k, v]));
   return setAt(root, path, next);
 };
@@ -59,8 +59,8 @@ const CommitInput = ({value, className, placeholder, onCommit}: {
     className={className}
     placeholder={placeholder}
     defaultValue={value}
-    onBlur={(e) => { if (e.target.value !== value) onCommit(e.target.value); }}
-    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+    onBlur={(e) => { if (e.target.value !== value) { onCommit(e.target.value); } }}
+    onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
   />
 );
 
@@ -80,8 +80,8 @@ const JsonTableNode = ({data, path, onChange}: {
         onCommit={(t) => onChange((root) => {
           let v = textToValue(t);
           // An empty container is seeded with one entry, as if "+" had been pressed right away.
-          if (Array.isArray(v) && v.length === 0) v = [''];
-          else if (v !== null && typeof v === 'object' && Object.keys(v).length === 0) v = {key1: ''};
+          if (Array.isArray(v) && v.length === 0) { v = ['']; }
+          else if (v !== null && typeof v === 'object' && Object.keys(v).length === 0) {v = {key1: ''};}
           return setAt(root, path, v);
         })}
       />
@@ -92,9 +92,9 @@ const JsonTableNode = ({data, path, onChange}: {
     ? (data as unknown[]).map((v, i) => [i, v])
     : Object.entries(data as Record<string, unknown>);
   const add = () => onChange((root) => {
-    if (isArray) return setAt(root, [...path, entries.length], '');
+    if (isArray) { return setAt(root, [...path, entries.length], ''); }
     let i = entries.length + 1;
-    while (`key${i}` in (data as Record<string, unknown>)) i++;
+    while (`key${i}` in (data as Record<string, unknown>)) { i++; }
     return setAt(root, [...path, `key${i}`], '');
   });
   return (
@@ -197,7 +197,7 @@ export const TextEditorPopupComponent = ({
             onClick={() => {
               try {
                 const parsed = JSON.parse(sanitizeJsonString(value.trim() || '{}'));
-                if (parsed === null || typeof parsed !== 'object') throw new Error();
+                if (parsed === null || typeof parsed !== 'object') { throw new Error(); }
                 setTree(parsed);
                 setMode('table');
                 setError(null);

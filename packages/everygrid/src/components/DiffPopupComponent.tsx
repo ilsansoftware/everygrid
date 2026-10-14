@@ -30,7 +30,7 @@ export const DiffPopupComponent = <T extends Record<string, unknown>>({grid, con
   const diffId = `${containerId}__diff`;
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { onClose(); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);

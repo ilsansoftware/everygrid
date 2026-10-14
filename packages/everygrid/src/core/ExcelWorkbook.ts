@@ -36,9 +36,9 @@ export const ExcelWorkbook = {
     const used = new Set<string>();
     for (const s of sheets) {
       const ws = ExcelWorkbook.sheetFromRows(s.rows, true, s.front || []);
-      if (ws) XLSX.utils.book_append_sheet(wb, ws, ExcelView.sanitizeSheetName(s.name, used));
+      if (ws) { XLSX.utils.book_append_sheet(wb, ws, ExcelView.sanitizeSheetName(s.name, used)); }
     }
-    if (wb.SheetNames.length === 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[]]), 'Sheet1');
+    if (wb.SheetNames.length === 0) { XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[]]), 'Sheet1'); }
     const out = XLSX.write(wb, {type: 'array', bookType: 'xlsx', compression: true} as XLSX.WritingOptions);
     return new Uint8Array(out as ArrayBuffer);
   },
@@ -55,25 +55,25 @@ export const ExcelWorkbook = {
   // empty rows/columns some builders (e.g. table_to_book) leave behind — so viewers don't show a
   // large empty region hanging off the table. Interior blank cells (ragged data) are kept.
   trimSheet: (ws: XLSX.WorkSheet | undefined) => {
-    if (!ws || !ws['!ref']) return;
+    if (!ws || !ws['!ref']) { return; }
     const range = XLSX.utils.decode_range(ws['!ref']);
     let minR = Infinity, minC = Infinity, maxR = -1, maxC = -1;
     for (let R = range.s.r; R <= range.e.r; R++) {
       for (let C = range.s.c; C <= range.e.c; C++) {
         const cell = ws[XLSX.utils.encode_cell({r: R, c: C})] as {v?: unknown} | undefined;
         const v = cell?.v;
-        if (v === undefined || v === null || v === '') continue;
-        if (R < minR) minR = R;
-        if (R > maxR) maxR = R;
-        if (C < minC) minC = C;
-        if (C > maxC) maxC = C;
+        if (v === undefined || v === null || v === '') { continue; }
+        if (R < minR) { minR = R; }
+        if (R > maxR) { maxR = R; }
+        if (C < minC) { minC = C; }
+        if (C > maxC) { maxC = C; }
       }
     }
-    if (maxR < 0) return; // no data at all
+    if (maxR < 0) { return; } // no data at all
     // Drop cell entries outside the tight box.
     for (let R = range.s.r; R <= range.e.r; R++) {
       for (let C = range.s.c; C <= range.e.c; C++) {
-        if (R >= minR && R <= maxR && C >= minC && C <= maxC) continue;
+        if (R >= minR && R <= maxR && C >= minC && C <= maxC) { continue; }
         delete ws[XLSX.utils.encode_cell({r: R, c: C})];
       }
     }
@@ -82,11 +82,11 @@ export const ExcelWorkbook = {
 
   // Apply the standard cell style (top-aligned, word-wrapped) to every cell of a sheet.
   styleSheet: (ws: XLSX.WorkSheet | undefined) => {
-    if (!ws) return;
+    if (!ws) { return; }
     for (const key in ws) {
-      if (key.startsWith('!')) continue;
+      if (key.startsWith('!')) { continue; }
       const cell = ws[key] as { s?: { alignment?: unknown } };
-      if (!cell.s) cell.s = {};
+      if (!cell.s) { cell.s = {}; }
       cell.s.alignment = {vertical: 'top', wrapText: true};
     }
   },
@@ -94,7 +94,7 @@ export const ExcelWorkbook = {
   // Build a worksheet from row objects (DOM-free): union header (with `front` columns pulled to the
   // left) + (optionally dense) aoa, trimmed and styled. Returns null for an empty row set.
   sheetFromRows: (rows: Record<string, unknown>[], dense = false, front: string[] = []): XLSX.WorkSheet | null => {
-    if (rows.length === 0) return null;
+    if (rows.length === 0) { return null; }
     const header = ExcelView.orderHeader(ExcelView.unionHeader(rows), front);
     const aoa = rows.map(row => header.map(k => { const v = row[k]; return v === undefined ? '' : v; }));
     const ws = XLSX.utils.aoa_to_sheet([header, ...aoa], dense ? DENSE : undefined);
@@ -122,15 +122,15 @@ export const ExcelWorkbook = {
       const childRows: Record<string, unknown>[] = [];
       records.forEach((r, i) => {
         const val = r[field];
-        if (val === undefined || val === null) return;
+        if (val === undefined || val === null) { return; }
         // Fill-down the parent key so each child row shows which parent it belongs to.
         const keyCol = (keyField && r[keyField] !== undefined) ? {[keyField]: r[keyField]} : {};
         const rows: Record<string, unknown>[] = [];
         ExcelView.decomposeToRows(val, '', rows, keyed);
-        for (const row of rows) childRows.push({_mainSheetRowNum: i + 1, ...keyCol, ...row});
+        for (const row of rows) {childRows.push({_mainSheetRowNum: i + 1, ...keyCol, ...row});}
       });
       const ws = ExcelWorkbook.sheetFromRows(childRows, dense, ['_mainSheetRowNum', '_idx']);
-      if (ws) XLSX.utils.book_append_sheet(wb, ws, ExcelView.sanitizeSheetName(field, used));
+      if (ws) { XLSX.utils.book_append_sheet(wb, ws, ExcelView.sanitizeSheetName(field, used)); }
     }
   },
 

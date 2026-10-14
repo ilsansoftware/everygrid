@@ -20,8 +20,8 @@ const splitTopLevel = (input: string, sep: string): string[] => {
   let last = 0;
   for (let i = 0; i + sep.length <= input.length; i++) {
     const c = input[i];
-    if (c === '(') depth++;
-    else if (c === ')') { if (depth > 0) depth--; }
+    if (c === '(') { depth++; }
+    else if (c === ')') { if (depth > 0) { depth--; } }
     else if (depth === 0 && input.startsWith(sep, i)) {
       out.push(input.slice(last, i));
       // i now sits on the separator's first char; advance past it. `last` must be the first char
@@ -41,8 +41,8 @@ const splitDot = (input: string): string[] => {
   let depth = 0, last = 0;
   for (let i = 0; i < input.length; i++) {
     const c = input[i];
-    if (c === '(') depth++;
-    else if (c === ')') { if (depth > 0) depth--; }
+    if (c === '(') { depth++; }
+    else if (c === ')') { if (depth > 0) { depth--; } }
     else if (c === '.' && depth === 0 && i > 0 && input[i - 1] === ')') { out.push(input.slice(last, i)); last = i + 1; }
   }
   out.push(input.slice(last));
@@ -57,8 +57,8 @@ const splitAnd = (input: string): string[] => {
   let depth = 0, last = 0;
   for (let i = 0; i < input.length; i++) {
     const c = input[i];
-    if (c === '(') depth++;
-    else if (c === ')') { if (depth > 0) depth--; }
+    if (c === '(') { depth++; }
+    else if (c === ')') { if (depth > 0) { depth--; } }
     else if (depth === 0 && input.startsWith('&&', i)) { out.push(input.slice(last, i)); i++; last = i + 1; }
     else if (c === '.' && depth === 0 && i > 0 && input[i - 1] === ')') { out.push(input.slice(last, i)); last = i + 1; }
   }
@@ -69,12 +69,12 @@ const splitAnd = (input: string): string[] => {
 // Parse one column leaf into either a `contains`/equality operand or an ordered comparison.
 const parseLeaf = (leaf: string): { op?: string; operand: string } => {
   const op = CMP_OPS.find(o => leaf.includes(o));
-  if (!op) return { operand: leaf };
+  if (!op) {return { operand: leaf };}
   const idx = leaf.indexOf(op);
   const before = leaf.slice(0, idx).trim();
   const after = leaf.slice(idx + op.length).trim();
-  if (before === '') return { op, operand: after };              // OP val
-  if (after === '') return { op: REVERSE[op], operand: before }; // val OP → flip
+  if (before === '') {return { op, operand: after };}              // OP val
+  if (after === '') {return { op: REVERSE[op], operand: before };} // val OP → flip
   return { op, operand: after };
 };
 
@@ -114,7 +114,7 @@ const dateCmp = (field: string, operand: string, op: string) => rangeCmp(normSep
 
 // Test a single scalar cell value against `op operand`.
 const scalarSatisfies = (value: unknown, op: string, operand: string): boolean => {
-  if (value === null || value === undefined) return false;
+  if (value === null || value === undefined) { return false; }
   const trimmed = operand.trim();
   if (NUM_RE.test(trimmed)) {
     const opNum = Number(trimmed);
@@ -133,8 +133,8 @@ const scalarSatisfies = (value: unknown, op: string, operand: string): boolean =
 
 // True if any leaf inside a nested value satisfies the comparison.
 const objSatisfies = (val: unknown, op: string, operand: string): boolean => {
-  if (Array.isArray(val)) return val.some(x => objSatisfies(x, op, operand));
-  if (val && typeof val === 'object') return Object.values(val).some(x => objSatisfies(x, op, operand));
+  if (Array.isArray(val)) { return val.some(x => objSatisfies(x, op, operand)); }
+  if (val && typeof val === 'object') { return Object.values(val).some(x => objSatisfies(x, op, operand)); }
   return scalarSatisfies(val, op, operand);
 };
 
@@ -143,17 +143,17 @@ const objSatisfies = (val: unknown, op: string, operand: string): boolean => {
 // Classify one leaf (already known not to be a nested `field(...)`) into a highlight term, an
 // `in[...]` member list, a regex, or an ordered comparison. `!=` is skipped (nothing to highlight).
 const classifyLeaf = (leaf: string, col: string | undefined, terms: HTerm[], preds: Pred[], regexes: HRegex[]): void => {
-  if (leaf.startsWith('~')) { const p = leaf.slice(1).trim(); if (p) regexes.push({ pattern: p, col }); return; }
+  if (leaf.startsWith('~')) { const p = leaf.slice(1).trim(); if (p) {regexes.push({ pattern: p, col });} return; }
   const low = leaf.toLowerCase();
   if ((low.startsWith('in[') && leaf.endsWith(']')) || (low.startsWith('in(') && leaf.endsWith(')'))) {
-    for (const it of leaf.slice(3, -1).split(',').map(s => s.trim()).filter(Boolean)) terms.push({ term: it.toLowerCase(), col });
+    for (const it of leaf.slice(3, -1).split(',').map(s => s.trim()).filter(Boolean)) {terms.push({ term: it.toLowerCase(), col });}
     return;
   }
   const { op, operand } = parseLeaf(leaf);
-  if (!op) terms.push({ term: leaf.toLowerCase(), col });                 // contains
+  if (!op) {terms.push({ term: leaf.toLowerCase(), col });}                 // contains
   else if (op === '!=') { /* exclusion — nothing to highlight */ }
-  else if (op === '=' || op === '==') { if (operand) terms.push({ term: operand.toLowerCase(), col }); }
-  else if (operand) preds.push({ col: col ?? '', op, operand });         // ordered comparison
+  else if (op === '=' || op === '==') { if (operand) {terms.push({ term: operand.toLowerCase(), col });} }
+  else if (operand) {preds.push({ col: col ?? '', op, operand });}         // ordered comparison
 };
 
 // Recurse into an inner expression, descending through nested `field(...)` scopes (keeping the
@@ -161,10 +161,10 @@ const classifyLeaf = (leaf: string, col: string | undefined, terms: HTerm[], pre
 const extractCol = (inner: string, col: string | undefined, terms: HTerm[], preds: Pred[], regexes: HRegex[]): void => {
   for (const raw of splitTopLevel(inner, '||').flatMap(p => splitAnd(p))) {
     const leaf = raw.trim();
-    if (!leaf) continue;
+    if (!leaf) { continue; }
     const open = (leaf.endsWith(')') && !/^in\(/i.test(leaf)) ? leaf.indexOf('(') : -1;
-    if (open > 0) extractCol(leaf.slice(open + 1, leaf.length - 1), col, terms, preds, regexes);
-    else classifyLeaf(leaf, col, terms, preds, regexes);
+    if (open > 0) { extractCol(leaf.slice(open + 1, leaf.length - 1), col, terms, preds, regexes); }
+    else { classifyLeaf(leaf, col, terms, preds, regexes); }
   }
 };
 
@@ -173,10 +173,10 @@ const splitUnparen = (t: string): { col: string; rest: string } | null => {
   const isPath = (s: string) => s.length > 0 && /^\w+$/.test(s);
   for (const op of ['!=', '<=', '>=', '==', '~', '<', '>', '=']) {
     const idx = t.indexOf(op);
-    if (idx <= 0) continue;
+    if (idx <= 0) { continue; }
     const left = t.slice(0, idx).trim();
     const right = t.slice(idx + op.length).trim();
-    if (isPath(left) && right) return { col: left.toLowerCase(), rest: op + right };
+    if (isPath(left) && right) {return { col: left.toLowerCase(), rest: op + right };}
   }
   return null;
 };
@@ -187,12 +187,12 @@ const parseQuery = (query: string): { terms: HTerm[]; preds: Pred[]; regexes: HR
   const regexes: HRegex[] = [];
   for (const raw of splitTopLevel(query, '||').flatMap(p => splitAnd(p))) {
     const t = raw.trim();
-    if (!t) continue;
+    if (!t) { continue; }
     const open = (t.endsWith(')') && !/^in\(/i.test(t)) ? t.indexOf('(') : -1;
     if (open > 0) { extractCol(t.slice(open + 1, t.length - 1), t.slice(0, open).trim().toLowerCase(), terms, preds, regexes); continue; }
     const up = splitUnparen(t);
-    if (up) classifyLeaf(up.rest, up.col, terms, preds, regexes);
-    else terms.push({ term: t.toLowerCase() });
+    if (up) { classifyLeaf(up.rest, up.col, terms, preds, regexes); }
+    else {terms.push({ term: t.toLowerCase() });}
   }
   return { terms, preds, regexes };
 };
@@ -205,14 +205,14 @@ const termsForField = (terms: HTerm[], field?: string): string[] => {
 };
 
 const highlightWithTerms = (text: string, terms: string[], regexPatterns: string[] = []): React.JSX.Element | string => {
-  if (terms.length === 0 && regexPatterns.length === 0) return text;
+  if (terms.length === 0 && regexPatterns.length === 0) { return text; }
   const lower = text.toLowerCase();
   const matches: { start: number; end: number }[] = [];
   for (const term of terms) {
     let cursor = 0;
     while (cursor < lower.length) {
       const pos = lower.indexOf(term, cursor);
-      if (pos === -1) break;
+      if (pos === -1) { break; }
       matches.push({ start: pos, end: pos + term.length });
       cursor = pos + term.length;
     }
@@ -226,7 +226,7 @@ const highlightWithTerms = (text: string, terms: string[], regexPatterns: string
       matches.push({ start: m.index, end: m.index + m[0].length });
     }
   }
-  if (matches.length === 0) return text;
+  if (matches.length === 0) { return text; }
   matches.sort((a, b) => a.start - b.start);
   const merged: { start: number; end: number }[] = [];
   for (const m of matches) {
@@ -240,16 +240,16 @@ const highlightWithTerms = (text: string, terms: string[], regexPatterns: string
   let cursor = 0;
   let key = 0;
   for (const { start, end } of merged) {
-    if (start > cursor) parts.push(<span key={key++}>{text.slice(cursor, start)}</span>);
+    if (start > cursor) {parts.push(<span key={key++}>{text.slice(cursor, start)}</span>);}
     parts.push(<mark key={key++} className='everygrid-highlight'>{text.slice(start, end)}</mark>);
     cursor = end;
   }
-  if (cursor < text.length) parts.push(<span key={key}>{text.slice(cursor)}</span>);
+  if (cursor < text.length) {parts.push(<span key={key}>{text.slice(cursor)}</span>);}
   return <>{parts}</>;
 };
 
 export const highlightText = (text: string, query: string, field?: string): React.JSX.Element | string => {
-  if (!query) return text;
+  if (!query) { return text; }
   const { terms, preds, regexes } = parseQuery(query);
   const f = field?.toLowerCase();
   // A matching ordered comparison highlights the whole cell (the value itself is the match). With a
@@ -283,10 +283,10 @@ type QNode = {src: string} & (
 
 const parseLeafNode = (tok: string): QNode => {
   const t = tok.trim();
-  if (!t) return {t: 'empty', src: t};
+  if (!t) {return {t: 'empty', src: t};}
   if (t.endsWith(')') && !/^in\(/i.test(t)) {
     const open = t.indexOf('(');
-    if (open > 0) return {t: 'field', name: t.slice(0, open).trim(), inner: parseNodeExpr(t.slice(open + 1, -1)), src: t};
+    if (open > 0) {return {t: 'field', name: t.slice(0, open).trim(), inner: parseNodeExpr(t.slice(open + 1, -1)), src: t};}
   }
   if (t.startsWith('~')) { const p = t.slice(1).trim(); return p ? {t: 'regex', pattern: p, src: t} : {t: 'empty', src: t}; }
   const low = t.toLowerCase();
@@ -321,17 +321,17 @@ const ciGetVal = (obj: Record<string, unknown>, name: string): unknown => {
   return k === undefined ? undefined : obj[k];
 };
 const leafContains = (v: unknown, term: string): boolean => {
-  if (v === null || v === undefined) return false;
-  if (typeof v === 'string') return v.toLowerCase().includes(term);
-  if (typeof v === 'number' || typeof v === 'boolean') return String(v).toLowerCase().includes(term);
-  if (Array.isArray(v)) return v.some(x => leafContains(x, term));
+  if (v === null || v === undefined) { return false; }
+  if (typeof v === 'string') { return v.toLowerCase().includes(term); }
+  if (typeof v === 'number' || typeof v === 'boolean') { return String(v).toLowerCase().includes(term); }
+  if (Array.isArray(v)) { return v.some(x => leafContains(x, term)); }
   return Object.entries(v as Record<string, unknown>).some(([k, c]) => k.toLowerCase().includes(term) || leafContains(c, term));
 };
 const leafRegex = (v: unknown, re: RegExp): boolean => {
-  if (v === null || v === undefined) return false;
-  if (typeof v === 'string') return re.test(v);
-  if (typeof v === 'number' || typeof v === 'boolean') return re.test(String(v));
-  if (Array.isArray(v)) return v.some(x => leafRegex(x, re));
+  if (v === null || v === undefined) { return false; }
+  if (typeof v === 'string') { return re.test(v); }
+  if (typeof v === 'number' || typeof v === 'boolean') { return re.test(String(v)); }
+  if (Array.isArray(v)) { return v.some(x => leafRegex(x, re)); }
   return Object.values(v as Record<string, unknown>).some(x => leafRegex(x, re));
 };
 
@@ -352,15 +352,15 @@ const evalNode = (node: QNode, v: unknown): boolean => {
 // `ColExpr::matches_array`; keeping the two in step is what stops the highlight from disagreeing
 // with the filter.
 const matchesArray = (node: QNode, arr: unknown[]): boolean => {
-  if (node.t === 'and') return node.items.every(n => matchesArray(n, arr));
-  if (node.t === 'or') return node.items.some(n => matchesArray(n, arr));
+  if (node.t === 'and') { return node.items.every(n => matchesArray(n, arr)); }
+  if (node.t === 'or') { return node.items.some(n => matchesArray(n, arr)); }
   return arr.some(e => evalNode(node, e));
 };
 const evalField = (name: string, inner: QNode, v: unknown): boolean => {
-  if (Array.isArray(v)) return v.some(e => evalField(name, inner, e));
+  if (Array.isArray(v)) { return v.some(e => evalField(name, inner, e)); }
   if (v && typeof v === 'object') {
     const child = ciGetVal(v as Record<string, unknown>, name);
-    if (child === undefined) return false;
+    if (child === undefined) { return false; }
     return Array.isArray(child) ? matchesArray(inner, child) : evalNode(inner, child);
   }
   return false;
@@ -379,17 +379,17 @@ const alternatives = (node: QNode): QNode[] =>
 // whole query over would light up any 3 it happens to contain.
 const recordMatches = (node: QNode, v: unknown, out: Map<object, Set<string>>): void => {
   if (node.t === 'and' || node.t === 'or' || node.t === 'dot') { node.items.forEach(n => recordMatches(n, v, out)); return; }
-  if (node.t !== 'field') return;
+  if (node.t !== 'field') { return; }
   const resolve = (val: unknown) => {
     if (Array.isArray(val)) { val.forEach(resolve); return; }
-    if (!val || typeof val !== 'object') return;
+    if (!val || typeof val !== 'object') { return; }
     const child = ciGetVal(val as Record<string, unknown>, node.name);
-    if (child === undefined) return;
+    if (child === undefined) { return; }
     if (Array.isArray(child)) {
       for (const e of child) {
         if (e && typeof e === 'object') {
           for (const alt of alternatives(node.inner)) {
-            if (!evalNode(alt, e)) continue;
+            if (!evalNode(alt, e)) { continue; }
             const hit = out.get(e as object) ?? new Set<string>();
             hit.add(alt.src);
             out.set(e as object, hit);
@@ -424,45 +424,45 @@ const collectPlain = (node: QNode, terms: string[], regexes: string[]): void => 
 // actually holds for it — '' when none does, so the caller highlights nothing. `rootData` should be
 // the whole row so top-level column scopes resolve.
 export const makeElementGate = (rootData: unknown, query: string): (el: unknown) => string => {
-  if (!query) return () => '';
+  if (!query) { return () => ''; }
   const root = parseNodeExpr(query);
   const matched = new Map<object, Set<string>>();
   recordMatches(root, rootData, matched);
   const terms: string[] = [];
   const regexes: string[] = [];
   const top: QNode[] = [];
-  const flatten = (n: QNode) => { if (n.t === 'and' || n.t === 'or' || n.t === 'dot') n.items.forEach(flatten); else top.push(n); };
+  const flatten = (n: QNode) => { if (n.t === 'and' || n.t === 'or' || n.t === 'dot') { n.items.forEach(flatten); } else { top.push(n); } };
   flatten(root);
-  for (const tok of top) collectPlain(tok, terms, regexes);
+  for (const tok of top) { collectPlain(tok, terms, regexes); }
   const compiled = regexes.map(p => { try { return new RegExp(p); } catch { return null; } }).filter(Boolean) as RegExp[];
   return (el: unknown) => {
     const parts: string[] = [];
     if (el && typeof el === 'object') {
       const hit = matched.get(el as object);
-      if (hit) parts.push(...hit);
+      if (hit) { parts.push(...hit); }
     }
     // Plain terms aren't scoped to an element, so they stand on their own wherever they appear.
-    for (const t of terms) if (leafContains(el, t)) parts.push(t);
-    for (const re of compiled) if (leafRegex(el, re)) parts.push(`~${re.source}`);
+    for (const t of terms) {if (leafContains(el, t)) { parts.push(t); }}
+    for (const re of compiled) {if (leafRegex(el, re)) {parts.push(`~${re.source}`);}}
     return parts.join(' || ');
   };
 };
 
 export const objectContainsFilter = (val: unknown, query: string, field?: string): boolean => {
-  if (!query) return false;
+  if (!query) { return false; }
   const { terms, preds, regexes } = parseQuery(query);
   const f = field?.toLowerCase();
-  if (preds.some(p => (f === undefined || p.col === f) && objSatisfies(val, p.op, p.operand))) return true;
+  if (preds.some(p => (f === undefined || p.col === f) && objSatisfies(val, p.op, p.operand))) { return true; }
   const scoped = termsForField(terms, field);
   const scopedRes = regexes.filter(r => !r.col || f === undefined || r.col === f).map(r => r.pattern);
-  if (scoped.length === 0 && scopedRes.length === 0) return false;
+  if (scoped.length === 0 && scopedRes.length === 0) { return false; }
   const compiled = scopedRes.map(p => { try { return new RegExp(p); } catch { return null; } }).filter(Boolean) as RegExp[];
   const check = (v: unknown): boolean => {
-    if (v === null || v === undefined) return false;
-    if (typeof v === 'string') return scoped.some(t => v.toLowerCase().includes(t)) || compiled.some(re => re.test(v));
+    if (v === null || v === undefined) { return false; }
+    if (typeof v === 'string') { return scoped.some(t => v.toLowerCase().includes(t)) || compiled.some(re => re.test(v)); }
     if (typeof v === 'number' || typeof v === 'boolean') { const s = String(v); return scoped.some(t => s.toLowerCase().includes(t)) || compiled.some(re => re.test(s)); }
-    if (Array.isArray(v)) return v.some(check);
-    if (typeof v === 'object') return Object.entries(v as Record<string, unknown>).some(([k, child]) => scoped.some(t => k.toLowerCase().includes(t)) || check(child));
+    if (Array.isArray(v)) { return v.some(check); }
+    if (typeof v === 'object') { return Object.entries(v as Record<string, unknown>).some(([k, child]) => scoped.some(t => k.toLowerCase().includes(t)) || check(child)); }
     return false;
   };
   return check(val);

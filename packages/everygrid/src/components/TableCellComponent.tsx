@@ -40,7 +40,7 @@ const MobileTruncatableText: React.FC<{
   useLayoutEffect(() => {
     const el = spanRef.current;
     // +1 absorbs sub-pixel rounding so a perfectly-fitting cell isn't flagged as overflowing.
-    if (el) setOverflowing(el.scrollWidth > el.clientWidth + 1);
+    if (el) { setOverflowing(el.scrollWidth > el.clientWidth + 1); }
   }, [text]);
   const justify = align === 'end' ? 'justify-end' : align === 'center' ? 'justify-center' : 'text-left';
   if (overflowing) {
@@ -308,11 +308,11 @@ export const TableCellComponent = React.memo(<T extends Record<string, unknown>>
       );
     }
 
-    if (value === null || value === undefined) return (
+    if (value === null || value === undefined) {return (
       <div className={`flex items-center gap-2 ${alignRight ? 'justify-end' : 'justify-between'}`}>
         <span></span>
       </div>
-    );
+    );}
 
     const renderObjectButton = (obj: object) => (
       <div className='flex items-center justify-between gap-2'>

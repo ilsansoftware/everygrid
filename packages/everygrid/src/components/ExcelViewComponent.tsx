@@ -12,7 +12,7 @@ export const ExcelViewComponent = ({data, limit, isExcel = false}: ExcelViewProp
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el) { return; }
     // The table is rebuilt wholesale on every data change. Emptying the node collapses the
     // scroller's height, which makes the browser clamp scrollTop to 0 — so an appended chunk would
     // throw the reader back to the top. Capture the offset and put it back after the rebuild.
@@ -20,7 +20,7 @@ export const ExcelViewComponent = ({data, limit, isExcel = false}: ExcelViewProp
     const prevTop = scroller?.scrollTop ?? 0;
     el.innerHTML = '';
     el.appendChild(ExcelView.createExcelTable(data, limit, isExcel));
-    if (scroller && prevTop) scroller.scrollTop = prevTop;
+    if (scroller && prevTop) { scroller.scrollTop = prevTop; }
   }, [data, limit, isExcel]);
 
   return <div ref={containerRef} className='everygrid-excel-wrapper'/>;

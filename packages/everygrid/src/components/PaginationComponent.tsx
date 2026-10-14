@@ -36,8 +36,8 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
   const containerId = container.id;
 
   const handlePageChange = (page: number) => {
-    if (onPageChange) onPageChange(page);
-    else grid.setCurrentPage(containerId, page, container);
+    if (onPageChange) { onPageChange(page); }
+    else { grid.setCurrentPage(containerId, page, container); }
   };
 
   const currentBlock = Math.floor((currentPage - 1) / MAX_VISIBLE);
@@ -50,7 +50,7 @@ export const PaginationComponent = <T extends Record<string, unknown>>({
 
   // A single page has no controls worth drawing; with an inline row count there is still the
   // count itself, so the bar stays.
-  if (totalPages <= 1 && !rowCount) return null;
+  if (totalPages <= 1 && !rowCount) { return null; }
 
   const renderBtn = (text: string, title: string, page: number, atEdge: boolean, active: boolean = false) => (
     <button

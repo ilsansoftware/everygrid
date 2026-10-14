@@ -101,9 +101,9 @@ function themeCss(accent: Accent, radius: number, font: Font, header: Header): s
         `  --everygrid-radius-lg: ${px(1)};`, `  --everygrid-radius-xl: ${px(1.5)};`);
   }
   const family = FONTS[font].value;
-  if (family) root.push(`  --everygrid-font: ${family};`);
-  for (const [name, value] of HEADERS[header].tokens) root.push(`  ${name}: ${value};`);
-  if (!root.length) return '/* The default theme — nothing to override. */';
+  if (family) {root.push(`  --everygrid-font: ${family};`);}
+  for (const [name, value] of HEADERS[header].tokens) {root.push(`  ${name}: ${value};`);}
+  if (!root.length) { return '/* The default theme — nothing to override. */'; }
 
   let css = `:root {\n${root.join('\n')}\n}`;
   if (dark.length) {
@@ -126,14 +126,14 @@ function openThemingDocs(e: MouseEvent) {
   const align = (): HTMLElement | null => {
     const heading = document.getElementById('theming');
     const scroller = heading?.closest<HTMLElement>('.demo-scroll');
-    if (!heading || !scroller) return null;
+    if (!heading || !scroller) { return null; }
     scroller.scrollTop += heading.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 16;
     return scroller;
   };
   const wait = () => {
     const scroller = align();
     if (!scroller) {
-      if (performance.now() - started < 2000) requestAnimationFrame(wait);
+      if (performance.now() - started < 2000) { requestAnimationFrame(wait); }
       return;
     }
     const keep = new ResizeObserver(() => align());
@@ -166,7 +166,7 @@ export default function ThemeDemo({active}: { active: boolean }) {
   // Tokens and mode go on the document while this tab is on screen — popups render into <body>,
   // so they have to see them too — and come off when it is not, leaving the other tabs as they were.
   useEffect(() => {
-    if (!active) return;
+    if (!active) { return; }
     const style = document.createElement('style');
     style.textContent = css;
     document.head.append(style);
@@ -179,7 +179,7 @@ export default function ThemeDemo({active}: { active: boolean }) {
 
   // Icons are swapped through the API rather than CSS; restored the same way on leaving the tab.
   useEffect(() => {
-    if (!active || icons === 'default') return;
+    if (!active || icons === 'default') { return; }
     Everygrid.setIcons(LUCIDE_ICONS);
     return () => Everygrid.setIcons(Object.fromEntries(Object.keys(LUCIDE_ICONS).map(k => [k, null])));
   }, [active, icons]);

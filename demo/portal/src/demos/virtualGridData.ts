@@ -50,7 +50,7 @@ export async function makeVirtualGridData(rows: number): Promise<Row[]> {
         active: i % 3 !== 0,
       };
     }
-    if (end < rows) await new Promise(resolve => setTimeout(resolve, 0));
+    if (end < rows) { await new Promise(resolve => setTimeout(resolve, 0)); }
   }
   return out;
 }

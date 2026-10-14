@@ -41,15 +41,15 @@ export class GridEngineWasm {
       const resp = event.data;
       if (resp.seq === -1) {
         const prog = resp as { id: string; seq: -1; type: 'progress'; stage: 'indexing' | 'ready'; progress: number };
-        if (this.progressCallback) this.progressCallback(prog.stage, prog.progress);
+        if (this.progressCallback) { this.progressCallback(prog.stage, prog.progress); }
         return;
       }
       const r = resp as { id: string; seq: number; ok: boolean; result?: unknown; error?: string };
       const handler = this.pending.get(r.seq);
-      if (!handler) return;
+      if (!handler) { return; }
       this.pending.delete(r.seq);
-      if (r.ok) handler.resolve(r.result);
-      else handler.reject(new Error(r.error ?? 'Unknown error'));
+      if (r.ok) { handler.resolve(r.result); }
+      else { handler.reject(new Error(r.error ?? 'Unknown error')); }
     };
     this.worker.onerror = (err) => {
       console.error('[GridEngineWasm] Worker error:', err);
@@ -81,7 +81,7 @@ export class GridEngineWasm {
   /** Creates a new engine instance with its own dedicated Worker. */
   static async create(engineId: string, onProgress?: (stage: 'indexing' | 'ready', progress: number) => void): Promise<GridEngineWasm> {
     const instance = new GridEngineWasm(engineId);
-    if (onProgress) instance.progressCallback = onProgress;
+    if (onProgress) { instance.progressCallback = onProgress; }
     await instance.send({ id: engineId, cmd: 'init' });
     return instance;
   }
@@ -93,7 +93,7 @@ export class GridEngineWasm {
     const totalBatches = Math.ceil(data.length / BATCH) || 1;
     const cb = reportProgress ? this.progressCallback : undefined;
     // Notify indexing started (0%) before batch upload begins
-    if (cb) cb('indexing', 0);
+    if (cb) { cb('indexing', 0); }
     for (let i = 0; i < data.length; i += BATCH) {
       const slice = data.slice(i, i + BATCH);
       const bytes = _encoder.encode(JSON.stringify(slice));
@@ -114,7 +114,7 @@ export class GridEngineWasm {
     // finalize triggers build_index in WASM — Worker will send 'ready' when done
     await this.send({ id: this.engineId, cmd: 'finalize' as const });
     // finalize complete → 100%
-    if (cb) cb('ready', 100);
+    if (cb) { cb('ready', 100); }
   }
 
   /**
@@ -122,7 +122,7 @@ export class GridEngineWasm {
    * Pair with streamChunk() (many) and streamEnd() (once).
    */
   async streamStart(reportProgress = true): Promise<void> {
-    if (reportProgress && this.progressCallback) this.progressCallback('indexing', 0);
+    if (reportProgress && this.progressCallback) { this.progressCallback('indexing', 0); }
     await this.send({ id: this.engineId, cmd: 'streamStart' as const } as Omit<WorkerRequest, 'seq'>);
   }
 
@@ -143,7 +143,7 @@ export class GridEngineWasm {
   /** Streaming load — finish. Flushes remaining rows and builds the index in the worker. */
   async streamEnd(reportProgress = true): Promise<void> {
     await this.send({ id: this.engineId, cmd: 'streamEnd' as const } as Omit<WorkerRequest, 'seq'>);
-    if (reportProgress && this.progressCallback) this.progressCallback('ready', 100);
+    if (reportProgress && this.progressCallback) { this.progressCallback('ready', 100); }
   }
 
   /**

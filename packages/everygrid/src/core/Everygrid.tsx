@@ -43,7 +43,7 @@ const targetIdOf = (t: string | {id: string}): string => (typeof t === 'string' 
 
 /** Logs an error unless it is destroy() terminating the engine — that one is intentional. */
 const logEngineError = (e: unknown): void => {
-  if (!isEngineTerminated(e)) console.error(e);
+  if (!isEngineTerminated(e)) { console.error(e); }
 };
 
 
@@ -245,7 +245,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     I18n.initFromBrowser();
     // Initialize an independent WASM engine per containerId
     // Skip engine creation for grids with no data source at all (empty grids)
-    if (this.options.data === undefined && !this.options.dataUrl) return;
+    if (this.options.data === undefined && !this.options.dataUrl) { return; }
 
     const targetIds = (this.options.targets ?? []).map(targetIdOf);
     targetIds.forEach(id => {
@@ -254,18 +254,18 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           // Show 100% briefly before hiding the progress bar
           this._indexingProgress.set(id, 100);
           const el100 = document.getElementById(id);
-          if (el100) this.renderGrid(el100);
+          if (el100) { this.renderGrid(el100); }
           setTimeout(() => {
-            if (this._destroyed) return;
+            if (this._destroyed) { return; }
             this._indexingStage.set(id, 'ready');
             const elDone = document.getElementById(id);
-            if (elDone) this.renderGrid(elDone);
+            if (elDone) { this.renderGrid(elDone); }
           }, 400);
         } else {
           this._indexingStage.set(id, stage);
           this._indexingProgress.set(id, progress);
           const el = document.getElementById(id);
-          if (el) this.renderGrid(el);
+          if (el) { this.renderGrid(el); }
         }
       }).then(engine => {
         // Destroyed while the worker was starting: destroy() never saw this engine, so free it here.
@@ -290,7 +290,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
           this.applyWasmFilter(id).catch(logEngineError);
         }
       }).catch(err => {
-        if (!isEngineTerminated(err)) console.warn(`Everygrid: WASM engine init failed for ${id}:`, err);
+        if (!isEngineTerminated(err)) {console.warn(`Everygrid: WASM engine init failed for ${id}:`, err);}
       });
     });
   }
@@ -311,7 +311,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   /** The instance behind a target id (tests and tooling; the handle is the API). */
   public static instances_get<D extends Record<string, unknown> = Record<string, unknown>>(id: string): Everygrid<D> {
     const instance = Everygrid.instances.get(id) as Everygrid<D> | undefined;
-    if (!instance) throw new Error(`Everygrid: no grid mounted as "${id}"`);
+    if (!instance) {throw new Error(`Everygrid: no grid mounted as "${id}"`);}
     return instance;
   }
 
@@ -343,7 +343,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * Absolute paths ('/…') get the base path prefix, so the library works under a sub-path deploy.
    */
   private static _resolveUrl(url: string): string {
-    if (/^https?:\/\//.test(url)) return url;
+    if (/^https?:\/\//.test(url)) { return url; }
     if (url.startsWith('/')) {
       const base = new URL(document.baseURI);
       const prefix = base.pathname.endsWith('/') ? base.pathname.slice(0, -1) : base.pathname;
@@ -369,9 +369,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     entryConfigUrl: string = 'everygrid.config.json',
     opts: {reload?: boolean} = {},
   ): Promise<string[]> {
-    if (opts.reload) Everygrid._configCache.delete(entryConfigUrl);
+    if (opts.reload) { Everygrid._configCache.delete(entryConfigUrl); }
     const cached = Everygrid._configCache.get(entryConfigUrl);
-    if (cached) return cached;
+    if (cached) { return cached; }
 
     const load = Everygrid._fetchConfig(entryConfigUrl).catch(error => {
       // Don't cache a failure — the next call should be able to retry.
@@ -385,8 +385,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /** Drops cached config so the next loadConfig re-fetches. Already-mounted grids keep their config. */
   public static invalidateConfig(entryConfigUrl?: string): void {
-    if (entryConfigUrl) Everygrid._configCache.delete(entryConfigUrl);
-    else Everygrid._configCache.clear();
+    if (entryConfigUrl) { Everygrid._configCache.delete(entryConfigUrl); }
+    else { Everygrid._configCache.clear(); }
   }
 
   private static async _fetchConfig(entryConfigUrl: string): Promise<string[]> {
@@ -405,8 +405,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
     const configBase = resolvedEntry.substring(0, resolvedEntry.lastIndexOf('/') + 1);
     const configUrls: string[] = entryConfig.configs.map((u: string) => {
-      if (/^https?:\/\//.test(u)) return u;
-      if (u.startsWith('/')) return Everygrid._resolveUrl(u);
+      if (/^https?:\/\//.test(u)) { return u; }
+      if (u.startsWith('/')) { return Everygrid._resolveUrl(u); }
       return configBase + u.replace(/^\.\//, '');
     });
 
@@ -429,7 +429,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
     const ids: string[] = [];
     for (const loaded of configs) {
-      if (!loaded || !Array.isArray(loaded.config.targets)) continue;
+      if (!loaded || !Array.isArray(loaded.config.targets)) { continue; }
       for (const target of loaded.config.targets as GridTargetConfig[]) {
         Everygrid._targetRegistry.set(target.id, {config: loaded.config, target, url: loaded.url});
         ids.push(target.id);
@@ -458,11 +458,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   ): Promise<Everygrid<D> | null> {
     const opts = typeof source === 'string' || typeof source === 'function' ? {fetcher: source} : source;
     const existing = Everygrid.instances.get(targetId);
-    if (existing) return existing as Everygrid<D>;
+    if (existing) { return existing as Everygrid<D>; }
     // Coalesce concurrent mounts of the same id (e.g. React StrictMode's mount→unmount→mount) so the
     // container is never handed to createRoot twice.
     const inflight = Everygrid._mounting.get(targetId);
-    if (inflight) return inflight as Promise<Everygrid<D> | null>;
+    if (inflight) { return inflight as Promise<Everygrid<D> | null>; }
     const p = Everygrid._doMount<D>(targetId, opts);
     Everygrid._mounting.set(targetId, p as Promise<Everygrid | null>);
     try {
@@ -487,7 +487,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // again. Awaiting opens a race for the same id, so re-check the live instance afterwards.
       await Everygrid.loadConfig();
       const raced = Everygrid.instances.get(targetId);
-      if (raced) return raced as Everygrid<D>;
+      if (raced) { return raced as Everygrid<D>; }
       entry = Everygrid._targetRegistry.get(targetId);
     }
 
@@ -519,11 +519,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       void Everygrid._afterPaint()
         .then(fetcherOrUrl)
         .then(rows => instance._setRows(targetId, rows))
-        .catch(err => { if (!isEngineTerminated(err)) console.warn('Everygrid: fetcher failed for', targetId, err); })
+        .catch(err => { if (!isEngineTerminated(err)) { console.warn('Everygrid: fetcher failed for', targetId, err); } })
         .finally(() => {
           instance._loading.delete(targetId);
           const el = document.getElementById(targetId);
-          if (el) instance.renderGrid(el);
+          if (el) { instance.renderGrid(el); }
         });
       return instance as unknown as Everygrid<D>;
     }
@@ -569,7 +569,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    */
   public static unmountGrid(targetId: string): boolean {
     const instance = Everygrid.instances.get(targetId) as Everygrid | undefined;
-    if (!instance) return false;
+    if (!instance) { return false; }
     instance.destroy();
     return true;
   }
@@ -595,7 +595,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const ids = await Everygrid.loadConfig(entryConfigUrl);
     // Mount sequentially: function-fetchers are awaited, and grids should appear in config order.
     for (const id of ids) {
-      if (!document.getElementById(id)) continue;
+      if (!document.getElementById(id)) { continue; }
       await Everygrid.mountGrid(id, {fetcher: apiFetchers[id]});
     }
   }
@@ -627,7 +627,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         const isLarge = isNaN(declaredLength) || declaredLength >= Everygrid.LARGE_PAYLOAD_BYTES;
         if (isLarge) {
           await Everygrid._streamJsonToWasm(this, targetId, res.body, contentLength).catch(err => {
-            if (!isEngineTerminated(err)) console.warn('Everygrid: streaming load failed for', targetId, err);
+            if (!isEngineTerminated(err)) { console.warn('Everygrid: streaming load failed for', targetId, err); }
           });
         } else {
           try {
@@ -635,16 +635,16 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
             const rows: Record<string, unknown>[] = Array.isArray(json) ? json : [json];
             await this._setRows(targetId, rows);
           } catch (err) {
-            if (!isEngineTerminated(err)) console.warn('Everygrid: fetch/parse failed for', targetId, err);
+            if (!isEngineTerminated(err)) { console.warn('Everygrid: fetch/parse failed for', targetId, err); }
           }
         }
       }
     } catch (err) {
-      if (!isEngineTerminated(err)) console.warn('Everygrid: fetch failed for', targetId, err);
+      if (!isEngineTerminated(err)) { console.warn('Everygrid: fetch failed for', targetId, err); }
     } finally {
       this._loading.delete(targetId);
       const el = document.getElementById(targetId);
-      if (el) this.renderGrid(el);
+      if (el) { this.renderGrid(el); }
     }
   }
 
@@ -673,7 +673,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const engine = await this._awaitEngine(targetId);
     if (!engine) {
       const el = document.getElementById(targetId);
-      if (el) this.renderGrid(el);
+      if (el) { this.renderGrid(el); }
       return;
     }
     try {
@@ -682,7 +682,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       await this.applyWasmFilter(targetId);
     } catch {
       const el = document.getElementById(targetId);
-      if (el) this.renderGrid(el);
+      if (el) { this.renderGrid(el); }
     }
   }
 
@@ -698,7 +698,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // A failed predecessor must not poison the queue — the next load still has to run.
       .catch(() => {})
       .then(() => {
-        if (this._destroyed || this._loadSeq.get(targetId) !== seq) return;
+        if (this._destroyed || this._loadSeq.get(targetId) !== seq) { return; }
         return engine.setData(rows);
       });
     this._loadChain.set(targetId, run);
@@ -714,7 +714,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * `options.data`, which is the engine's raw row order.
    */
   private _syncRowsToEngines(rows: { index: number; row: unknown }[]): void {
-    if (rows.length === 0) return;
+    if (rows.length === 0) { return; }
     this._forEachReadyEngine((eng) => eng.updateRows(rows));
   }
 
@@ -740,14 +740,14 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private _rerenderTargets(): void {
     for (const id of this._targetIds()) {
       const el = document.getElementById(id);
-      if (el) this.renderGrid(el);
+      if (el) { this.renderGrid(el); }
     }
   }
 
   /** Re-renders one target if it is in the DOM. */
   private _rerender(containerId: string): void {
     const el = document.getElementById(containerId);
-    if (el) this.renderGrid(el);
+    if (el) { this.renderGrid(el); }
   }
 
   /** After a change to the change set: repaint the grid and tell listeners. */
@@ -759,7 +759,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   /** Resolves with the target's engine once it exists, or null if it never shows up. */
   private _awaitEngine(targetId: string, timeoutMs = 10000): Promise<GridEngineWasm | null> {
     const existing = this._wasmEngines.get(targetId);
-    if (existing) return Promise.resolve(existing);
+    if (existing) { return Promise.resolve(existing); }
     return new Promise(resolve => {
       const startTime = Date.now();
       const poll = setInterval(() => {
@@ -794,7 +794,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * the new ones land.
    */
   public reloadData(containerId: string, opts: ReloadOptions = {}): Promise<void> {
-    if (this._destroyed || !this._dataSource.has(containerId)) return Promise.resolve();
+    if (this._destroyed || !this._dataSource.has(containerId)) { return Promise.resolve(); }
     // Already reloading: fold this request into the follow-up run rather than dropping it. Two
     // requests merge to the stronger of each option — a discard is still a discard, and a button
     // press still shows as one.
@@ -814,7 +814,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       return entry.promise;
     }
     const run = this._runReload(containerId, opts).finally(() => {
-      if (this._reloadRun.get(containerId) === run) this._reloadRun.delete(containerId);
+      if (this._reloadRun.get(containerId) === run) { this._reloadRun.delete(containerId); }
     });
     this._reloadRun.set(containerId, run);
     return run;
@@ -835,7 +835,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   private async _runReload(containerId: string, opts: ReloadOptions): Promise<void> {
     const source = this._dataSource.get(containerId);
-    if (!source) return;
+    if (!source) { return; }
 
     this._reloading.set(containerId, opts.silent ? 'silent' : 'button');
     if (opts.discard) {
@@ -896,7 +896,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         await this._setRows(containerId, await source());
       }
     } catch (err) {
-      if (!isEngineTerminated(err)) console.warn('Everygrid: reload failed for', containerId, err);
+      if (!isEngineTerminated(err)) { console.warn('Everygrid: reload failed for', containerId, err); }
       // Nothing more is coming — leaving the stage on 'indexing' would show a progress UI
       // that can never finish.
       this._indexingStage.set(containerId, 'ready');
@@ -906,7 +906,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this._loading.delete(containerId);
       this._discarding.delete(containerId);
       const el2 = document.getElementById(containerId);
-      if (el2) this.renderGrid(el2);
+      if (el2) { this.renderGrid(el2); }
     }
   }
 
@@ -924,9 +924,9 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private static _decodedLength(res: Response): number {
     for (const header of Everygrid.UNCOMPRESSED_LENGTH_HEADERS) {
       const declared = Number(res.headers.get(header) ?? NaN);
-      if (!isNaN(declared) && declared > 0) return declared;
+      if (!isNaN(declared) && declared > 0) { return declared; }
     }
-    if (res.headers.get('Content-Encoding')) return 0; // encoded: Content-Length is not comparable
+    if (res.headers.get('Content-Encoding')) { return 0; } // encoded: Content-Length is not comparable
     const contentLength = Number(res.headers.get('Content-Length') ?? NaN);
     return !isNaN(contentLength) && contentLength > 0 ? contentLength : 0;
   }
@@ -971,7 +971,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Render via interval so the streaming reader loop is never blocked by React re-renders.
     const doRender = () => {
       const el = document.getElementById(targetId);
-      if (el) instance.renderGrid(el);
+      if (el) { instance.renderGrid(el); }
     };
     doRender();
     const renderTimer = setInterval(doRender, RENDER_INTERVAL_MS);
@@ -985,7 +985,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       await engine.streamStart(false);
       while (true) {
         const {done, value} = await reader.read();
-        if (done) break;
+        if (done) { break; }
         // Unmounted mid-download: stop pulling bytes into a terminated worker.
         if (instance._destroyed) {
           reader.cancel().catch(() => {});
@@ -1035,7 +1035,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // Populate the first page from WASM (suppressProcessing: initial load, not a user action).
       await instance.applyWasmFilter(targetId, true);
     } catch (e) {
-      if (!isEngineTerminated(e)) console.warn(`Everygrid: streaming load failed for ${targetId}`, e);
+      if (!isEngineTerminated(e)) {console.warn(`Everygrid: streaming load failed for ${targetId}`, e);}
       instance._indexingStage.set(targetId, 'ready');
       doRender();
     } finally {
@@ -1066,7 +1066,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       (instance.options as { data: unknown[] }).data = rows;
       instance.initOriginalDataMap();
     } catch (e) {
-      if (!isEngineTerminated(e)) console.warn('Everygrid: could not materialize streamed rows for', targetId, e);
+      if (!isEngineTerminated(e)) { console.warn('Everygrid: could not materialize streamed rows for', targetId, e); }
     }
   }
 
@@ -1082,20 +1082,20 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const targets = g.options.targets ?? [];
 
       const el = targets.reduce<HTMLElement | null>((found, t) => {
-        if (found) return found;
+        if (found) { return found; }
         const id = targetIdOf(t);
         return document.getElementById(id);
       }, null);
 
-      if (!el || g._destroyed) return;
+      if (!el || g._destroyed) { return; }
 
       g._refreshObserver?.disconnect();
       const observer = new IntersectionObserver(([entry], obs) => {
         if (entry.isIntersecting) {
           obs.disconnect();
-          if (g._refreshObserver === obs) g._refreshObserver = null;
-          if (g._destroyed) return;
-          g.init().catch((err: unknown) => { if (!isEngineTerminated(err)) console.error('Everygrid.refreshAll error:', err); });
+          if (g._refreshObserver === obs) { g._refreshObserver = null; }
+          if (g._destroyed) { return; }
+          g.init().catch((err: unknown) => { if (!isEngineTerminated(err)) { console.error('Everygrid.refreshAll error:', err); } });
         }
       }, {threshold: 0});
       g._refreshObserver = observer;
@@ -1115,7 +1115,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       (g.options.targets ?? []).forEach(t => {
         const id = targetIdOf(t);
         const el = document.getElementById(id);
-        if (el) g.renderGrid(el);
+        if (el) { g.renderGrid(el); }
       });
     });
   }
@@ -1143,8 +1143,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   public static setTheme(theme: 'light' | 'dark' | 'auto', target: Element = document.documentElement): void {
-    if (theme === 'light') target.removeAttribute('data-everygrid-theme');
-    else target.setAttribute('data-everygrid-theme', theme);
+    if (theme === 'light') { target.removeAttribute('data-everygrid-theme'); }
+    else { target.setAttribute('data-everygrid-theme', theme); }
   }
 
   /** The UI locale: the one last set, or — until one is — the browser's language. */
@@ -1227,7 +1227,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       });
     };
     const choose = (v: unknown) => {
-      if (!valid(v)) return;
+      if (!valid(v)) { return; }
       Everygrid.setLocale(v);
       opts.onChange?.(v);
     };
@@ -1310,10 +1310,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       select.setAttribute('aria-label', 'Language');
       locales.forEach(l => select.add(new Option(label(l), l.id)));
       // The globe stands in for a flag only when the options carry none.
-      if (display === 'text') root.insertAdjacentHTML('beforeend', iconMarkup('globe', 'everygrid-locale-globe') ?? svg('everygrid-locale-globe', 14, 2.5,
+      if (display === 'text') {root.insertAdjacentHTML('beforeend', iconMarkup('globe', 'everygrid-locale-globe') ?? svg('everygrid-locale-globe', 14, 2.5,
         "<circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/>" +
-        "<path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/>"));
-      else root.classList.add('everygrid-locale-select-plain');
+        "<path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/>"));}
+      else { root.classList.add('everygrid-locale-select-plain'); }
       root.append(select);
       root.insertAdjacentHTML('beforeend', iconMarkup('chevronDown', 'everygrid-locale-chevron')
         ?? svg('everygrid-locale-chevron', 12, 3, "<path d='m6 9 6 6 6-6'/>"));
@@ -1366,8 +1366,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    */
   public static listenForLocale(opts: {origin?: string; source?: Window | null} = {}): () => void {
     const handler = (e: MessageEvent) => {
-      if (opts.origin && e.origin !== opts.origin) return;
-      if (opts.source && e.source !== opts.source) return;
+      if (opts.origin && e.origin !== opts.origin) { return; }
+      if (opts.source && e.source !== opts.source) { return; }
       const data = e.data as {type?: unknown; locale?: unknown} | null;
       if (data && data.type === Everygrid.LOCALE_MESSAGE && (data.locale === 'ko' || data.locale === 'en')) {
         Everygrid.setLocale(data.locale);
@@ -1401,7 +1401,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     targets?.forEach(idConfig => {
       const id = targetIdOf(idConfig);
       const container = document.getElementById(id);
-      if (container) this.renderGrid(container);
+      if (container) { this.renderGrid(container); }
     });
   }
 
@@ -1424,7 +1424,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     }
     const cache = this._kindsCache!;
     let kinds = cache.byField.get(field);
-    if (kinds) return kinds;
+    if (kinds) { return kinds; }
 
     // One pass over the sample for all four kinds. Empty cells (null / undefined / '') count for
     // nothing, so a blank row — an inserted one, a cleared value — never changes a column's kind.
@@ -1433,13 +1433,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const sampleSize = Math.min(data.length, 100);
     for (let i = 0; i < sampleSize; i++) {
       const value = data[i][field];
-      if ((typeof value === 'object' && value !== null) || isJsonString(value)) object = true;
-      if (value === null || value === undefined || String(value).trim() === '') continue;
+      if ((typeof value === 'object' && value !== null) || isJsonString(value)) { object = true; }
+      if (value === null || value === undefined || String(value).trim() === '') { continue; }
       seen = true;
-      if (typeof value === 'boolean') sawBool = true;
-      else if (this.isDate(value)) sawDate = true;
-      else if (typeof value !== 'object' && !isNaN(Number(value))) sawNumber = true;
-      else sawOther = true;
+      if (typeof value === 'boolean') { sawBool = true; }
+      else if (this.isDate(value)) { sawDate = true; }
+      else if (typeof value !== 'object' && !isNaN(Number(value))) { sawNumber = true; }
+      else { sawOther = true; }
     }
     kinds = {
       numeric: seen && sawNumber && !sawBool && !sawDate && !sawOther,
@@ -1565,8 +1565,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * data.
    */
   public isRowDeleted(row: T): boolean {
-    if (this._deletedRows.size === 0) return false;
-    if (this._deletedRows.has(row)) return true;
+    if (this._deletedRows.size === 0) { return false; }
+    if (this._deletedRows.has(row)) { return true; }
     const live = this._editedKeys.get(JSON.stringify(row));
     return live !== undefined && this._deletedRows.has(live);
   }
@@ -1580,7 +1580,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Empty cells are null — what clearing a cell in the editor produces — so the row reads as
     // "unset" everywhere (type detection skips it, the patch carries null, not "").
     const row = {} as Record<string, unknown>;
-    for (const f of this.getDataFields(containerId)) row[f] = null;
+    for (const f of this.getDataFields(containerId)) { row[f] = null; }
     Object.assign(row, values);
     const index = Math.max(0, Math.min(at, this._inserted.length));
     this._inserted.splice(index, 0, row as T);
@@ -1603,10 +1603,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const row = this._liveRef(rowData);
     const data = (this.options.data || []) as T[];
     const index = data.indexOf(row);
-    if (index === -1) return;
+    if (index === -1) { return; }
     // A deleted row is out of every selection: it is unchecked, and stays so if restored.
     const mapping = this.getCheckboxMapping(containerId);
-    if (mapping) this.setChecked(containerId, [row[mapping]], false);
+    if (mapping) { this.setChecked(containerId, [row[mapping]], false); }
     this._deletedRows.add(row);
     this._editedKeys.set(JSON.stringify(row), row);
     this._afterChange(containerId);
@@ -1615,8 +1615,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   /** Undoes a delete. */
   public restoreRow(containerId: string, rowData: T): void {
     const row = this._liveRef(rowData);
-    if (!this._deletedRows.delete(row)) return;
-    if (!this.originalDataMap.has(row)) this._editedKeys.delete(JSON.stringify(row));
+    if (!this._deletedRows.delete(row)) { return; }
+    if (!this.originalDataMap.has(row)) { this._editedKeys.delete(JSON.stringify(row)); }
     this._afterChange(containerId);
   }
 
@@ -1624,7 +1624,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private _dropRows(rows: T[]): void {
     const data = (this.options.data || []) as T[];
     const indices = rows.map(r => data.indexOf(r)).filter(i => i !== -1).sort((a, b) => b - a);
-    for (const i of indices) data.splice(i, 1);
+    for (const i of indices) { data.splice(i, 1); }
     this._touchData();
     for (const r of rows) {
       this._deletedRows.delete(r);
@@ -1639,7 +1639,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   }
 
   private _removeRowsFromEngines(indices: number[]): void {
-    if (indices.length === 0) return;
+    if (indices.length === 0) { return; }
     this._forEachReadyEngine((eng) => eng.removeRows(indices));
   }
 
@@ -1660,7 +1660,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public getCheckedRows(containerId: string): T[] {
     const mapping = this.getCheckboxMapping(containerId);
     const set = this.checkedValues.get(containerId);
-    if (!mapping || !set || set.size === 0) return [];
+    if (!mapping || !set || set.size === 0) { return []; }
     return ((this.options.data || []) as T[]).filter(row => set.has(row[mapping]) && !this._deletedRows.has(row));
   }
 
@@ -1673,12 +1673,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const changed: unknown[] = [];
     for (const v of values) {
       if (checked ? !set.has(v) : set.has(v)) {
-        if (checked) set.add(v); else set.delete(v);
+        if (checked) { set.add(v); } else { set.delete(v); }
         changed.push(v);
       }
     }
     this.checkedValues.set(containerId, set);
-    if (changed.length === 0) return;
+    if (changed.length === 0) { return; }
     this._rerender(containerId);
     this._emit('check', {values: Array.from(set), rows: this.getCheckedRows(containerId), changed, checked});
   }
@@ -1702,13 +1702,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   private _emit<K extends keyof GridEvents<T>>(event: K, arg: Parameters<GridEvents<T>[K]>[0]): void {
     const set = this._listeners.get(event);
-    if (!set) return;
-    for (const fn of set) fn(arg);
+    if (!set) { return; }
+    for (const fn of set) { fn(arg); }
   }
 
   /** Fires `change` with the current change set; every edit, revert and commit ends here. */
   private _emitChange(containerId: string): void {
-    if (this._listeners.get('change')?.size) this._emit('change', this._changedRows(containerId));
+    if (this._listeners.get('change')?.size) { this._emit('change', this._changedRows(containerId)); }
   }
 
   /**
@@ -1717,11 +1717,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    */
   public _keyOf(containerId: string, row: T, index: number): RowKey | null {
     const conf = this.options.rowKey?.find(c => c.id === containerId);
-    if (!conf) return this._inserted.includes(row) ? null : index;
+    if (!conf) { return this._inserted.includes(row) ? null : index; }
     const fields = Array.isArray(conf.field) ? conf.field : [conf.field];
     const parts = fields.map(f => row[f]);
     const empty = (v: unknown) => v === null || v === undefined || v === '';
-    if (parts.some(empty)) return null;
+    if (parts.some(empty)) { return null; }
     if (parts.length === 1) {
       const v = parts[0];
       return typeof v === 'number' ? v : String(v);
@@ -1742,7 +1742,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const data = (this.options.data || []) as T[];
     const live = this._editedKeys.get(JSON.stringify(row)) ?? row;
     const idx = data.indexOf(live);
-    if (idx !== -1) return idx;
+    if (idx !== -1) { return idx; }
     const key = JSON.stringify(row);
     return data.findIndex(d => JSON.stringify(d) === key);
   }
@@ -1753,11 +1753,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   public _cellChanges(row: T): CellChange[] {
     const original = this.originalDataMap.get(row);
-    if (!original) return [];
+    if (!original) { return []; }
     const fields = new Set([...Object.keys(original), ...Object.keys(row)]);
     const out: CellChange[] = [];
     for (const field of fields) {
-      if (this.isCellModified(row, field)) out.push({field, from: original[field], to: row[field]});
+      if (this.isCellModified(row, field)) {out.push({field, from: original[field], to: row[field]});}
     }
     return out;
   }
@@ -1777,7 +1777,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const changed: RowChange<T>[] = [];
     for (const row of this._editedKeys.values()) {
       const index = data.indexOf(row);
-      if (index === -1) continue;
+      if (index === -1) { continue; }
       // The key is taken from the original row: if the key field itself was edited, a save still
       // has to find the record by the key the server knows.
       const original = this._originalOf(row);
@@ -1786,7 +1786,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         changed.push({status: 'deleted', index, key, row, original, cells: []});
       } else {
         const cells = this._cellChanges(row);
-        if (cells.length > 0) changed.push({status: 'updated', index, key, row, original, cells});
+        if (cells.length > 0) {changed.push({status: 'updated', index, key, row, original, cells});}
       }
     }
     return [...out, ...changed.sort((a, b) => a.index - b.index)];
@@ -1821,19 +1821,19 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * band during a scroll actually was. _editedKeys is maintained by every path that mutates a row.
    */
   public checkHasChanges(): boolean {
-    if (this._inserted.length > 0 || this._deletedRows.size > 0) return true;
+    if (this._inserted.length > 0 || this._deletedRows.size > 0) { return true; }
     for (const item of this._editedKeys.values()) {
-      if (!this.originalDataMap.has(item)) continue;
-      if (Object.keys(item).some(field => this.isCellModified(item, field))) return true;
+      if (!this.originalDataMap.has(item)) { continue; }
+      if (Object.keys(item).some(field => this.isCellModified(item, field))) { return true; }
     }
     return false;
   }
 
   /** Server-side paging: calls serverFetcher, loads the result into WASM, and re-renders */
   public async fetchServerPage(containerId: string): Promise<void> {
-    if (!this.options.serverFetcher || this._serverFetching.get(containerId)) return;
+    if (!this.options.serverFetcher || this._serverFetching.get(containerId)) { return; }
     const paginationConfig = this.getPagination(containerId);
-    if (!paginationConfig?.serverSide) return;
+    if (!paginationConfig?.serverSide) { return; }
 
     this._serverFetching.set(containerId, true);
     const pageSize = Math.min((paginationConfig.pageSize && paginationConfig.pageSize > 0) ? paginationConfig.pageSize : 10, 100);
@@ -1862,7 +1862,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       }
       this._rerender(containerId);
     } catch (err) {
-      if (!isEngineTerminated(err)) console.error('Everygrid: serverFetcher failed:', err);
+      if (!isEngineTerminated(err)) { console.error('Everygrid: serverFetcher failed:', err); }
     } finally {
       this._serverFetching.set(containerId, false);
     }
@@ -1889,13 +1889,13 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // Cancel a timer left by a prior (superseded) call — otherwise it fires after this call's
       // finally has cleared _processing, flipping it back on with nothing left to clear it.
       const prevTimer = this._processingTimer.get(containerId);
-      if (prevTimer !== undefined) clearTimeout(prevTimer);
+      if (prevTimer !== undefined) { clearTimeout(prevTimer); }
       processingTimer = setTimeout(() => {
         // Only the latest call may raise the indicator; a stale timer must not.
-        if (this._filterSeq.get(containerId) !== seq) return;
+        if (this._filterSeq.get(containerId) !== seq) { return; }
         this._processing.set(containerId, true);
         const elBefore = document.getElementById(containerId);
-        if (elBefore) this.renderGrid(elBefore);
+        if (elBefore) { this.renderGrid(elBefore); }
       }, 150);
       this._processingTimer.set(containerId, processingTimer);
     }
@@ -1913,7 +1913,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const fetchSize = virtual ? this._blockSize(containerId) : (isPaginationActive ? pageSize : 10000);
       const result = await engine.filterSortAndGetPage(this.filterText, sortField, sortAsc, pageIndex, fetchSize);
       // If a newer call has been issued, skip caching and rendering
-      if (this._filterSeq.get(containerId) !== seq) return;
+      if (this._filterSeq.get(containerId) !== seq) { return; }
       this._wasmPageCache.set(containerId, { rows: result.rows, total: result.filtered });
       if (virtual) {
         this._blockCache.set(containerId, {seq, blocks: new Map([[0, result.rows]]), order: [0]});
@@ -1953,7 +1953,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const pageIndex = isPaginationActive ? currentPage - 1 : 0;
       const result = await engine.getPage(pageIndex, isPaginationActive ? pageSize : 10000);
       // If a newer call (page change or filter/sort) was issued, drop this stale result.
-      if (this._filterSeq.get(containerId) !== seq) return;
+      if (this._filterSeq.get(containerId) !== seq) { return; }
       this._wasmPageCache.set(containerId, { rows: result.rows, total: result.total });
     } finally {
       if (this._filterSeq.get(containerId) === seq) {
@@ -2038,7 +2038,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       } else if (this._streamRows.has(id) || this._streamTotal.has(id)) {
         // Streaming mode (JS rows or count-only): filter/sort in JS, just re-render
         const el = document.getElementById(id);
-        if (el) this.renderGrid(el);
+        if (el) { this.renderGrid(el); }
       } else {
         this.applyWasmFilter(id).catch(logEngineError);
       }
@@ -2067,10 +2067,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     }
     // Use cached total from WASM (populated by applyWasmFilter)
     const cached = this._wasmPageCache.get(containerId);
-    if (cached) return cached.total;
+    if (cached) { return cached.total; }
     // During WASM handoff/indexing: _wasmRawTotal is pre-set so toolbar stays visible
     const rawTotal = this._wasmRawTotal.get(containerId);
-    if (rawTotal !== undefined) return rawTotal;
+    if (rawTotal !== undefined) { return rawTotal; }
     return 0;
   }
 
@@ -2082,7 +2082,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * same rows the visible WASM-filtered grid shows.
    */
   private static _searchText(v: unknown): string {
-    if (v == null) return '';
+    if (v == null) { return ''; }
     if (typeof v === 'object') {
       try { return JSON.stringify(v).toLowerCase(); } catch { return ''; }
     }
@@ -2091,7 +2091,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   private _parseFilterExpr(text: string): (row: Record<string, unknown>) => boolean {
     const trimmed = text.trim();
-    if (!trimmed) return () => true;
+    if (!trimmed) { return () => true; }
     // OR has lower precedence than AND
     const orParts = trimmed.split('||').map(p => p.trim()).filter(p => p.length > 0);
     const orMatchers = orParts.map(orPart => {
@@ -2107,7 +2107,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   /** Filter/sort JS stream rows without WASM */
   private _applyStreamFilter(containerId: string, rows: Record<string, unknown>[]): Record<string, unknown>[] {
     // Fast path: no filter, no sort
-    if (!this.filterText && !this.sortConfig.get(containerId)?.direction) return rows;
+    if (!this.filterText && !this.sortConfig.get(containerId)?.direction) { return rows; }
     let result = rows;
     if (this.filterText) {
       const matcher = this._parseFilterExpr(this.filterText);
@@ -2145,7 +2145,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   private static _deviceRowBudget(): number | null {
     const nav = (typeof navigator !== 'undefined' ? navigator : undefined) as
       (Navigator & {deviceMemory?: number; userAgentData?: {mobile?: boolean}}) | undefined;
-    if (!nav) return null;
+    if (!nav) { return null; }
     const mem = nav.deviceMemory; // GB, or undefined
     const width = typeof window !== 'undefined'
       ? Math.min(window.innerWidth || Infinity, window.screen?.width || Infinity)
@@ -2159,15 +2159,15 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       // ~3k rows per GB, floored so even a 1–2GB phone shows a working grid; 5k when RAM is unknown.
       return mem ? Math.max(3000, Math.round(mem * 3000)) : 5000;
     }
-    if (mem && mem <= 4) return 25000; // low-RAM laptop
+    if (mem && mem <= 4) { return 25000; } // low-RAM laptop
     return null; // roomy desktop — no cap
   }
 
   public getDataLimit(containerId: string): number | undefined {
     const dl = this.options.dataLimit;
-    if (!dl) return undefined;
+    if (!dl) { return undefined; }
     const conf = Array.isArray(dl) ? dl.find(d => d.id === containerId) : (dl.id === containerId ? dl : undefined);
-    if (!conf || conf.active === false || conf.maxRows === undefined) return undefined;
+    if (!conf || conf.active === false || conf.maxRows === undefined) { return undefined; }
     const cap = conf.maxRows === 'auto' ? Everygrid._deviceRowBudget() : conf.maxRows;
     return (typeof cap === 'number' && cap > 0) ? Math.floor(cap) : undefined;
   }
@@ -2188,12 +2188,12 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   public getVirtualScroll(containerId: string): GridVirtualScrollConfig | undefined {
     const vs = this.options.virtualScroll;
-    if (!vs) return undefined;
+    if (!vs) { return undefined; }
     const conf = Array.isArray(vs) ? vs.find(v => v.id === containerId) : (vs.id === containerId ? vs : undefined);
-    if (!conf || conf.active === false) return undefined;
+    if (!conf || conf.active === false) { return undefined; }
     // Server-side pagination owns its own windowing contract (page/pageSize requests), so the two
     // can't both drive the view. Pagination wins; virtual scroll stays off for that target.
-    if (this.getPagination(containerId)?.serverSide && this.options.serverFetcher) return undefined;
+    if (this.getPagination(containerId)?.serverSide && this.options.serverFetcher) { return undefined; }
     return conf;
   }
 
@@ -2209,7 +2209,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * background. Callers render a placeholder for the holes; the fetch re-renders when it lands.
    */
   public getRowsInRange(containerId: string, start: number, end: number): (T | undefined)[] {
-    if (end <= start) return [];
+    if (end <= start) { return []; }
 
     // Streaming mode: rows are already in JS memory, so the window is a plain slice.
     const streamRows = this._streamRows.get(containerId);
@@ -2249,7 +2249,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     const lastBlock = Math.floor((end - 1) / blockSize);
     for (let b = firstBlock; b <= lastBlock; b++) {
       const block = cache.blocks.get(b);
-      if (!block) this._fetchBlock(containerId, b, seq);
+      if (!block) { this._fetchBlock(containerId, b, seq); }
       const blockStart = b * blockSize;
       const from = Math.max(start, blockStart);
       const to = Math.min(end, blockStart + blockSize);
@@ -2264,8 +2264,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // the reader is still inside this one lands it well before the window crosses the boundary —
     // without it every crossing showed a band of placeholders for one worker round trip.
     const lastValid = Math.floor(Math.max(0, this.getFilteredTotal(containerId) - 1) / blockSize);
-    if (firstBlock > 0 && !cache.blocks.has(firstBlock - 1)) this._fetchBlock(containerId, firstBlock - 1, seq);
-    if (lastBlock < lastValid && !cache.blocks.has(lastBlock + 1)) this._fetchBlock(containerId, lastBlock + 1, seq);
+    if (firstBlock > 0 && !cache.blocks.has(firstBlock - 1)) { this._fetchBlock(containerId, firstBlock - 1, seq); }
+    if (lastBlock < lastValid && !cache.blocks.has(lastBlock + 1)) { this._fetchBlock(containerId, lastBlock + 1, seq); }
     return out;
   }
 
@@ -2274,28 +2274,28 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     let pending = this._blockPending.get(containerId);
     if (!pending) { pending = new Set(); this._blockPending.set(containerId, pending); }
     const key = `${seq}:${blockIndex}`;
-    if (pending.has(key)) return;
+    if (pending.has(key)) { return; }
     pending.add(key);
 
     const engine = this._wasmEngines.get(containerId);
-    if (!engine) return;
+    if (!engine) { return; }
     const blockSize = this._blockSize(containerId);
     engine.getPage(blockIndex, blockSize).then(result => {
       pending.delete(key);
       // The generation moved on while this was in flight — the rows belong to a result set that
       // is no longer on screen, so they must not be cached under the new seq.
       const cache = this._blockCache.get(containerId);
-      if (this._destroyed || !cache || cache.seq !== seq || this._filterSeq.get(containerId) !== seq) return;
+      if (this._destroyed || !cache || cache.seq !== seq || this._filterSeq.get(containerId) !== seq) { return; }
       cache.blocks.set(blockIndex, result.rows);
       cache.order.push(blockIndex);
       while (cache.order.length > VIRTUAL_BLOCK_CACHE_MAX) {
         const evicted = cache.order.shift();
-        if (evicted !== undefined) cache.blocks.delete(evicted);
+        if (evicted !== undefined) { cache.blocks.delete(evicted); }
       }
       this._scheduleVirtualRender(containerId);
     }).catch(err => {
       pending.delete(key);
-      if (!isEngineTerminated(err)) console.error('Everygrid: virtual block fetch failed:', err);
+      if (!isEngineTerminated(err)) { console.error('Everygrid: virtual block fetch failed:', err); }
     });
   }
 
@@ -2309,11 +2309,11 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
    * long after the real rows had been cached.
    */
   private _scheduleVirtualRender(containerId: string): void {
-    if (this._blockRenderScheduled.has(containerId)) return;
+    if (this._blockRenderScheduled.has(containerId)) { return; }
     this._blockRenderScheduled.add(containerId);
     setTimeout(() => {
       this._blockRenderScheduled.delete(containerId);
-      if (this._destroyed) return;
+      if (this._destroyed) { return; }
       this._rerender(containerId);
     }, 0);
   }
@@ -2342,7 +2342,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   // node. Cached per target; recomputed when the data changes.
   public getSearchKeys(containerId: string, fallbackSample?: unknown[]): KeyTree {
     const cached = this._searchKeysCache.get(containerId);
-    if (cached) return cached;
+    if (cached) { return cached; }
     // Sample from whichever source holds JS rows: in-memory data, JS stream rows, or the rows the
     // caller is rendering (guaranteed present for a visible streamed/WASM-only grid).
     const data = this.options.data as unknown[] | undefined;
@@ -2351,18 +2351,18 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       : (this._streamRows.get(containerId) ?? fallbackSample ?? []);
     const tree: KeyTree = {};
     const merge = (v: unknown, node: KeyTree) => {
-      if (Array.isArray(v)) { for (const x of v) merge(x, node); return; }
+      if (Array.isArray(v)) { for (const x of v) { merge(x, node); } return; }
       if (v && typeof v === 'object') {
         for (const [k, child] of Object.entries(v as Record<string, unknown>)) {
-          if (!node[k]) node[k] = {};
+          if (!node[k]) { node[k] = {}; }
           merge(child, node[k]);
         }
       }
     };
-    for (const r of sample.slice(0, 200)) merge(r, tree);
+    for (const r of sample.slice(0, 200)) { merge(r, tree); }
     // Cache only a non-empty result — an empty tree means data hasn't arrived yet, so recompute
     // on the next render instead of getting stuck empty.
-    if (Object.keys(tree).length > 0) this._searchKeysCache.set(containerId, tree);
+    if (Object.keys(tree).length > 0) { this._searchKeysCache.set(containerId, tree); }
     return tree;
   }
 
@@ -2397,8 +2397,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const rawData = (data && data.length > 0)
         ? data
         : (this._streamRows.get(containerId) ?? null);
-      if (!rawData || rawData.length === 0) return null;
-      if (scope !== 'filtered') return rawData;
+      if (!rawData || rawData.length === 0) { return null; }
+      if (scope !== 'filtered') { return rawData; }
       // Filtered scope: the WASM engine already holds the correct result for the active query —
       // including column-group syntax like `age(>40)` that the lightweight JS matcher can't parse.
       // Pull the filtered rows straight from it (nested objects/arrays survive the JSON round-trip),
@@ -2408,8 +2408,8 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       const engine = this._wasmEngines.get(containerId);
       if (engine && this._wasmEngineReady.get(containerId)) {
         const count = await engine.getTotalCount();
-        if (count === 0) return [];
-        if (count > SMALL_MAX) return null;
+        if (count === 0) { return []; }
+        if (count > SMALL_MAX) { return null; }
         return (await engine.getPage(0, count)).rows;
       }
       return this._applyStreamFilter(containerId, rawData);
@@ -2489,7 +2489,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       );
     } catch (err) {
       // A cancelled export (re-export / grid destroyed) is expected — swallow it; surface others.
-      if (!(err instanceof DOMException && err.name === 'AbortError')) console.error('Everygrid export failed:', err);
+      if (!(err instanceof DOMException && err.name === 'AbortError')) { console.error('Everygrid export failed:', err); }
     } finally {
       // Only clear if this call still owns the controller (a newer export may have replaced it).
       if (this._exportControllers.get(containerId) === controller) {
@@ -2618,7 +2618,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   public renderGrid(container: HTMLElement) {
     // Late callbacks (engine progress, timers, fetches) must not recreate a root after destroy.
-    if (this._destroyed) return;
+    if (this._destroyed) { return; }
     this.notify();
     const root = this.getRoot(container);
     root.render(<EverygridComponent grid={this} container={container}/>);
@@ -2626,7 +2626,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   public isCellModified(rowData: T, field: string): boolean {
     // An inserted row is new as a whole; none of its cells is "modified from the original".
-    if (this._inserted.includes(rowData)) return false;
+    if (this._inserted.includes(rowData)) { return false; }
     const originalRow = this.originalDataMap.get(rowData);
     if (!originalRow) {
       return false;
@@ -2708,7 +2708,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     targets?.forEach(idConfig => {
       const id = targetIdOf(idConfig);
       const container = document.getElementById(id);
-      if (container) this.renderGrid(container);
+      if (container) { this.renderGrid(container); }
     });
   }
 
@@ -2725,7 +2725,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     targets?.forEach(idConfig => {
       const id = targetIdOf(idConfig);
       const container = document.getElementById(id);
-      if (container) this.renderGrid(container);
+      if (container) { this.renderGrid(container); }
     });
   }
 
@@ -2747,7 +2747,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     targets?.forEach(idConfig => {
       const id = targetIdOf(idConfig);
       const container = document.getElementById(id);
-      if (container) this.renderGrid(container);
+      if (container) { this.renderGrid(container); }
     });
   }
 
@@ -2767,7 +2767,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     if (rowData && this.options.data) {
       const data = this.options.data as Record<string, unknown>[];
       const idx = this._indexOfRow(rowData as T);
-      if (idx === -1) return;
+      if (idx === -1) { return; }
 
       // The live reference currently at this index owns the original snapshot. rowData may be a
       // WASM-derived copy (not a map key), so look the snapshot up via the live ref, not rowData.
@@ -2788,7 +2788,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this.originalDataMap.delete(rowData as T);
       this.originalDataMap.delete(prevRef);
       this.originalDataMap.set(newRow, originalSnapshot);
-      if (this._deletedRows.delete(prevRef)) this._deletedRows.add(newRow);
+      if (this._deletedRows.delete(prevRef)) { this._deletedRows.add(newRow); }
 
       // Track the edited row so getDisplayItems can remap WASM copies to this live reference.
       this._editedKeys.delete(JSON.stringify(rowData));
@@ -2859,10 +2859,10 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
 
   /** Puts one cell's loaded value back. */
   public cancelCell(containerId: string, rowData: Record<string, unknown>, field: string) {
-    if (!this.options.data) return;
+    if (!this.options.data) { return; }
     const data = this.options.data as Record<string, unknown>[];
     const idx = this._indexOfRow(rowData as T);
-    if (idx === -1) return;
+    if (idx === -1) { return; }
 
     // rowData may be a WASM-derived copy; the snapshot is keyed by the live ref at this index.
     const prevRef = data[idx] as T;
@@ -2882,7 +2882,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       this.originalDataMap.delete(prevRef);
       this.originalDataMap.set(newRow, originalRow);
       const deleted = this._deletedRows.delete(prevRef);
-      if (deleted) this._deletedRows.add(newRow);
+      if (deleted) { this._deletedRows.add(newRow); }
 
       // Update the edited-row remap: keep it only if the row still matters — modified elsewhere,
       // or deleted.
@@ -2942,7 +2942,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     } else if (this._streamUrl.has(containerId)) {
       // Streaming mode: data is already in memory, just re-render
       const container = document.getElementById(containerId);
-      if (container) this.renderGrid(container);
+      if (container) { this.renderGrid(container); }
     } else if (this._indexingStage.get(containerId) === 'indexing') {
       // During indexing: if WASM data is already loaded, use WASM directly
       if (this._wasmDataLoaded.get(containerId)) {
@@ -2951,7 +2951,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
         // WASM not ready yet — re-render with the current cache. The page number is already
         // saved; once indexing completes applyWasmFilter will correct it.
         const container = document.getElementById(containerId);
-        if (container) this.renderGrid(container);
+        if (container) { this.renderGrid(container); }
       }
     } else {
       // On page change, fetch only the new page from WASM — the filter/sort result is
@@ -2971,7 +2971,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     // Server-side: use server total
     if (paginationConfig?.serverSide) {
       const serverTotal = this._serverTotal.get(containerId);
-      if (serverTotal !== undefined) return Math.ceil(serverTotal / pageSize);
+      if (serverTotal !== undefined) { return Math.ceil(serverTotal / pageSize); }
     }
     // Total rows with the filter applied.
     const filteredTotal = this.getFilteredTotal(containerId);
@@ -3111,7 +3111,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       return document.getElementById(targetId);
     });
     if (foundAll) {
-      this.init().catch(err => { if (!isEngineTerminated(err)) console.error('Everygrid init error:', err); });
+      this.init().catch(err => { if (!isEngineTerminated(err)) { console.error('Everygrid init error:', err); } });
       return true;
     }
     return false;
@@ -3149,7 +3149,7 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       if (engine && this._wasmEngineReady.get(id) && this.options.data && !this._wasmDataLoaded.get(id)) {
         void this._loadIntoEngine(id, engine, this.options.data as unknown[])
           .then(() => { this._wasmDataLoaded.set(id, true); })
-          .catch(err => { if (!isEngineTerminated(err)) console.warn(`Everygrid: WASM setData failed for ${id}:`, err); });
+          .catch(err => { if (!isEngineTerminated(err)) {console.warn(`Everygrid: WASM setData failed for ${id}:`, err);} });
       }
     });
 

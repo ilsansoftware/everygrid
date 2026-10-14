@@ -93,7 +93,7 @@ const HIGHLIGHTS: { title: string; body: string; tag: string }[] = [
 /** Copies the code block whose button was clicked; the button reads "Copied" for a moment. */
 function copyCode(e: MouseEvent<HTMLElement>) {
   const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.docs-copy');
-  if (!btn) return;
+  if (!btn) { return; }
   const code = btn.parentElement?.querySelector('code')?.textContent ?? '';
   void navigator.clipboard.writeText(code).then(() => {
     btn.textContent = 'Copied';
@@ -115,7 +115,7 @@ export default function DocsPage() {
     // sections can use the renderer with copy buttons.
     const sections: {heading: string; tokens: typeof tokens}[] = [];
     for (const t of tokens.slice(firstSection)) {
-      if (t.type === 'heading' && (t as Tokens.Heading).depth === 2) sections.push({heading: (t as Tokens.Heading).text, tokens: [] as unknown as typeof tokens});
+      if (t.type === 'heading' && (t as Tokens.Heading).depth === 2) {sections.push({heading: (t as Tokens.Heading).text, tokens: [] as unknown as typeof tokens});}
       sections[sections.length - 1].tokens.push(t);
     }
     return {

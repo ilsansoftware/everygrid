@@ -38,7 +38,7 @@ const engines = new Map<string, GridEngine>();
 
 function getEngine(id: string): GridEngine {
   const e = engines.get(id);
-  if (!e) throw new Error(`No engine for id="${id}". Call init first.`);
+  if (!e) {throw new Error(`No engine for id="${id}". Call init first.`);}
   return e;
 }
 
@@ -67,11 +67,11 @@ const FEED_MAX_BYTES = 16 * 1024 * 1024;
 
 // Flush accumulated complete objects into WASM as one newline-joined byte batch.
 function feedPending(id: string, st: StreamState): void {
-  if (st.pending.length === 0) return;
+  if (st.pending.length === 0) { return; }
   const out = new Uint8Array(st.pendingBytes + (st.pending.length - 1));
   let off = 0;
   for (let i = 0; i < st.pending.length; i++) {
-    if (i > 0) out[off++] = BYTE_NEWLINE;
+    if (i > 0) { out[off++] = BYTE_NEWLINE; }
     out.set(st.pending[i], off);
     off += st.pending[i].length;
   }
@@ -103,8 +103,8 @@ function scanStreamChunk(id: string, st: StreamState, chunk: Uint8Array): void {
     const b = buf[i];
     if (escape) { escape = false; continue; }
     if (inString) {
-      if (b === BYTE_BACKSLASH) escape = true;
-      else if (b === BYTE_QUOTE) inString = false;
+      if (b === BYTE_BACKSLASH) { escape = true; }
+      else if (b === BYTE_QUOTE) { inString = false; }
       continue;
     }
     if (b === BYTE_QUOTE) { inString = true; continue; }
@@ -143,7 +143,7 @@ const _gridQueues = new Map<string, MessageEvent<WorkerRequest>[]>();
 const _gridProcessing = new Map<string, boolean>();
 
 function getQueue(id: string): MessageEvent<WorkerRequest>[] {
-  if (!_gridQueues.has(id)) _gridQueues.set(id, []);
+  if (!_gridQueues.has(id)) { _gridQueues.set(id, []); }
   return _gridQueues.get(id)!;
 }
 
@@ -162,7 +162,7 @@ function ensureWasmOnce(): Promise<void> {
 }
 
 async function processGridQueue(id: string) {
-  if (_gridProcessing.get(id)) return;
+  if (_gridProcessing.get(id)) { return; }
   _gridProcessing.set(id, true);
 
   const queue = getQueue(id);
@@ -229,7 +229,7 @@ function executeCommand(req: WorkerRequest): unknown {
 
       case 'streamChunk': {
         const st = _streamState.get(id);
-        if (!st) throw new Error(`streamChunk before streamStart for id="${id}"`);
+        if (!st) {throw new Error(`streamChunk before streamStart for id="${id}"`);}
         scanStreamChunk(id, st, req.bytes);
         result = { total: st.total };
         break;

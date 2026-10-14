@@ -14,8 +14,8 @@ const overrides: Partial<Record<IconName, IconSource>> = {};
 /** Merge replacements in; `null` restores that icon's default. (Everygrid.setIcons re-renders.) */
 export function setIconOverrides(icons: Partial<Record<IconName, IconSource | null>>): void {
   for (const [name, src] of Object.entries(icons) as [IconName, IconSource | null][]) {
-    if (src) overrides[name] = src;
-    else delete overrides[name];
+    if (src) { overrides[name] = src; }
+    else { delete overrides[name]; }
   }
 }
 

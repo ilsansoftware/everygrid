@@ -23,7 +23,7 @@ export const MobileColumnSelectorComponent = <T extends Record<string, unknown>>
   // whitelist if one was set (an empty one means "deselect all"), else the configured mobile
   // defaults, else every column.
   const [selected, setSelected] = useState<Set<string>>(() => {
-    if (grid.displayColsMap.has(containerId)) return new Set(grid.displayColsMap.get(containerId));
+    if (grid.displayColsMap.has(containerId)) { return new Set(grid.displayColsMap.get(containerId)); }
     const configured = grid.getMobileColumns(containerId)?.filter(f => allFields.includes(f));
     return new Set(configured && configured.length > 0 ? configured : allFields);
   });
@@ -39,7 +39,7 @@ export const MobileColumnSelectorComponent = <T extends Record<string, unknown>>
 
   const handleToggle = (field: string) => {
     const next = new Set(selected);
-    if (next.has(field)) next.delete(field); else next.add(field);
+    if (next.has(field)) { next.delete(field); } else { next.add(field); }
     commit(next);
   };
 
@@ -48,7 +48,7 @@ export const MobileColumnSelectorComponent = <T extends Record<string, unknown>>
   // Native checkbox indeterminate (some-but-not-all) is DOM-only, so set it via a ref.
   const selectAllRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected && !allSelected;
+    if (selectAllRef.current) { selectAllRef.current.indeterminate = someSelected && !allSelected; }
   }, [someSelected, allSelected]);
 
   return (

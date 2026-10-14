@@ -55,7 +55,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
   };
 
   const handleSort = (col: GridColumn) => {
-    if (isIndexing || isExporting) return;
+    if (isIndexing || isExporting) { return; }
     const sortInfo = instance.sortConfig.get(containerId);
     const isCurrentSortField = sortInfo?.field === col.field;
     const currentDirection = isCurrentSortField ? sortInfo?.direction : 'asc';
@@ -135,7 +135,7 @@ export const PinnedTableComponent = React.memo(<T extends Record<string, unknown
                         return (typeof v === 'object' && v !== null) ||
                           (typeof v === 'string' && v.trimStart().startsWith('{'));
                       });
-                      if (isJsonCol) return null;
+                      if (isJsonCol) { return null; }
                       return (
                         <button
                           className={`everygrid-icon-btn ${instance.sortConfig.get(containerId)?.field === col.field ? 'is-active' : ''}`}

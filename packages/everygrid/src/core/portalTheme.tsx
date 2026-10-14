@@ -13,8 +13,8 @@ export function withPortalTheme(anchor: Element | null | undefined, node: ReactN
 
 /** The same, for a portalled element already in the DOM: copy the anchor's theme onto it. */
 export function syncPortalTheme(anchor: Element | null, el: HTMLElement | null): void {
-  if (!el) return;
+  if (!el) { return; }
   const theme = anchor?.closest('[data-everygrid-theme]')?.getAttribute('data-everygrid-theme');
-  if (theme) el.setAttribute('data-everygrid-theme', theme);
-  else el.removeAttribute('data-everygrid-theme');
+  if (theme) { el.setAttribute('data-everygrid-theme', theme); }
+  else { el.removeAttribute('data-everygrid-theme'); }
 }

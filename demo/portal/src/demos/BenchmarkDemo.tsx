@@ -169,7 +169,7 @@ async function timed<T>(fn: () => Promise<T>): Promise<{ms: number; freeze: numb
   const tick = (t: number) => {
     freeze = Math.max(freeze, t - last);
     last = t;
-    if (running) requestAnimationFrame(tick);
+    if (running) { requestAnimationFrame(tick); }
   };
   requestAnimationFrame(tick);
   const t0 = performance.now();
@@ -202,7 +202,7 @@ export default function BenchmarkDemo() {
   useEffect(() => {
     let id = 0;
     const move = (t: number) => {
-      if (dot.current) dot.current.style.transform = `translateX(${(Math.sin(t / 300) + 1) * 120}px)`;
+      if (dot.current) {dot.current.style.transform = `translateX(${(Math.sin(t / 300) + 1) * 120}px)`;}
       id = requestAnimationFrame(move);
     };
     id = requestAnimationFrame(move);
@@ -316,7 +316,7 @@ export default function BenchmarkDemo() {
                         <td className='py-2 pr-4'>{s.label}</td>
                         {names.map(n => {
                           const c = results[n][s.key];
-                          if (!c) return <td key={n} className='py-2 pr-4 text-slate-400'>–</td>;
+                          if (!c) {return <td key={n} className='py-2 pr-4 text-slate-400'>–</td>;}
                           return (
                               <td key={n} className='py-2 pr-4 tabular-nums'>
                                 <span className={c.ms === best(s.key, 'ms') ? 'font-semibold' : ''}>{fmt(c.ms)}</span>

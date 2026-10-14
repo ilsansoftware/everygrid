@@ -34,7 +34,7 @@ export function runExcelExport(opts: {
     let settled = false;
 
     const finish = (fn: () => void) => {
-      if (settled) return;
+      if (settled) { return; }
       settled = true;
       signal?.removeEventListener('abort', onAbort);
       worker.terminate();
@@ -67,18 +67,18 @@ export function runExcelExport(opts: {
       worker.postMessage({type: 'init', baseName, expectedFiles, relational, keyField});
       const totalPages = Math.max(1, Math.ceil(total / chunkSize));
       for (let page = 0; page < totalPages; page++) {
-        if (settled) return;
+        if (settled) { return; }
         const rows = await fetchChunk(page, chunkSize);
-        if (settled || !rows || rows.length === 0) break;
+        if (settled || !rows || rows.length === 0) { break; }
         // Send one chunk, then wait for the worker to consume it before fetching/sending the next.
         const acked = new Promise<void>((res, rej) => { ackResolve = res; ackReject = rej; });
         worker.postMessage({type: 'chunk', rows});
         await acked;
         // Relational builds no part files until the end, so drive progress by chunks consumed
         // (single-sheet mode reports its own file-based progress from the worker instead).
-        if (relational) onProgress?.(page + 1, totalPages);
+        if (relational) { onProgress?.(page + 1, totalPages); }
       }
-      if (!settled) worker.postMessage({type: 'end'});
+      if (!settled) {worker.postMessage({type: 'end'});}
     })().catch(err => finish(() => reject(err)));
   });
 }

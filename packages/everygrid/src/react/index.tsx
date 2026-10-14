@@ -87,7 +87,7 @@ export interface EverygridLocaleOptions {
 
 function savedLocale(persist: boolean | string | undefined): Locale | null {
   const key = Everygrid.localeStorageKey(persist);
-  if (!key) return null;
+  if (!key) { return null; }
   try {
     const v = localStorage.getItem(key);
     return v === 'ko' || v === 'en' ? v : null;
@@ -107,7 +107,7 @@ export function useEverygridLocale(opts: EverygridLocaleOptions = {}): [Locale, 
   const [locale, setState] = useState<Locale>(() => savedLocale(persist) ?? defaultLocale ?? Everygrid.getLocale());
   // Apply the restored/default choice once, so the grids match what this state says.
   useEffect(() => {
-    if (savedLocale(persist) || defaultLocale) Everygrid.setLocale(locale);
+    if (savedLocale(persist) || defaultLocale) { Everygrid.setLocale(locale); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => Everygrid.onLocaleChange(next => {
@@ -138,7 +138,7 @@ export function EverygridLocaleSwitch({type, display, labels, persist, defaultLo
   const ref = useRef<HTMLSpanElement>(null);
   const labelKey = JSON.stringify(labels ?? null);
   useEffect(() => {
-    if (!ref.current) return;
+    if (!ref.current) { return; }
     return Everygrid.mountLocaleSwitch(ref.current, {type, display, labels, persist, defaultLocale});
     // labels is compared by value (labelKey); a new object with the same text must not remount.
     // eslint-disable-next-line react-hooks/exhaustive-deps

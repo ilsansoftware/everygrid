@@ -30,8 +30,8 @@ const PROGRESS_GRID_OF_TAB: Partial<Record<TabId, string>> = {
 
 // Compact row count for the nav badge: 1_600_000 → '1.6M', 25_000 → '25k'.
 function compactCount(n: number): string {
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${Math.round(n / 1e3)}k`;
+  if (n >= 1e6) {return `${(n / 1e6).toFixed(1)}M`;}
+  if (n >= 1e3) {return `${Math.round(n / 1e3)}k`;}
   return String(n);
 }
 
@@ -118,11 +118,11 @@ export default function App() {
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
-  if (isNarrow && MOBILE_HIDDEN_TABS.includes(tab)) setTab('react');
-  if (!isNarrow && drawerOpen) setDrawerOpen(false);
+  if (isNarrow && MOBILE_HIDDEN_TABS.includes(tab)) { setTab('react'); }
+  if (!isNarrow && drawerOpen) { setDrawerOpen(false); }
 
   // Synced during rendering rather than in an effect, to avoid a cascading render.
-  if (!mounted.has(tab)) setMounted(new Set(mounted).add(tab));
+  if (!mounted.has(tab)) { setMounted(new Set(mounted).add(tab)); }
 
   // Live load progress per grid id, so the nav can show a streaming/indexing bar for a tab whose
   // grid is loading in the background (keep-alive keeps it mounted after you switch away).
@@ -132,7 +132,7 @@ export default function App() {
     const gids = [...mounted]
       .map((t) => PROGRESS_GRID_OF_TAB[t])
       .filter((g): g is string => !!g);
-    if (gids.length === 0) return;
+    if (gids.length === 0) { return; }
     let timer = 0;
     const poll = () => {
       const readings = gids.map((g) => [g, Everygrid.getLoadProgress(g)] as const);
@@ -140,8 +140,8 @@ export default function App() {
         let changed = false;
         const next = {...prev};
         for (const [g, p] of readings) {
-          if (!p) continue;
-          if (p.active) seenActiveRef.current.add(g);
+          if (!p) { continue; }
+          if (p.active) { seenActiveRef.current.add(g); }
           const old = prev[g];
           if (!old || old.active !== p.active || old.percent !== p.percent || old.rowsLoaded !== p.rowsLoaded) {
             next[g] = p;
@@ -153,7 +153,7 @@ export default function App() {
       // Stop once every tracked grid has been observed and none is still loading. The seenActive /
       // rowsLoaded guard avoids stopping in the gap between mount and the stream actually starting.
       const settled = readings.every(([g, p]) => p && !p.active && (seenActiveRef.current.has(g) || p.rowsLoaded > 0));
-      if (!settled) timer = window.setTimeout(poll, 300);
+      if (!settled) { timer = window.setTimeout(poll, 300); }
     };
     timer = window.setTimeout(poll, 100);
     return () => clearTimeout(timer);
@@ -171,7 +171,7 @@ export default function App() {
   useEffect(() => {
     const onPop = () => {
       const hash = window.location.hash.replace('#', '');
-      if (isTabId(hash)) setTab(hash);
+      if (isTabId(hash)) { setTab(hash); }
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -181,7 +181,7 @@ export default function App() {
   // the vite plugin (see vite.config.ts) fires this event and we reload the affected iframes —
   // the closest thing to the React demo's HMR for the vanilla / jquery tabs.
   useEffect(() => {
-    if (!import.meta.hot) return;
+    if (!import.meta.hot) { return; }
     const reload = () => {
       for (const id of ['vanilla', 'jquery'] as const) {
         // Same-origin iframe → reload its document to pick up the freshly built standalone bundle.
@@ -203,10 +203,10 @@ export default function App() {
 
   // Fetch a html demo's source the first time its modal is opened (React tabs are bundled).
   useEffect(() => {
-    if (!modalOpen || REACT_TABS.includes(tab) || codeByTab[tab]) return;
+    if (!modalOpen || REACT_TABS.includes(tab) || codeByTab[tab]) { return; }
     let cancelled = false;
     const store = (text: string) => {
-      if (!cancelled) setCodeByTab((prev) => ({...prev, [tab]: text}));
+      if (!cancelled) {setCodeByTab((prev) => ({...prev, [tab]: text}));}
     };
     fetch(`/${tab}/index.html`)
     .then((r) => r.text())
@@ -219,9 +219,9 @@ export default function App() {
 
   // Close the modal on Escape.
   useEffect(() => {
-    if (!modalOpen) return;
+    if (!modalOpen) { return; }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setModalOpen(false);
+      if (e.key === 'Escape') { setModalOpen(false); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -229,9 +229,9 @@ export default function App() {
 
   // …and the drawer.
   useEffect(() => {
-    if (!drawerOpen) return;
+    if (!drawerOpen) { return; }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false);
+      if (e.key === 'Escape') { setDrawerOpen(false); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -444,7 +444,7 @@ export default function App() {
         <div
             className={`code-modal-overlay${modalOpen ? ' open' : ''}`}
             onClick={(e) => {
-              if (e.target === e.currentTarget) setModalOpen(false);
+              if (e.target === e.currentTarget) { setModalOpen(false); }
             }}
         >
           <div className='code-modal'>

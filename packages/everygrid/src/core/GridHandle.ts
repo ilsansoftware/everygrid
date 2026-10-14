@@ -244,7 +244,7 @@ export class GridHandle<T extends Record<string, unknown> = Record<string, unkno
 
   checkAll(): void {
     const mapping = this.grid.getCheckboxMapping(this.id);
-    if (mapping) this.grid.setChecked(this.id, this.data().map(r => r[mapping]), true);
+    if (mapping) { this.grid.setChecked(this.id, this.data().map(r => r[mapping]), true); }
   }
 
   uncheckAll(): void {
@@ -318,8 +318,8 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
 
   /** `inserted` / `updated` / `deleted`, or null for a row exactly as loaded. */
   status(): RowStatus | null {
-    if (this.inserted()) return 'inserted';
-    if (this.deleted()) return 'deleted';
+    if (this.inserted()) { return 'inserted'; }
+    if (this.deleted()) { return 'deleted'; }
     return this.updated() ? 'updated' : null;
   }
 
@@ -338,13 +338,13 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
   check(checked = true): void {
     const row = this.get();
     const mapping = this.grid.getCheckboxMapping(this.gridId);
-    if (row && mapping) this.grid.setChecked(this.gridId, [row[mapping]], checked);
+    if (row && mapping) { this.grid.setChecked(this.gridId, [row[mapping]], checked); }
   }
 
   /** Marks the row deleted (struck through until commit; cancel() brings it back). Needs `rowActions.deleteRow`. */
   delete(): boolean {
     const row = this.get();
-    if (!row) return false;
+    if (!row) { return false; }
     if (!this.grid.getRowActions(this.gridId).deleteRow) {
       console.warn(`Everygrid: "${this.gridId}" has no rowActions.deleteRow — rows cannot be deleted.`);
       return false;
@@ -368,17 +368,17 @@ export class RowHandle<T extends Record<string, unknown> = Record<string, unknow
    */
   set(values: Partial<T>, opts: {force?: boolean} = {}): number {
     let n = 0;
-    for (const [field, value] of Object.entries(values)) if (this.cell(field).set(value, opts)) n++;
+    for (const [field, value] of Object.entries(values)) {if (this.cell(field).set(value, opts)) { n++; }}
     return n;
   }
 
   /** Cancels this row's change: an inserted row is dropped, a deleted one comes back, edits are undone. */
   cancel(): void {
     const row = this.get();
-    if (!row) return;
+    if (!row) { return; }
     if (this.grid.isRowInserted(row)) { this.grid.deleteRow(this.gridId, row); return; }
-    if (this.grid.isRowDeleted(row)) this.grid.restoreRow(this.gridId, row);
-    for (const c of this.changes()) this.cell(c.field).cancel();
+    if (this.grid.isRowDeleted(row)) { this.grid.restoreRow(this.gridId, row); }
+    for (const c of this.changes()) { this.cell(c.field).cancel(); }
   }
 }
 
@@ -423,7 +423,7 @@ export class CellHandle<T extends Record<string, unknown> = Record<string, unkno
    */
   set(value: unknown, opts: {force?: boolean} = {}): boolean {
     const row = this.row.get();
-    if (!row) return false;
+    if (!row) { return false; }
     if (!opts.force && !this.isEditable()) {
       console.warn(`Everygrid: "${this.field}" is not an editable column of "${this.row.gridId}" — pass {force: true} to set it anyway.`);
       return false;
@@ -435,7 +435,7 @@ export class CellHandle<T extends Record<string, unknown> = Record<string, unkno
   /** Puts the loaded value back. */
   cancel(): void {
     const row = this.row.get();
-    if (row && this.modified()) this.grid.cancelCell(this.row.gridId, row, this.field);
+    if (row && this.modified()) { this.grid.cancelCell(this.row.gridId, row, this.field); }
   }
 }
 
@@ -458,13 +458,13 @@ export class ColumnHandle<T extends Record<string, unknown> = Record<string, unk
     const out: ColumnChange<T>[] = [];
     for (const r of this.parent.changes()) {
       const c = r.cells.find(c => c.field === this.field);
-      if (c) out.push({...c, index: r.index, key: r.key, row: r.row});
+      if (c) {out.push({...c, index: r.index, key: r.key, row: r.row});}
     }
     return out;
   }
 
   /** Cancels every change in this column. */
   cancel(): void {
-    for (const c of this.changes()) this.parent.row(c.index).cell(this.field).cancel();
+    for (const c of this.changes()) { this.parent.row(c.index).cell(this.field).cancel(); }
   }
 }

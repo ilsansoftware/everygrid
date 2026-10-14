@@ -20,7 +20,7 @@ const wasmInlinePlugin = {
   name: 'wasm-inline-base64',
   enforce: 'pre' as const,
   load(id: string) {
-    if (!id.endsWith('.wasm')) return null;
+    if (!id.endsWith('.wasm')) { return null; }
     const wasmBuffer = readFileSync(id);
     const base64 = wasmBuffer.toString('base64');
     return `
@@ -45,7 +45,7 @@ export default binary.buffer;
     if (id.includes('ExcelExportClient')) {
       return code.replace("'./ExportWorker?worker'", "'./ExportWorker?worker&inline'");
     }
-    if (!id.includes('GridEngineWasm')) return null;
+    if (!id.includes('GridEngineWasm')) { return null; }
     // In standalone builds, import the WASM binary and pass it to init()
     const withImport = `import wasmBinary from 'everygrid-wasm/everygrid_wasm_bg.wasm';\n` + code;
     return withImport
@@ -78,7 +78,7 @@ const inlineCssPlugin = {
         cssFileName = fileName;
       }
     }
-    if (!cssContent) return;
+    if (!cssContent) { return; }
     const normalizedCss = cssContent.replace(/@layer\s+properties\s*\{([\s\S]*?)}\s*}/g, '$1}');
     // Inject the stylesheet at import time so `import '@everygrid/grid'` (or the <script>) styles the
     // grid with no separate CSS import. The ES build extracts its CSS to a sibling Everygrid.css that
@@ -93,7 +93,7 @@ const inlineCssPlugin = {
     }
     // Standalone ships one self-contained file → drop the now-inlined CSS asset. The ES build keeps
     // it so `@everygrid/grid/css` still resolves for consumers who want the raw stylesheet.
-    if (isStandalone && cssFileName) delete bundle[cssFileName];
+    if (isStandalone && cssFileName) { delete bundle[cssFileName]; }
   },
 };
 
@@ -141,8 +141,8 @@ export default defineConfig({
       name: 'Everygrid',
       formats: (isStandalone) ? ['umd'] : ['es'],
       fileName: (format) => {
-        if (isStandalone) return 'everygrid.standalone.js';
-        if (format === 'es') return 'index.js';
+        if (isStandalone) { return 'everygrid.standalone.js'; }
+        if (format === 'es') { return 'index.js'; }
         return 'everygrid.standalone.js';
       },
     },

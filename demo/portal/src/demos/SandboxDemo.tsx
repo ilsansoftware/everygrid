@@ -15,8 +15,8 @@ function maxBytes(): number {
 }
 
 function formatBytes(n: number): string {
-  if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
-  if (n >= 1024) return `${Math.round(n / 1024)} KB`;
+  if (n >= 1024 * 1024) {return `${(n / 1024 / 1024).toFixed(1)} MB`;}
+  if (n >= 1024) {return `${Math.round(n / 1024)} KB`;}
   return `${n} B`;
 }
 
@@ -30,12 +30,12 @@ function formatBytes(n: number): string {
 function extractRows(doc: unknown): Row[] {
   const isRow = (r: unknown): r is Row => !!r && typeof r === 'object' && !Array.isArray(r);
   if (Array.isArray(doc)) {
-    if (doc.length === 0) throw new Error('The array is empty.');
+    if (doc.length === 0) { throw new Error('The array is empty.'); }
     const bad = doc.findIndex(r => !isRow(r));
-    if (bad !== -1) throw new Error(`Row ${bad} is not an object — every row must be a JSON object.`);
+    if (bad !== -1) {throw new Error(`Row ${bad} is not an object — every row must be a JSON object.`);}
     return doc as Row[];
   }
-  if (!isRow(doc)) throw new Error('Expected a JSON array or object at the top level.');
+  if (!isRow(doc)) { throw new Error('Expected a JSON array or object at the top level.'); }
   const values = Object.values(doc);
   const only = values.length === 1 ? values[0] : undefined;
   return Array.isArray(only) && only.length > 0 && only.every(isRow) ? (only as Row[]) : [doc];
@@ -77,7 +77,7 @@ export default function SandboxDemo() {
       const rows = extractRows(JSON.parse(await read()));
       rowsRef.current = rows;
       const columns = new Set<string>();
-      for (const r of rows.slice(0, 200)) Object.keys(r).forEach(k => columns.add(k));
+      for (const r of rows.slice(0, 200)) { Object.keys(r).forEach(k => columns.add(k)); }
       setInfo({name, bytes, rows: rows.length, columns: columns.size});
       // Silent because nobody pressed the toolbar's reload; discarding because the previous file's
       // rows should not sit there while the new ones are indexed.
@@ -89,7 +89,7 @@ export default function SandboxDemo() {
       await Everygrid.reload('sandbox-grid', {silent: true, discard: true});
     } finally {
       setBusy(false);
-      if (inputRef.current) inputRef.current.value = '';
+      if (inputRef.current) { inputRef.current.value = ''; }
     }
   };
 
@@ -106,20 +106,20 @@ export default function SandboxDemo() {
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) void loadFile(file);
+    if (file) { void loadFile(file); }
   };
   const onDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) void loadFile(file);
+    if (file) { void loadFile(file); }
   };
   // A paste is a normal paste — inserted at the caret, keeping what is already in the box — and
   // renders straight away when the box then holds valid JSON. Otherwise (a fragment pasted into
   // a draft) it just lands, and the Render button covers the rest.
   const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
     const clip = e.clipboardData.getData('text');
-    if (!clip.trim()) return;
+    if (!clip.trim()) { return; }
     const el = e.currentTarget;
     const next = el.value.slice(0, el.selectionStart) + clip + el.value.slice(el.selectionEnd);
     try { JSON.parse(next); } catch { return; }

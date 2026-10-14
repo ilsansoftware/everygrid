@@ -26,6 +26,8 @@ export default defineConfig([
       // those; `quotes` above only covers JS string literals). 'prefer-single' still falls back to
       // double when the value itself contains a single quote, so nothing needs escaping.
       'jsx-quotes': ['error', 'prefer-single'],
+      // Braces on every if/else (and loop) body, single statements included.
+      'curly': ['error', 'all'],
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',

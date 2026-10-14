@@ -21,7 +21,7 @@ export default function ChangesPanel({gridId}: { gridId: string }) {
     let off = () => {};
     const timer = setInterval(() => {
       const g = Everygrid.get(gridId);
-      if (!g) return;
+      if (!g) { return; }
       clearInterval(timer);
       bump(n => n + 1);
       setChecked(g.checkedValues());

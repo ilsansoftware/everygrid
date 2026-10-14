@@ -55,7 +55,7 @@ export class I18n {
   public static initFromBrowser() {
     // An explicit setLocale (e.g. from the host app) wins — don't clobber it with the browser locale
     // every time a grid is constructed.
-    if (this.explicit) return;
+    if (this.explicit) { return; }
     const lang = navigator.language.split('-')[0];
     this.locale = lang === 'ko' ? 'ko' : 'en';
   }

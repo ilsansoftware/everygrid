@@ -36,7 +36,7 @@ let acc: Record<string, unknown>[] = [];
 const files: {name: string; bytes: Uint8Array}[] = [];
 
 function flush() {
-  if (acc.length === 0) return;
+  if (acc.length === 0) { return; }
   files.push({name: `${baseName}_part${files.length + 1}.xlsx`, bytes: ExcelWorkbook.buildXlsxBuffer(acc, header || [])});
   acc = [];
   ctx.postMessage({type: 'progress', done: files.length, total: expectedFiles});
@@ -58,7 +58,7 @@ const childFields = new Set<string>();
 const keyedFields = new Set<string>();
 
 function emitWindow() {
-  if (winParent.length === 0 && winChildren.size === 0) return;
+  if (winParent.length === 0 && winChildren.size === 0) { return; }
   const sheets: {name: string; rows: Record<string, unknown>[]; front?: string[]}[] =
     [{name: 'main', rows: winParent}];
   for (const [field, rows] of winChildren) {
@@ -80,21 +80,21 @@ function addRelationalChunk(rows: unknown[]) {
     const keyVal = keyField ? rec[keyField] : undefined;
     const keyCol = (keyField && keyVal !== undefined) ? {[keyField]: keyVal} : {};
     // Any depth-1 field with an array (here or in an earlier record) → a decomposed child sheet.
-    for (const path of ExcelView.arrayPaths([rec])) childFields.add(path[0]);
+    for (const path of ExcelView.arrayPaths([rec])) { childFields.add(path[0]); }
     for (const field of childFields) {
       const val = rec[field];
-      if (val === undefined || val === null) continue;
-      if (typeof val === 'object' && !Array.isArray(val)) keyedFields.add(field);
+      if (val === undefined || val === null) { continue; }
+      if (typeof val === 'object' && !Array.isArray(val)) { keyedFields.add(field); }
       let acc = winChildren.get(field);
       if (!acc) { acc = []; winChildren.set(field, acc); }
       // Decompose the whole field: every sub-key → a row (see ExcelView.decomposeToRows).
       const decomposed: Record<string, unknown>[] = [];
       ExcelView.decomposeToRows(val, '', decomposed, keyedFields.has(field));
-      for (const row of decomposed) acc.push({_mainSheetRowNum: rowNum, ...keyCol, ...row});
+      for (const row of decomposed) {acc.push({_mainSheetRowNum: rowNum, ...keyCol, ...row});}
     }
 
     // Flush after a full parent row so a row's children never split across files.
-    if (winParent.length >= RELATIONAL_WINDOW) emitWindow();
+    if (winParent.length >= RELATIONAL_WINDOW) { emitWindow(); }
   }
 }
 
@@ -126,10 +126,10 @@ ctx.onmessage = (e: MessageEvent<InMsg>) => {
         addRelationalChunk(msg.rows);
       } else {
         const flat = msg.rows.map(r => ExcelView.flattenObjectForExcel(r));
-        if (!header) header = ExcelView.unionHeader(flat);
+        if (!header) { header = ExcelView.unionHeader(flat); }
         for (const row of flat) {
           acc.push(row);
-          if (acc.length >= ROWS_PER_FILE) flush();
+          if (acc.length >= ROWS_PER_FILE) { flush(); }
         }
       }
       // Backpressure: tell the main thread this chunk is consumed so it can send the next one

@@ -85,9 +85,9 @@ const lineStarts = (mirror: HTMLElement, text: string, breakWord: boolean): numb
   let top: number | null = null;
   for (const box of boxes) {
     const t = Math.round(box.el.getBoundingClientRect().top);
-    if (top === null) top = t;
+    if (top === null) { top = t; }
     // A line some newline already started needs no break of ours.
-    else if (t > top) { top = t; if (box.at > 0 && text[box.at - 1] !== '\n') at.push(box.at); }
+    else if (t > top) { top = t; if (box.at > 0 && text[box.at - 1] !== '\n') { at.push(box.at); } }
   }
   return at;
 };
@@ -104,12 +104,12 @@ const breakPoints = (mirror: HTMLElement, base: string): number[] => {
   let staged = '', prev = 0;
   const toBase: number[] = [];
   for (const i of first) {
-    for (let k = prev; k < i; k++) toBase.push(k);
+    for (let k = prev; k < i; k++) { toBase.push(k); }
     toBase.push(i); // the newline itself maps to where it was inserted
     staged += base.slice(prev, i) + '\n';
     prev = i;
   }
-  for (let k = prev; k <= base.length; k++) toBase.push(k);
+  for (let k = prev; k <= base.length; k++) { toBase.push(k); }
   staged += base.slice(prev);
   const second = lineStarts(mirror, staged, true).map(i => toBase[i]);
   return [...new Set([...first, ...second])].sort((a, b) => a - b);
@@ -257,7 +257,7 @@ export const GridToolbarComponent = ({
   // Observe toolbar container width to switch to mobile mode
   useEffect(() => {
     const el = toolbarRef.current;
-    if (!el) return;
+    if (!el) { return; }
     const observer = new ResizeObserver(entries => {
       for (const entry of entries) {
         setIsMobile(entry.contentRect.width < 720);
@@ -269,7 +269,7 @@ export const GridToolbarComponent = ({
 
   // Close menu when clicking outside
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen) { return; }
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
@@ -282,7 +282,7 @@ export const GridToolbarComponent = ({
   // Close the export scope selector on an outside click (exportMenuRef wraps the icon group
   // and the selector, so clicking the download toggle itself stays inside and just toggles).
   useEffect(() => {
-    if (!exportMenuOpen) return;
+    if (!exportMenuOpen) { return; }
     const handleClick = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setExportMenuOpen(false);
@@ -331,10 +331,10 @@ export const GridToolbarComponent = ({
     const at = (i: number): [number, number] | null => {
       if (text[i] === '(') {
         let d = 0;
-        for (let j = i; j < text.length; j++) { if (text[j] === '(') d++; else if (text[j] === ')' && --d === 0) return [i, j]; }
+        for (let j = i; j < text.length; j++) { if (text[j] === '(') { d++; } else if (text[j] === ')' && --d === 0) { return [i, j]; } }
       } else if (text[i] === ')') {
         let d = 0;
-        for (let j = i; j >= 0; j--) { if (text[j] === ')') d++; else if (text[j] === '(' && --d === 0) return [j, i]; }
+        for (let j = i; j >= 0; j--) { if (text[j] === ')') { d++; } else if (text[j] === '(' && --d === 0) { return [j, i]; } }
       }
       return null;
     };
@@ -352,7 +352,7 @@ export const GridToolbarComponent = ({
     const prev = before.slice(0, before.length - token.length).replace(/[\s⁠]+$/, '').slice(-1);
     // After a closed `)` a sibling key can still start, but only the explicit ↓ opens it there
     // (`lenient`) — passive typing stays quiet since there's no operator yet.
-    if (prev !== '' && !'(&|.'.includes(prev) && !(lenient && prev === ')')) return null;
+    if (prev !== '' && !'(&|.'.includes(prev) && !(lenient && prev === ')')) { return null; }
     return {token, start: before.length - token.length};
   };
 
@@ -362,8 +362,8 @@ export const GridToolbarComponent = ({
     let word = '';
     for (const ch of text) {
       if (/[\w]/.test(ch)) { word += ch; continue; }
-      if (ch === '(') stack.push(word);
-      else if (ch === ')') stack.pop();
+      if (ch === '(') { stack.push(word); }
+      else if (ch === ')') { stack.pop(); }
       word = '';
     }
     return stack.filter(Boolean);
@@ -374,7 +374,7 @@ export const GridToolbarComponent = ({
     let node: KeyTree = tree;
     for (const seg of path) {
       const k = Object.keys(node).find(key => key.toLowerCase() === seg.toLowerCase());
-      if (k === undefined) return null;
+      if (k === undefined) { return null; }
       node = node[k];
     }
     return node;
@@ -454,7 +454,7 @@ export const GridToolbarComponent = ({
         const base = stripAuto(inputValue);
         const at = caretToBase(inputValue, s);
         const cut = back ? at - 1 : at;
-        if (cut < 0 || cut >= base.length) return;
+        if (cut < 0 || cut >= base.length) { return; }
         const next = base.slice(0, cut) + base.slice(cut + 1);
         pendingCaretRef.current = cut;
         setCaret(cut);
@@ -467,14 +467,14 @@ export const GridToolbarComponent = ({
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (!suggestEntered) { setSuggestEntered(true); setSuggestIndex(0); }
-        else setSuggestIndex(i => (i + 1) % suggestions.length);
+        else { setSuggestIndex(i => (i + 1) % suggestions.length); }
         return;
       }
       // ↑ step back OUT to the text field; press it again (now outside) to close the dropdown.
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (suggestEntered) setSuggestEntered(false);
-        else setSuggestions([]);
+        if (suggestEntered) { setSuggestEntered(false); }
+        else { setSuggestions([]); }
         return;
       }
       if (suggestEntered) {
@@ -524,7 +524,7 @@ export const GridToolbarComponent = ({
       const ch = text[i];
       if (ch === '(') { flush(); bracket(ch, i, depth); depth++; }
       else if (ch === ')') { flush(); depth = Math.max(0, depth - 1); bracket(ch, i, depth); }
-      else buf += ch;
+      else { buf += ch; }
     }
     flush();
     return parts;
@@ -534,7 +534,7 @@ export const GridToolbarComponent = ({
   // The toolbar grows with it, so a multi-line query pushes the grid down rather than covering it.
   useLayoutEffect(() => {
     const el = filterRef.current;
-    if (!el) return;
+    if (!el) { return; }
     const cs = getComputedStyle(el);
     // Row metrics derived rather than hard-coded, so they track the CSS.
     const line = parseFloat(cs.lineHeight) || 16;
@@ -572,11 +572,11 @@ export const GridToolbarComponent = ({
     const mirror = mirrorRef.current, el = filterRef.current;
     // Rewriting the value mid-composition kills Hangul input, so a reflow waits for the IME to
     // commit — compositionend re-runs this effect.
-    if (!mirror || !el || composingRef.current) return;
+    if (!mirror || !el || composingRef.current) { return; }
     const base = stripAuto(inputValue);
     const at = breakPoints(mirror, base);
     const next = withBreaks(base, at);
-    if (next === inputValue) return;
+    if (next === inputValue) { return; }
     // A caret already waiting to be applied belongs to this value, so it is what gets carried over.
     const from = pendingCaretRef.current ?? el.selectionStart ?? inputValue.length;
     pendingCaretRef.current = caretFromBase(caretToBase(inputValue, from), at);
@@ -586,7 +586,7 @@ export const GridToolbarComponent = ({
   // The break positions depend on the box width, so a resize has to re-run the reflow above.
   useEffect(() => {
     const el = boxRef.current;
-    if (!el) return;
+    if (!el) { return; }
     const ro = new ResizeObserver(([entry]) => setBoxW(entry.contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();
@@ -595,14 +595,14 @@ export const GridToolbarComponent = ({
   // Position the suggestion dropdown under the textarea (measured after layout, so no ref reads
   // during render — the portal uses this state).
   useLayoutEffect(() => {
-    if (suggestions.length === 0) return;
+    if (suggestions.length === 0) { return; }
     // Desktop only: the dropdown is portalled and floats under the box, so it needs measured
     // coordinates. On mobile it renders inline (grouped with the box in the flow), so there's nothing
     // to measure — and measuring against a keyboard-resized viewport is exactly what made it drift.
-    if (isMobile) return;
+    if (isMobile) { return; }
     const place = () => {
       const box = boxRef.current;
-      if (!box) return;
+      if (!box) { return; }
       // Drop straight down from the search box at its exact width, so the input and the suggestion
       // list read as one connected control — same on web and mobile (the box sits at the top of the
       // toolbar, clear of the keyboard). Portalled to <body> to escape the grid's overflow/stacking.
@@ -633,7 +633,7 @@ export const GridToolbarComponent = ({
   // The dropdown stays up while the user works the search box; it closes only when a pointer press
   // lands outside both the box and the dropdown itself. (Blur alone no longer closes it.)
   useEffect(() => {
-    if (suggestions.length === 0) return;
+    if (suggestions.length === 0) { return; }
     const outside = (e: Event) => {
       const t = e.target as Node;
       return !(boxRef.current?.contains(t) || dropRef.current?.contains(t));
@@ -646,11 +646,11 @@ export const GridToolbarComponent = ({
       // Touch is handled on click instead: a scroll gesture also starts with a pointerdown outside the
       // box, so dismissing here made the list vanish the moment the user dragged the page. A drag never
       // produces a click, so click fires for real taps only.
-      if (e.pointerType === 'touch') return;
-      if (outside(e)) dismiss();
+      if (e.pointerType === 'touch') { return; }
+      if (outside(e)) { dismiss(); }
     };
     const onClick = (e: MouseEvent) => {
-      if (outside(e)) dismiss();
+      if (outside(e)) { dismiss(); }
     };
     document.addEventListener('pointerdown', onDown, true);
     document.addEventListener('click', onClick, true);
@@ -825,7 +825,7 @@ export const GridToolbarComponent = ({
                 labelOf={labelOf}
                 onPick={applySuggestion}/>
           );
-          if (isMobile) return list;
+          if (isMobile) { return list; }
           return dropStyle ? createPortal(list, document.body) : null;
         })()}
       </div>
@@ -845,10 +845,10 @@ export const GridToolbarComponent = ({
           spinning: isReloading
         })}
         {segmentButton(ColumnWidthIcon, 'reset', resetWidthBtnText, () => {
-          if (hasCustomWidths) onResetWidths();
+          if (hasCustomWidths) { onResetWidths(); }
         }, {active: hasCustomWidths, disabled: gridActionsDisabled || isExporting})}
         {segmentButton(SortResetIcon, 'reset', I18n.t('toolbar.resetSort'), () => {
-          if (sortInfo?.direction) onResetSort();
+          if (sortInfo?.direction) { onResetSort(); }
         }, {active: !!(sortInfo && sortInfo.direction), disabled: gridActionsDisabled || isExporting})}
         {segmentButton(ColumnsIcon, 'columns', selectColsBtnText, onShowColumnSelector, {disabled: gridActionsDisabled || isExporting})}
         {segmentButton(ExcelIcon, 'preview', excelBtnText, onToggleExcelView, {
@@ -857,7 +857,7 @@ export const GridToolbarComponent = ({
         })}
         {/* No active filter (filtered == all) → nothing to choose, download straight away. */}
         {segmentButton(DownloadIcon, 'export', downloadExcelBtnText,
-          () => { if (filteredCount === allCount) onDownloadExcel('all'); else setExportMenuOpen(prev => !prev); },
+          () => { if (filteredCount === allCount) { onDownloadExcel('all'); } else { setExportMenuOpen(prev => !prev); } },
           {active: exportMenuOpen, disabled: isExporting || isIndexing})}
         {onInsertRow && segmentButton(InsertRowIcon, 'row', I18n.t('grid.insertRow'), onInsertRow, {
           disabled: gridActionsDisabled || isExporting,
