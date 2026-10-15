@@ -13,7 +13,6 @@ import reactSrc from './demos/ReactDemo.tsx?raw';
 import largeSrc from './demos/LargeDataDemo.tsx?raw';
 import virtualSrc from './demos/VirtualScrollDemo.tsx?raw';
 import themeSrc from './demos/ThemeDemo.tsx?raw';
-import benchSrc from './demos/BenchmarkDemo.tsx?raw';
 
 type TabId = 'react' | 'vanilla' | 'jquery' | 'large' | 'virtual' | 'bench' | 'sandbox' | 'theme' | 'docs';
 
@@ -57,9 +56,9 @@ const TABS: { id: TabId; title: string; caption?: string; icon?: string; name?: 
   {id: 'docs', title: 'API Docs', label: 'api docs', group: 'docs'},
 ];
 
-// Tabs with nothing to show under 'Show Code': tools rather than demos, and Theming, which prints
-// the code it amounts to under its own grid.
-const NO_CODE_TABS: TabId[] = ['sandbox', 'theme', 'docs'];
+// Tabs with nothing to show under 'Show Code': tools rather than demos, Theming, which prints
+// the code it amounts to under its own grid, and Benchmark, whose harness isn't usage code.
+const NO_CODE_TABS: TabId[] = ['bench', 'sandbox', 'theme', 'docs'];
 
 // Prism language + label used by the 'Show Code' modal per demo. ('markup' is Prism's name for HTML.)
 const CODE_META: Record<TabId, { lang: string; label: string }> = {
@@ -198,7 +197,6 @@ export default function App() {
       : tab === 'large' ? largeSrc
           : tab === 'virtual' ? virtualSrc
               : tab === 'theme' ? themeSrc
-              : tab === 'bench' ? benchSrc
               : (codeByTab[tab] ?? 'Loading...');
 
   // Fetch a html demo's source the first time its modal is opened (React tabs are bundled).

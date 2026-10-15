@@ -36,8 +36,8 @@ Sorting 1,000,000 rows: Everygrid takes 0.29 s and the page never drops a frame.
 - Measured with Chrome 155 on a 10-core Mac, using `@everygrid/grid` 0.6.3, `ag-grid-community` 36.2
   and `@tanstack/table-core` 9.2, all on the same seeded rows.
 
-**[Run it yourself →](https://d3886c7yrxubj8.cloudfront.net/#bench)** The tab shows its source under
-**Code**.
+**[Run it yourself →](https://d3886c7yrxubj8.cloudfront.net/#bench)** Source:
+[`demo/portal/src/demos/BenchmarkDemo.tsx`](demo/portal/src/demos/BenchmarkDemo.tsx).
 
 ## Installation
 
