@@ -20,6 +20,13 @@ import {PopupComponent} from '../components/PopupComponent';
 import {TextEditorPopupComponent} from '../components/TextEditorPopupComponent';
 import {createRoot, type Root} from 'react-dom/client';
 import {
+  type AiSearchEndpoint, type AiSearchHandler, buildAiSearchPrompt, cleanAiQuery, describeFields, endpointHandler,
+  getAiSearchHandler, loadRecentQuestions,
+  setAiSearchHandler, updateRecentQuestions,
+} from './aiSearch';
+import {
+  type AiSearchOffer,
+  type GridAiSearchConfig,
   type GridColumn,
   type GridLoadProgress,
   type GridOptions,
@@ -1142,6 +1149,17 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
     Everygrid.rerenderAll();
   }
 
+  /**
+   * Registers the handler behind the toolbar's "AI search" button (shown on every grid while one is
+   * set; `null` removes it). The handler gets the reader's question plus a ready system prompt with
+   * the grid's columns and query syntax, calls a model through the host's own server, and resolves
+   * with the query to run. Applies to every grid on the page, which re-render.
+   */
+  public static setAiSearch(handler: AiSearchHandler | AiSearchEndpoint | null): void {
+    setAiSearchHandler(handler && typeof handler === 'object' ? endpointHandler(handler) : handler);
+    Everygrid.rerenderAll();
+  }
+
   public static setTheme(theme: 'light' | 'dark' | 'auto', target: Element = document.documentElement): void {
     if (theme === 'light') { target.removeAttribute('data-everygrid-theme'); }
     else { target.setAttribute('data-everygrid-theme', theme); }
@@ -1509,6 +1527,35 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
   public hasToolbar(containerId: string): boolean {
     const conf = this.options.toolbar?.find(c => c.id === containerId);
     return conf?.active !== false;
+  }
+
+  /**
+   * The AI search the toolbar offers for this grid, or undefined when there is none (no handler
+   * registered, or `toolbar.aiSearch` turned off). `sample` is the rows on screen, used when the
+   * grid holds no JS rows of its own (a streamed / WASM-only grid).
+   */
+  public aiSearchFor(containerId: string, sample: unknown[]): AiSearchOffer | undefined {
+    const handler = getAiSearchHandler();
+    const raw = this.options.toolbar?.find(c => c.id === containerId)?.aiSearch;
+    const conf: GridAiSearchConfig = typeof raw === 'object' ? raw : {active: raw};
+    if (!handler || conf.active === false) { return undefined; }
+    const locale = I18n.getLocale();
+    const examples = Array.isArray(conf.examples) ? conf.examples : (conf.examples?.[locale] ?? []);
+    return {
+      examples,
+      recent: () => loadRecentQuestions(containerId),
+      remember: q => { updateRecentQuestions(containerId, q, true); },
+      forget: q => { updateRecentQuestions(containerId, q, false); },
+      run: async (question, signal) => {
+        // The first source that actually holds rows: a grid streamed straight into the engine keeps an
+        // empty JS stream buffer, and then only the rows on screen describe the columns.
+        const rows = [this.options.data as unknown[] | undefined, this._streamRows.get(containerId), sample]
+          .find(r => r && r.length > 0) ?? [];
+        const fields = describeFields(rows, conf.sampleValues ?? 5, k => this.columnLabel(k, containerId));
+        const prompt = buildAiSearchPrompt(fields, locale);
+        return cleanAiQuery(await handler({question, gridId: containerId, locale, fields, prompt, signal}));
+      },
+    };
   }
 
   /** Whether the toolbar offers the "config" button (`toolbar: [{id, showConfig: true}]`). */

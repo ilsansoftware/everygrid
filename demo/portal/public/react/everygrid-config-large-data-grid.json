@@ -5,7 +5,21 @@
       "id": "large-data-grid",
       "title": "Large Data Grid",
       "toolbar": {
-        "showConfig": true
+        "showConfig": true,
+        "aiSearch": {
+          "examples": {
+            "ko": [
+              "금액 300만 이상인 활성 계정",
+              "APAC 지역 부서 소속",
+              "영어 시험에 떨어진 계정"
+            ],
+            "en": [
+              "Active accounts with an amount of 3,000,000 or more",
+              "Departments in the APAC division",
+              "Accounts that failed English"
+            ]
+          }
+        }
       },
       "pagination": {
         "pageSize": 30,

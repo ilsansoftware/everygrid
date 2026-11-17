@@ -1,0 +1,19 @@
+{
+  "name": "@everygrid/ai-search-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "AWS Lambda behind the demo site's AI search: question + grid fields in, everygrid query out (Claude).",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --external:@aws-sdk/* --outfile=dist/index.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.9.0",
+    "openai": "^7.57.0"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-ssm": "^3.1170.0",
+    "esbuild": "^0.25.0"
+  }
+}

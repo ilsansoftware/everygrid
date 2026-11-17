@@ -4,7 +4,7 @@ import type {ComponentType, ReactElement} from 'react';
 export type IconName =
   | 'chevronDown' | 'columns' | 'columnWidth' | 'comma' | 'config' | 'diff' | 'download' | 'edit'
   | 'excel' | 'globe' | 'hide' | 'info' | 'insertRow' | 'mobileColumns' | 'pinEmpty' | 'pinFilled'
-  | 'reload' | 'rowDetail' | 'search' | 'sortDown' | 'sortReset' | 'sortUp' | 'trash' | 'undo';
+  | 'reload' | 'rowDetail' | 'search' | 'sortDown' | 'sortReset' | 'sortUp' | 'sparkle' | 'trash' | 'undo';
 
 /** A replacement icon: SVG markup (trusted — it is inserted as-is) or a component taking `className`. */
 export type IconSource = string | ComponentType<{className?: string}>;

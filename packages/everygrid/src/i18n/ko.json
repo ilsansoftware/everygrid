@@ -20,7 +20,8 @@
     "indexingRows": "인덱스 생성 중... {count}행",
     "suggestNav": "↓ 진입 · ← → 선택 · Enter 적용 · ↑ 탈출",
     "diff": "Diff",
-    "config": "설정"
+    "config": "설정",
+    "aiSearch": "AI 검색"
   },
   "grid": {
     "index": "번호",
@@ -78,6 +79,15 @@
     "jsonView": "JSON 보기",
     "itemsCount": "{count}개 아이템",
     "copy": "복사",
-    "copied": "복사됨"
+    "copied": "복사됨",
+    "aiSearchTitle": "AI 검색",
+    "aiSearchExamples": "예제 질문",
+    "aiSearchPlaceholder": "찾고 싶은 행을 말로 설명해 주세요. 예: 디자인팀이나 HR 소속 30세 이상",
+    "aiSearchRun": "검색",
+    "aiSearchRunning": "검색 중…",
+    "aiSearchEmpty": "AI가 검색 조건을 만들지 못했습니다. 다르게 물어봐 주세요.",
+    "aiSearchFailed": "AI 검색에 실패했습니다: {message}",
+    "aiSearchRecent": "최근 검색",
+    "aiSearchForget": "“{question}” 지우기"
   }
 }

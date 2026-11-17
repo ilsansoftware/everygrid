@@ -222,7 +222,7 @@ apply to every grid in the file.
 | `editableCols` | `string[]` | Fields the reader may edit |
 | `rowKey` | `string \| string[]` | Field (or fields) that identify a row — what `patch()` and change events report as `key`. Without it, the row's data index |
 | `rowActions` | `{insertRow?, deleteRow?}` | A "+ row" toolbar button that adds an empty row above the data rows (kept apart from the loaded data — its rows and their indices stay put until commit), and a delete button on every row (deleted rows stay struck through until commit) |
-| `toolbar` | `{active?, showConfig?}` | `active: false` hides the toolbar (search box and action buttons); `showConfig: true` adds a "config" button that opens this entry in the popup viewer |
+| `toolbar` | `{active?, showConfig?, aiSearch?}` | `active: false` hides the toolbar (search box and action buttons); `showConfig: true` adds a "config" button that opens this entry in the popup viewer; `aiSearch` — see [AI search](#ai-search) |
 | `checkbox` | `string \| {mapping, active?}` | Adds a checkbox column; the field named is what `checkedValues()` collects |
 | `pagination` | `{pageSize?, active?, position?, rowCount?}` | Pagination — see [Row count placement](#row-count-placement) |
 | `virtualScroll` | `{active?, rowHeight?, overscan?, blockSize?}` | Virtual scrolling (replaces pagination for the grid) — see [Virtual scrolling](#virtual-scrolling) |
@@ -250,7 +250,7 @@ apply to every grid in the file.
 deprecated but still work, with the same arguments.
 
 **Naming.** `mount…` / `unmount…` attach UI to the page and take it off again (`mountGrid`,
-`mountLocaleSwitch`); `set…` changes a page-wide setting (`setLocale`, `setTheme`, `setIcons`);
+`mountLocaleSwitch`); `set…` changes a page-wide setting (`setLocale`, `setTheme`, `setIcons`, `setAiSearch`);
 `bind…` / `listen…` wire up elements or messages you already have and return a function that
 undoes it; `use…` is a React hook (`useGrid`).
 
@@ -437,6 +437,75 @@ Notes:
 - The search box **autocompletes keys** for the current scope (top-level fields first, then the
   selected field's sub-keys), colours parenthesis pairs by depth, and highlights the bracket next to
   the caret. Enter runs the search; Shift+Enter inserts a newline.
+
+## AI search
+
+Readers can describe the rows they want in plain words — "people in Busan aged 30 or over" — and an
+LLM turns that into the query above: `location(==Busan) && age(>=30)`. The query goes into the search
+box and runs like any other, so the engine still does the filtering and the reader sees (and can
+edit) what the AI understood.
+
+Everygrid never calls a model from the browser, since an API key cannot live in browser code. The
+model call runs on your server, with the key in the server's environment (`.env`). The package
+ships that server half as `@everygrid/grid/ai-server`. It works with Claude or OpenAI, or with any
+other model through your own call.
+
+**Server.** Install the SDK of the provider you use (`@anthropic-ai/sdk` or `openai`), put its key
+in the environment, and mount one POST route:
+
+```ts
+// e.g. app/api/ai-search/route.ts (Next.js); Hono, Bun, Deno and Workers take the same handler
+import {createAiSearchHandler} from '@everygrid/grid/ai-server';
+
+export const POST = createAiSearchHandler();                                     // ANTHROPIC_API_KEY
+// export const POST = createAiSearchHandler({provider: 'openai', model: 'gpt-5.4-mini'});  // OPENAI_API_KEY
+// export const POST = createAiSearchHandler({complete: ({system, question, signal}) => callMyModel(…)});
+```
+
+| Option | Default | |
+|---|---|---|
+| `provider` | `anthropic` if `ANTHROPIC_API_KEY` is set, else `openai` if `OPENAI_API_KEY` is | `'anthropic'` or `'openai'` |
+| `model` | `claude-opus-5-5` for Anthropic | Required for OpenAI |
+| `apiKey` | the provider's environment variable | |
+| `complete` | — | Your own model call: gets the system prompt and question, returns the reply text. Overrides `provider` |
+| `maxQuestionLength` | `500` | |
+
+For a server that isn't Fetch-API shaped (Express, AWS Lambda), `createAiSearch(options)` returns
+`(body) => Promise<{status, body}>` to wire up yourself; [`demo/ai-search`](demo/ai-search/src/index.ts)
+is a Lambda built that way. The browser sends only the question and the grid's column structure
+(key, display name, type, a few sample values), never the dataset. The server builds the prompt from
+that list itself and caps its size, so a public endpoint can't be used to send a model arbitrary
+instructions.
+
+**Browser.** Point the grids at the route; the **AI** button then appears beside every grid's search
+box:
+
+```ts
+Everygrid.setAiSearch({endpoint: '/api/ai-search'});   // optional `headers`, e.g. a CSRF token
+Everygrid.setAiSearch(null);                           // remove it again
+```
+
+To talk to some other backend, pass a handler instead. It gets `{question, prompt, fields, locale,
+gridId, signal}` (`prompt` is the ready-made system prompt) and resolves with the query; code fences
+and wrapping quotes are stripped. If that endpoint is public, don't forward a `prompt` it receives:
+anyone could send their own.
+
+Per grid, under `toolbar`:
+
+| Key | Default | |
+|---|---|---|
+| `aiSearch` | `true` | `false` hides the button on this grid |
+| `aiSearch.examples` | — | Example questions shown as chips: a list, or one per locale (`{"ko": […], "en": […]}`) |
+| `aiSearch.sampleValues` | `5` | Distinct sample values per column put in the prompt; `0` sends none |
+
+```json
+{
+  "id": "people",
+  "toolbar": {
+    "aiSearch": {"examples": {"en": ["People in Busan aged 30 or over"], "ko": ["부산에 사는 30세 이상"]}}
+  }
+}
+```
 
 ## Column i18n
 
@@ -798,6 +867,7 @@ inserted as-is: pass trusted SVG only. In the browser's dev tools an icon shows 
 | `diff` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/diff.svg" width="16" height="16" alt="diff"> | Toolbar — show changes |
 | `config` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/config.svg" width="16" height="16" alt="config"> | Toolbar — show config |
 | `search` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/search.svg" width="16" height="16" alt="search"> | Search box |
+| `sparkle` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/sparkle.svg" width="16" height="16" alt="sparkle"> | Toolbar — AI search |
 | `pinEmpty` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/pinEmpty.svg" width="16" height="16" alt="pinEmpty"> | Header — pin a column |
 | `pinFilled` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/pinFilled.svg" width="16" height="16" alt="pinFilled"> | Header — unpin a pinned column |
 | `comma` | <img src="https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/icons/comma.svg" width="16" height="16" alt="comma"> | Header — thousands separator on/off |
@@ -900,7 +970,7 @@ Releases are published to npm as [`@everygrid/grid`](https://www.npmjs.com/packa
 the `<script>` build is served from the same release by jsDelivr / unpkg. npm versions are immutable,
 so every release gets a new version number.
 
-The public API is the exports of `@everygrid/grid`, the config schema (`types.ts`), the
+The public API is the exports of `@everygrid/grid` (and of `@everygrid/grid/ai-server`), the config schema (`types.ts`), the
 `everygrid.config.json` contract and the `window.Everygrid` global. While at `0.x`, npm's caret makes
 **minor the breaking slot** (`^0.4.2` resolves `>=0.4.2 <0.5.0`):
 

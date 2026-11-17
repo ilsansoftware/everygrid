@@ -195,6 +195,31 @@ export interface GridToolbarConfig {
   id: string;
   active?: boolean;
   showConfig?: boolean;
+  /**
+   * The "AI search" button beside the search box. It shows on every grid once a handler is
+   * registered with `Everygrid.setAiSearch`; `false` (or `{active: false}`) hides it here.
+   */
+  aiSearch?: boolean | GridAiSearchConfig;
+}
+
+/** What the toolbar needs to offer AI search on one grid: the example chips and the call itself. */
+export interface AiSearchOffer {
+  examples: string[];
+  /** Questions asked on this grid before, newest first — shown as chips and kept across reloads.
+   *  A call, so browser storage is read when the dialog opens rather than on every grid render. */
+  recent: () => string[];
+  remember: (question: string) => void;
+  forget: (question: string) => void;
+  /** Resolves with the query to put in the search box. */
+  run: (question: string, signal: AbortSignal) => Promise<string>;
+}
+
+export interface GridAiSearchConfig {
+  active?: boolean;
+  /** Example questions shown as chips in the dialog — one list, or one per locale (`{ko: […], en: […]}`). */
+  examples?: string[] | Record<string, string[]>;
+  /** Distinct sample values per column sent to the model so it matches the data's spelling. Default 5; 0 sends none. */
+  sampleValues?: number;
 }
 
 export interface GridDataLimitConfig {
@@ -294,6 +319,7 @@ export interface IEverygrid<T extends Record<string, unknown>> {
   cancelAll(containerId: string): void;
   cancelCell(containerId: string, rowData: Record<string, unknown>, field: string): void;
   showsConfig(containerId: string): boolean;
+  aiSearchFor(containerId: string, sample: unknown[]): AiSearchOffer | undefined;
   getTargetConfig(containerId: string): Record<string, unknown>;
   showConfig(container: HTMLElement): void;
   getCheckboxMapping(containerId: string): string | undefined;

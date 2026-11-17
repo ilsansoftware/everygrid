@@ -20,7 +20,8 @@
     "indexingRows": "Indexing... {count} rows",
     "suggestNav": "↓ enter · ← → select · Enter apply · ↑ exit",
     "diff": "Diff",
-    "config": "Config"
+    "config": "Config",
+    "aiSearch": "AI search"
   },
   "grid": {
     "index": "Index",
@@ -78,6 +79,15 @@
     "jsonView": "JSON View",
     "itemsCount": "{count} Items",
     "copy": "Copy",
-    "copied": "Copied"
+    "copied": "Copied",
+    "aiSearchTitle": "AI search",
+    "aiSearchExamples": "Example questions",
+    "aiSearchPlaceholder": "Describe the rows you want, e.g. people in Design or HR aged 30 or over",
+    "aiSearchRun": "Search",
+    "aiSearchRunning": "Searching…",
+    "aiSearchEmpty": "The AI could not build a search from that. Try asking another way.",
+    "aiSearchFailed": "AI search failed: {message}",
+    "aiSearchRecent": "Recent searches",
+    "aiSearchForget": "Remove “{question}”"
   }
 }

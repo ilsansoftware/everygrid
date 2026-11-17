@@ -283,6 +283,7 @@ export const EverygridComponent = <T extends Record<string, unknown>>({
     onFilter: (text: string) => grid.setFilter(text, container),
     searchKeys,
     labelOf: (k: string) => grid.columnLabel(k, containerId),
+    aiSearch: grid.aiSearchFor(containerId, displayItems),
     isIndexing: isBusy,
   };
 

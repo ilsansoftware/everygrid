@@ -1,6 +1,10 @@
 packages:
   - 'packages/*'
   - 'demo/portal'
+  - 'demo/ai-search'
   - 'everygrid-wasm/pkg'
+allowBuilds:
+  # esbuild runs from its platform package; its postinstall only re-checks that binary.
+  esbuild: false
 minimumReleaseAgeExclude:
   - '@everygrid/grid'

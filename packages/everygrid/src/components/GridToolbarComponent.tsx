@@ -1,6 +1,6 @@
 import {I18n} from '../i18n/I18n';
 import type {CSSProperties, KeyboardEvent, ReactElement, RefObject} from 'react';
-import type {KeyTree} from '../core/types';
+import type {AiSearchOffer, KeyTree} from '../core/types';
 import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {syncPortalTheme} from '../core/portalTheme';
@@ -14,6 +14,8 @@ import {SortResetIcon} from '../icons/SortResetIcon';
 import {InsertRowIcon} from '../icons/InsertRowIcon';
 import {DiffIcon} from '../icons/DiffIcon';
 import {ConfigIcon} from '../icons/ConfigIcon';
+import {SparkleIcon} from '../icons/SparkleIcon';
+import {AI_FRAME, AI_GRADIENT, AiSearchPopupComponent} from './AiSearchPopupComponent';
 
 /** Hard cap on the search box: it grows to this many rows, and edits past it are rejected. */
 const MAX_FILTER_ROWS = 10;
@@ -202,6 +204,8 @@ export interface GridToolbarProps {
   /** Localized display name for a suggestion key — shown as `key(label)`; the inserted query keeps
    *  the real key. Returns the key unchanged when no label is configured. */
   labelOf?: (key: string) => string;
+  /** Set when an AI search handler is registered and this grid allows it: adds the "AI search" button. */
+  aiSearch?: AiSearchOffer;
   gridTitle?: string;
   isIndexing?: boolean;
 }
@@ -234,12 +238,16 @@ export const GridToolbarComponent = ({
                                        onFilter,
                                        searchKeys = {},
                                        labelOf,
+                                       aiSearch,
                                        gridTitle,
                                        isIndexing = false,
                                      }: GridToolbarProps) => {
   const [inputValue, setInputValue] = useState(filterText);
   const [isMobile, setIsMobile] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  // The last question asked here, so reopening the dialog starts from it rather than from blank.
+  const [aiQuestion, setAiQuestion] = useState('');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -897,10 +905,42 @@ export const GridToolbarComponent = ({
       </div>
   );
 
+  // Next to the search box it feeds; icon-only on a phone, where the row is tight. Locked like the
+  // other filter controls while an export runs.
+  const aiSearchButton = aiSearch && onFilter ? (
+      <button type='button'
+              disabled={isExporting}
+              title={I18n.t('toolbar.aiSearch')}
+              aria-label={I18n.t('toolbar.aiSearch')}
+              onClick={() => setAiOpen(true)}
+              className={`everygrid-ai-search-button shrink-0 inline-flex items-center justify-center gap-1 font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed ${AI_FRAME} ${AI_GRADIENT} ${isMobile ? 'px-2.5 py-1.5 text-base leading-snug' : 'px-3 py-1.5 text-xs leading-snug'}`}>
+        <SparkleIcon className={isMobile ? 'w-4 h-4 my-0.5' : 'w-3.5 h-3.5'}/>
+        {/* Just "AI" on the button — the full name stays in the tooltip and for screen readers. */}
+        {!isMobile && 'AI'}
+      </button>
+  ) : null;
+  // Button and box share one row group, top-aligned: the toolbar centres its items, so a loose
+  // button sat off the box's line, and a box grown to several lines keeps the button by its first.
+  const searchGroup = aiSearchButton ? (
+      <div className='flex items-start gap-2 flex-1 min-w-0 max-w-2xl'>
+        {aiSearchButton}
+        {filterInput}
+      </div>
+  ) : filterInput;
+  const aiSearchPopup = aiOpen && aiSearch && onFilter ? (
+      <AiSearchPopupComponent
+          offer={aiSearch}
+          initialQuestion={aiQuestion}
+          onClose={q => { setAiQuestion(q); setAiOpen(false); }}
+          onQuery={(query, q) => { setAiQuestion(q); setAiOpen(false); onFilter(query); }}
+      />
+  ) : null;
+
   if (isMobile) {
     return (
         <div className='everygrid-toolbar' ref={toolbarRef}>
-          {filterInput}
+          {searchGroup}
+          {aiSearchPopup}
           {/* self-start keeps the menu button pinned to the top — i.e. beside the search BOX — so it
               doesn't drift to the vertical centre when the inline suggestions grow the input group. */}
           <div className='relative ml-auto self-start' ref={menuRef}>
@@ -936,7 +976,8 @@ export const GridToolbarComponent = ({
 
   return (
       <div className='everygrid-toolbar' ref={toolbarRef}>
-        {filterInput}
+        {searchGroup}
+        {aiSearchPopup}
         {iconGroupWithExport}
         {hiddenColsBtnText && createButton(hiddenColsBtnText, 'bg-red-50 text-red-600 border border-red-100 rounded hover:bg-red-100 transition-colors', onShowHiddenColumnSelector)}
         {resetBtnText && createButton(resetBtnText, 'bg-orange-100 text-orange-700', onReset)}

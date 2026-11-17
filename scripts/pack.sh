@@ -43,6 +43,7 @@ pkg.module='./dist/index.js';
 pkg.exports={
   '.': { types: './dist/src/index.d.ts', import: './dist/index.js' },
   './react': { types: './dist/src/react/index.d.ts', import: './dist/index.js' },
+  './ai-server': { types: './dist/src/ai-server.d.ts', import: './dist/ai-server.js' },
   './css': './dist/Everygrid.css',
   './standalone': './dist/everygrid.standalone.js'
 };

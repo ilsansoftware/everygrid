@@ -23,6 +23,7 @@ export {I18n} from './i18n/I18n';
 export {GlobeIcon} from './icons/GlobeIcon';
 export {ChevronDownIcon} from './icons/ChevronDownIcon';
 export type {IconName, IconSource} from './icons/registry';
+export type {AiSearchEndpoint, AiSearchHandler, AiSearchRequest, AiSearchField} from './core/aiSearch';
 
 export type {
   ReloadOptions,
@@ -31,6 +32,7 @@ export type {
   ColumnI18n,
   GridMobileColumnsConfig,
   GridTargetConfig,
+  GridAiSearchConfig,
   GridPaginationConfig,
   GridColorConfig,
   EditableColConfig,

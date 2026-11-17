@@ -13,7 +13,21 @@
         "deleteRow": true
       },
       "toolbar": {
-        "showConfig": true
+        "showConfig": true,
+        "aiSearch": {
+          "examples": {
+            "ko": [
+              "부산에 사는 30세 이상",
+              "엔지니어링 경력 2년 이상",
+              "2024년 이후 입사한 활성 사용자"
+            ],
+            "en": [
+              "People in Busan aged 30 or over",
+              "Engineers with 2+ years",
+              "Active people who joined in 2024 or later"
+            ]
+          }
+        }
       },
       "editableCols": [
         "active",

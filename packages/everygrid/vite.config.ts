@@ -87,7 +87,8 @@ const inlineCssPlugin = {
     // UMD may run where `process` is undefined; the ES build never needs this shim.
     const chromePolyfill = ';(function(){if(typeof process==="undefined"){window.process={env:{},versions:{},emit:function(){}}}})();';
     for (const chunk of Object.values(bundle)) {
-      if (chunk.type === 'chunk' && chunk.isEntry) {
+      // Not into ai-server: it runs on a server, where there is no document to style.
+      if (chunk.type === 'chunk' && chunk.isEntry && chunk.name !== 'ai-server') {
         chunk.code = cssInject + (isStandalone ? chromePolyfill : '') + chunk.code;
       }
     }
@@ -137,12 +138,15 @@ export default defineConfig({
     chunkSizeWarningLimit: 4000,
     emptyOutDir: false,
     lib: {
-      entry: resolve(__dirname, (isStandalone) ? 'src/standalone-entry.ts' : 'src/index.ts'),
+      // The ES build also emits ai-server.js — the server half of AI search (`@everygrid/grid/ai-server`).
+      entry: isStandalone
+        ? resolve(__dirname, 'src/standalone-entry.ts')
+        : {index: resolve(__dirname, 'src/index.ts'), 'ai-server': resolve(__dirname, 'src/ai-server.ts')},
       name: 'Everygrid',
       formats: (isStandalone) ? ['umd'] : ['es'],
-      fileName: (format) => {
+      fileName: (format, entryName) => {
         if (isStandalone) { return 'everygrid.standalone.js'; }
-        if (format === 'es') { return 'index.js'; }
+        if (format === 'es') { return `${entryName}.js`; }
         return 'everygrid.standalone.js';
       },
     },
@@ -153,7 +157,9 @@ export default defineConfig({
       external: isStandalone
         ? []
         : (id: string) => id === 'react' || id === 'react-dom'
-          || id.startsWith('react/') || id.startsWith('react-dom/'),
+          || id.startsWith('react/') || id.startsWith('react-dom/')
+          // ai-server's model SDKs: optional peers, imported on first use by the consumer's server.
+          || id === 'openai' || id.startsWith('openai/') || id.startsWith('@anthropic-ai/sdk'),
       output: {
         assetFileNames: isStandalone ? 'Everygrid.standalone.[ext]' : 'Everygrid.css',
         globals: {
