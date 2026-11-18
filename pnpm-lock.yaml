@@ -64,8 +64,8 @@ importers:
   demo/portal:
     dependencies:
       '@everygrid/grid':
-        specifier: 0.6.5
-        version: 0.6.5(@anthropic-ai/sdk@1.9.0(zod@4.4.3))(openai@7.57.0(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(undici@7.28.0)(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 0.6.6
+        version: 0.6.6(@anthropic-ai/sdk@1.9.0(zod@4.4.3))(openai@7.57.0(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(undici@7.28.0)(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@tanstack/table-core':
         specifier: ^9.2.6
         version: 9.2.6
@@ -597,8 +597,8 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@everygrid/grid@0.6.5':
-    resolution: {integrity: sha512-C+BGsTbQMTnHT7zeswMKTObueLSjlkBEE6HXPEhmf038wW8PjMh70G6QShSAUZUU03pqOxxhijt3INkjPUd7/w==}
+  '@everygrid/grid@0.6.6':
+    resolution: {integrity: sha512-ncOgXGq8sM/4KC1jbdjOZsg5zuCXbQChksE8RewBzxz2ZP09PcTFmZIAceKij6IohOpN3DEAMcmgc59Shliipw==}
     hasBin: true
     peerDependencies:
       '@anthropic-ai/sdk': '>=1.9.0'
@@ -3280,7 +3280,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@everygrid/grid@0.6.5(@anthropic-ai/sdk@1.9.0(zod@4.4.3))(openai@7.57.0(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(undici@7.28.0)(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@everygrid/grid@0.6.6(@anthropic-ai/sdk@1.9.0(zod@4.4.3))(openai@7.57.0(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(undici@7.28.0)(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
