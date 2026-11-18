@@ -204,6 +204,13 @@ export class GridEngineWasm {
     return result as number;
   }
 
+  /** The columns' structure and value profile over every loaded row (AI search), as JSON text. */
+  async describeFields(sampleCount: number): Promise<string> {
+    const req = { id: this.engineId, cmd: 'describeFields' as const, sampleCount };
+    const result = await this.send(req);
+    return result as string;
+  }
+
   /** Terminates the worker thread, releasing its WASM memory and the thread itself immediately.
    *  Each grid has its own worker, so this only affects this engine. */
   terminate(): void {

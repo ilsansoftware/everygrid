@@ -6,8 +6,10 @@
 //   sink    JSON streaming ingestion (RowSink) + the string Interner
 //   filter  the query grammar: ColExpr / FilterExpr and their comparisons
 //   sort    SortKey
+//   describe the column profile AI search sends to its model
 //   engine  GridEngine — the `#[wasm_bindgen]` surface tying it all together
 
+mod describe;
 mod engine;
 mod filter;
 mod row;

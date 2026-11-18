@@ -22,6 +22,7 @@ export type WorkerRequest =
   | { id: string; seq: number; cmd: 'getRawPage'; page: number; pageSize: number }
   | { id: string; seq: number; cmd: 'getTotalCount' }
   | { id: string; seq: number; cmd: 'getRawCount' }
+  | { id: string; seq: number; cmd: 'describeFields'; sampleCount: number }
   | { id: string; seq: number; cmd: 'updateRows'; indices: Uint32Array; rowsJson: string }
   | { id: string; seq: number; cmd: 'insertRows'; index: number; rowsJson: string }
   | { id: string; seq: number; cmd: 'removeRows'; indices: Uint32Array }
@@ -297,6 +298,11 @@ function executeCommand(req: WorkerRequest): unknown {
 
       case 'getRawCount': {
         result = getEngine(id).get_raw_count();
+        break;
+      }
+
+      case 'describeFields': {
+        result = getEngine(id).describe_fields(req.sampleCount);
         break;
       }
 

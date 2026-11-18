@@ -20,7 +20,7 @@ import {PopupComponent} from '../components/PopupComponent';
 import {TextEditorPopupComponent} from '../components/TextEditorPopupComponent';
 import {createRoot, type Root} from 'react-dom/client';
 import {
-  type AiSearchEndpoint, type AiSearchHandler, buildAiSearchPrompt, cleanAiQuery, describeFields, endpointHandler,
+  type AiSearchEndpoint, type AiSearchField, type AiSearchHandler, buildAiSearchPrompt, cleanAiQuery, describeFields, endpointHandler,
   getAiSearchHandler, loadRecentQuestions,
   setAiSearchHandler, updateRecentQuestions,
 } from './aiSearch';
@@ -1549,13 +1549,36 @@ export class Everygrid<T extends Record<string, unknown> = Record<string, unknow
       run: async (question, signal) => {
         // The first source that actually holds rows: a grid streamed straight into the engine keeps an
         // empty JS stream buffer, and then only the rows on screen describe the columns.
-        const rows = [this.options.data as unknown[] | undefined, this._streamRows.get(containerId), sample]
-          .find(r => r && r.length > 0) ?? [];
-        const fields = describeFields(rows, conf.sampleValues ?? 5, k => this.columnLabel(k, containerId));
+        const sampleCount = conf.sampleValues ?? 5;
+        const labelOf = (k: string) => this.columnLabel(k, containerId);
+        // The engine profiles every loaded row (all values of a short list, number and date ranges);
+        // without one, the first rows held in JS stand in.
+        let fields = await this._describeInEngine(containerId, sampleCount, labelOf);
+        if (!fields) {
+          const rows = [this.options.data as unknown[] | undefined, this._streamRows.get(containerId), sample]
+            .find(r => r && r.length > 0) ?? [];
+          fields = describeFields(rows, sampleCount, labelOf);
+        }
         const prompt = buildAiSearchPrompt(fields, locale);
         return cleanAiQuery(await handler({question, gridId: containerId, locale, fields, prompt, signal}));
       },
     };
+  }
+
+  private async _describeInEngine(containerId: string, sampleCount: number, labelOf: (key: string) => string): Promise<AiSearchField[] | null> {
+    const engine = this._wasmEngines.get(containerId);
+    if (!engine) { return null; }
+    try {
+      const fields = JSON.parse(await engine.describeFields(sampleCount)) as AiSearchField[];
+      if (fields.length === 0) { return null; }
+      for (const f of fields) {
+        const label = labelOf(f.key);
+        if (label && label !== f.key) { f.label = label; }
+      }
+      return fields;
+    } catch {
+      return null;   // a terminated or older engine: fall back to the rows in JS
+    }
   }
 
   /** Whether the toolbar offers the "config" button (`toolbar: [{id, showConfig: true}]`). */

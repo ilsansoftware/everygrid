@@ -267,6 +267,12 @@ impl GridEngine {
         Ok(())
     }
 
+    /// The columns' structure and value profile for AI search (see `describe`), as a JSON array
+    /// string: type, the commonest `sample_count` values (all of them when there are few), ranges.
+    pub fn describe_fields(&self, sample_count: usize) -> String {
+        crate::describe::describe(&self.raw_data, sample_count)
+    }
+
     pub fn get_total_count(&self) -> usize {
         if self.is_filtered {
             self.filtered_indices.len()

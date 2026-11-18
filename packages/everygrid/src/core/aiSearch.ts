@@ -13,9 +13,15 @@ export interface AiSearchField {
   key: string;
   /** Localized display name (columnI18n), when it differs from the key. */
   label?: string;
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'mixed';
-  /** A few distinct values from the loaded rows, so the model can match the data's own spelling. */
+  /** `date`: strings that are all ISO dates (`2024-01-31…`), which compare in order as text. */
+  type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array' | 'mixed';
+  /** The commonest values, so the model can match the data's own spelling. */
   samples: (string | number | boolean)[];
+  /** `samples` holds every value the column has (a short list, profiled over all rows). */
+  complete?: boolean;
+  /** Smallest and largest value of a number or date column. */
+  min?: number | string;
+  max?: number | string;
   keys?: AiSearchField[];
 }
 
@@ -91,6 +97,8 @@ const MAX_SAMPLES_SCANNED = 200;
 const MAX_SAMPLE_LENGTH = 40;
 const MAX_DEPTH = 3;
 
+const ISO_DATE = /^\d{4}-\d{2}/;
+
 const kindOf = (v: unknown): AiSearchField['type'] | null =>
   v === null || v === undefined ? null
     : Array.isArray(v) ? 'array'
@@ -119,7 +127,9 @@ export function describeFields(rows: unknown[], sampleCount: number, labelOf?: (
     }
     return [...byKey].map(([key, list]) => {
       const kinds = new Set(list.map(kindOf).filter(k => k !== null));
-      const type: AiSearchField['type'] = kinds.size === 1 ? [...kinds][0]! : kinds.size === 0 ? 'string' : 'mixed';
+      let type: AiSearchField['type'] = kinds.size === 1 ? [...kinds][0]! : kinds.size === 0 ? 'string' : 'mixed';
+      if (type === 'string' && list.some(v => typeof v === 'string' && v !== '')
+          && list.every(v => typeof v !== 'string' || v === '' || ISO_DATE.test(v))) { type = 'date'; }
       const samples: Scalar[] = [];
       if (sampleCount > 0) {
         const seen = new Set<string>();
@@ -151,13 +161,45 @@ export function describeFields(rows: unknown[], sampleCount: number, labelOf?: (
 const describe = (fields: AiSearchField[], indent: string): string =>
   fields.map(f => {
     const label = f.label ? ` "${f.label}"` : '';
-    const samples = f.samples.length > 0 ? ` — e.g. ${f.samples.map(s => JSON.stringify(s)).join(', ')}` : '';
-    const head = `${indent}- ${f.key}${label} (${f.type})${samples}`;
+    const range = f.min !== undefined && f.max !== undefined ? `, ${f.min} to ${f.max}` : '';
+    const list = f.samples.map(s => JSON.stringify(s)).join(', ');
+    const samples = f.samples.length === 0 ? '' : f.complete ? ` — one of ${list}` : ` — e.g. ${list}`;
+    const head = `${indent}- ${f.key}${label} (${f.type}${range})${samples}`;
     return f.keys ? `${head}\n${describe(f.keys, indent + '  ')}` : head;
   }).join('\n');
 
-/** The system prompt sent with every AI search: query syntax, the grid's fields, output rules. */
-export function buildAiSearchPrompt(fields: AiSearchField[], locale: 'ko' | 'en', today = new Date()): string {
+const valueRules = (today: Date, locale: 'ko' | 'en') => `- Use the field keys exactly as listed, never the display names.
+- Write values the way the data spells them (see the values listed), in the data's language: when the
+  reader's words differ, translate them to match (부산 → Busan if the values are English). Numbers
+  without units or separators.
+- "Since 2024" / "2024년 이후" includes 2024 itself: date(>=2024-01-01).
+- Today is ${today.toISOString().slice(0, 10)}. The reader writes in ${locale === 'ko' ? 'Korean' : 'English'}.`;
+
+/**
+ * The system prompt for an AI search. `query` (default) asks for the grid's query language as one
+ * line — what a browser-side handler gets as `request.prompt`. `json` asks for conditions as JSON
+ * (see `@everygrid/grid/ai-server`), which a model can be held to with a schema.
+ */
+export function buildAiSearchPrompt(fields: AiSearchField[], locale: 'ko' | 'en', today = new Date(), format: 'query' | 'json' = 'query'): string {
+  if (format === 'json') {
+    return `You turn a request for rows of a data grid into search conditions, as JSON matching the given schema.
+
+- "any" lists alternatives (OR); each alternative's "all" lists conditions that must all hold (AND).
+- A condition tests one field. "path" holds field keys from the outermost in: ["age"],
+  ["role", "engineering", "years"]. A path through an array matches when any element satisfies it.
+- "op": eq / ne (equal / not equal), gt / gte / lt / lte (numbers; ISO dates compare as text),
+  contains (substring), in (equal to any of "values"), regex. Text matches case-insensitively.
+- "value" is the operand ("" for in); "values" is the list for in ([] otherwise).
+- For text that may be in any field, use path [] with op contains.
+
+Fields of this grid (key, display name, type and range, values):
+${describe(fields, '')}
+
+Rules:
+${valueRules(today, locale)}
+- Prefer a condition on a field over free text whenever a field fits.
+- If the request cannot be expressed, give the closest free-text condition.`;
+  }
   return `You convert a request for rows of a data grid into the grid's search query.
 
 Query syntax (keys and text match case-insensitively; combine with && and ||, group with parentheses):
@@ -171,18 +213,14 @@ Query syntax (keys and text match case-insensitively; combine with && and ||, gr
 - field(==true) / field(==false) for booleans
 A field scope over an array matches when any element satisfies it.
 
-Fields of this grid (key, display name, type, sample values):
+Fields of this grid (key, display name, type and range, values):
 ${describe(fields, '')}
 
 Rules:
 - Reply with the query only: one line, no explanation, no code fence, no quotes around it.
-- Use the field keys exactly as listed, never the display names.
 - Reach nested keys by nesting parentheses, never a dotted path: role(engineering(years(>=2))), not role.engineering.years(>=2).
-- Write values the way the data spells them (see the samples), in the data's language: when the reader's
-  words differ, translate them to match the samples (부산 → Busan if the samples are English). Numbers
-  without units or separators.
+${valueRules(today, locale)}
 - Prefer exact comparisons on a field over free text whenever a field fits.
-- Today is ${today.toISOString().slice(0, 10)}. The reader writes in ${locale === 'ko' ? 'Korean' : 'English'}.
 - If the request cannot be expressed, reply with the closest free-text query.`;
 }
 

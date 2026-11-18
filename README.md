@@ -7,7 +7,7 @@
 A config-driven React data grid. Filtering, sorting and paging over millions of rows run in a
 **Rust - WASM engine** inside a Web Worker, so the UI never blocks.
 
-![Everygrid: sorting and searching 1.6M rows, virtual-scrolling 1M rows, then re-theming the grid — dark mode, accent colors, header styles and icons](https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/demo.gif)
+![Everygrid: sorting and searching 1.6M rows, virtual-scrolling 1M rows, re-theming the grid — dark mode, accent colors, header styles and icons — then an AI search turning a question into a query](https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/demo.gif)
 
 <p><a href="https://d3886c7yrxubj8.cloudfront.net/"><strong>Live demo &amp; API docs</strong></a>:
 React, vanilla JS and jQuery demos, a 1.6M-row virtual-scroll grid, and JSON-to-grid.</p>
@@ -467,15 +467,20 @@ export const POST = createAiSearchHandler();                                    
 | `provider` | `anthropic` if `ANTHROPIC_API_KEY` is set, else `openai` if `OPENAI_API_KEY` is | `'anthropic'` or `'openai'` |
 | `model` | `claude-opus-5-5` for Anthropic | Required for OpenAI |
 | `apiKey` | the provider's environment variable | |
-| `complete` | — | Your own model call: gets the system prompt and question, returns the reply text. Overrides `provider` |
+| `complete` | — | Your own model call: gets `{system, question, schema, signal}` and returns the reply text. Hold the model to `schema` (JSON output) when the API can; a reply that isn't JSON is taken as a query string. Overrides `provider` |
 | `maxQuestionLength` | `500` | |
 
 For a server that isn't Fetch-API shaped (Express, AWS Lambda), `createAiSearch(options)` returns
 `(body) => Promise<{status, body}>` to wire up yourself; [`demo/ai-search`](demo/ai-search/src/index.ts)
-is a Lambda built that way. The browser sends only the question and the grid's column structure
-(key, display name, type, a few sample values), never the dataset. The server builds the prompt from
-that list itself and caps its size, so a public endpoint can't be used to send a model arbitrary
-instructions.
+is a Lambda built that way. The browser sends only the question and the grid's column profile, never
+the dataset: key, display name, type, the commonest values (every value when a column has few) and
+the range of numbers and dates, worked out by the engine over all loaded rows. The server builds the
+prompt from that list itself and caps its size, so a public endpoint can't be used to send a model
+arbitrary instructions.
+
+The model answers with conditions as JSON, held to a schema (`AI_SEARCH_SCHEMA`), not with query text,
+so it can't write a query the grammar doesn't accept. The server checks every field path against the
+column list, asks once more if one is unknown, and writes the conditions out as the query.
 
 **Browser.** Point the grids at the route; the **AI** button then appears beside every grid's search
 box:

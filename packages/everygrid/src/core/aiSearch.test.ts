@@ -42,6 +42,19 @@ describe('buildAiSearchPrompt', () => {
   });
 });
 
+describe('field profile in the prompt', () => {
+  it('marks ISO date columns and writes ranges and full value lists', () => {
+    expect(describeFields([{d: '2024-01-01'}, {d: '2023-05-15T09:00'}], 5)[0]!.type).toBe('date');
+    const prompt = buildAiSearchPrompt([
+      {key: 'city', type: 'string', samples: ['Seoul', 'Busan'], complete: true},
+      {key: 'age', type: 'number', samples: [30], min: 18, max: 65},
+    ], 'en', new Date('2026-11-18T00:00:00Z'), 'json');
+    expect(prompt).toContain('- city (string) — one of "Seoul", "Busan"');
+    expect(prompt).toContain('- age (number, 18 to 65) — e.g. 30');
+    expect(prompt).toContain('"any" lists alternatives');
+  });
+});
+
 describe('cleanAiQuery', () => {
   it('strips fences, quotes and trailing lines', () => {
     expect(cleanAiQuery('```\nage(>=30) && dept(in[HR,Design])\n```')).toBe('age(>=30) && dept(in[HR,Design])');
