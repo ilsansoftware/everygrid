@@ -64,8 +64,8 @@ importers:
   demo/portal:
     dependencies:
       '@everygrid/grid':
-        specifier: 0.6.4
-        version: 0.6.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 0.6.5
+        version: 0.6.5(@anthropic-ai/sdk@1.9.0(zod@4.4.3))(openai@7.57.0(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(undici@7.28.0)(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@tanstack/table-core':
         specifier: ^9.2.6
         version: 9.2.6
@@ -597,12 +597,19 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@everygrid/grid@0.6.4':
-    resolution: {integrity: sha512-efvU5oq+tUWLdFBZu9LYp/7123fbbvORiv+AVx4zVilUxG+BzVwI2+1h5whD+Wf8hpS8W6JTYKxTO/6GGvDb7A==}
+  '@everygrid/grid@0.6.5':
+    resolution: {integrity: sha512-C+BGsTbQMTnHT7zeswMKTObueLSjlkBEE6HXPEhmf038wW8PjMh70G6QShSAUZUU03pqOxxhijt3INkjPUd7/w==}
     hasBin: true
     peerDependencies:
+      '@anthropic-ai/sdk': '>=1.9.0'
+      openai: '>=7.0.0'
       react: '>=18'
       react-dom: '>=18'
+    peerDependenciesMeta:
+      '@anthropic-ai/sdk':
+        optional: true
+      openai:
+        optional: true
 
   '@exodus/bytes@1.15.1':
     resolution: {integrity: sha512-S6mL0yNB/Abt9Ei4tq8gDhcczc4S3+vQ4ra7vxnAf+YHC02srtqxKKZghx2Dq6p0e66THKwR6r8N6P95wEty7Q==}
@@ -3273,10 +3280,13 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@everygrid/grid@0.6.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@everygrid/grid@0.6.5(@anthropic-ai/sdk@1.9.0(zod@4.4.3))(openai@7.57.0(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(undici@7.28.0)(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
+    optionalDependencies:
+      '@anthropic-ai/sdk': 1.9.0(zod@4.4.3)
+      openai: 7.57.0(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(undici@7.28.0)(zod@4.4.3)
 
   '@exodus/bytes@1.15.1': {}
 
