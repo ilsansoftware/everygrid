@@ -40,12 +40,23 @@ const markedWithCopy = new Marked({
 });
 
 /** Sections that get copy buttons on their code blocks. */
-const COPYABLE_SECTIONS = new Set(['Installation', 'Quick Start']);
+const COPYABLE_SECTIONS = new Set(['Installation', 'Quick Start', 'AI search']);
 
 // The library's README, rendered as the portal's documentation page: a sticky table of contents
 // built from its second-level headings, and the document itself.
 /** The technical case for the library, above the README: what is different and why it matters. */
-const HIGHLIGHTS: { title: string; body: string; tag: string }[] = [
+const HIGHLIGHTS: { title: string; body: string; tag: string; featured?: boolean }[] = [
+  {
+    tag: 'AI search',
+    featured: true,
+    title: 'Ask in words, get a query you can read',
+    body: '"People in Busan aged 30 or over" becomes location(==Busan) && age(>=30) in the search box, '
+        + 'and the engine filters as usual — the reader sees, and can edit, what the AI understood. The '
+        + 'model answers in JSON held to a schema and every field is checked against the grid, so it '
+        + 'cannot write a query that does not parse. It knows the data from a profile the engine builds '
+        + 'over every loaded row (types, value lists, ranges); the rows themselves never leave the page. '
+        + 'Claude, OpenAI or your own model, with the key on your server via @everygrid/grid/ai-server.',
+  },
   {
     tag: 'Rust - WASM',
     title: 'The heavy lifting is not in JavaScript',
@@ -142,7 +153,7 @@ export default function DocsPage() {
             <h2>Highlights</h2>
             <div className='docs-highlight-grid'>
               {HIGHLIGHTS.map(h => (
-                  <div key={h.tag} className='docs-highlight'>
+                  <div key={h.tag} className={h.featured ? 'docs-highlight is-featured' : 'docs-highlight'}>
                     <span className='docs-highlight-tag'>{h.tag}</span>
                     <h3>{h.title}</h3>
                     <p>{h.body}</p>
@@ -155,6 +166,13 @@ export default function DocsPage() {
               <span>GridEngineWasm</span><i>→</i>
               <span>Web Worker</span><i>→</i>
               <span>Rust engine (WASM)</span>
+            </div>
+            <div className='docs-pipeline'>
+              <span>question</span><i>→</i>
+              <span>column profile (engine)</span><i>→</i>
+              <span>your server · ai-server</span><i>→</i>
+              <span>Claude / OpenAI / your model</span><i>→</i>
+              <span>query → Rust engine</span>
             </div>
           </section>
           <article className='docs-body' onClick={copyCode} dangerouslySetInnerHTML={{__html: body}}/>

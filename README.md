@@ -5,12 +5,14 @@
 [![Publish workflow status](https://github.com/ilsansoftware/everygrid/actions/workflows/publish.yml/badge.svg)](https://github.com/ilsansoftware/everygrid/actions/workflows/publish.yml)
 
 A config-driven React data grid. Filtering, sorting and paging over millions of rows run in a
-**Rust - WASM engine** inside a Web Worker, so the UI never blocks.
+**Rust - WASM engine** inside a Web Worker, so the UI never blocks. Readers can also search in plain
+words: [**AI search**](#ai-search) turns a question into the grid's query, with the model call on your
+server (Claude, OpenAI or your own).
 
-![Everygrid: sorting and searching 1.6M rows, virtual-scrolling 1M rows, re-theming the grid — dark mode, accent colors, header styles and icons — then an AI search turning a question into a query](https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/demo.gif)
+![Everygrid: streaming 1.6M rows in, sorting and searching them, an AI search turning a question in words into a query over all 1.6M rows, virtual-scrolling 1M rows, then re-theming the grid — dark mode, accent colors, header styles and icons](https://raw.githubusercontent.com/ilsansoftware/everygrid/main/docs/demo.gif)
 
 <p><a href="https://d3886c7yrxubj8.cloudfront.net/"><strong>Live demo &amp; API docs</strong></a>:
-React, vanilla JS and jQuery demos, a 1.6M-row virtual-scroll grid, and JSON-to-grid.</p>
+React, vanilla JS and jQuery demos, a 1.6M-row virtual-scroll grid with AI search, and JSON-to-grid.</p>
 
 ## Benchmark
 
